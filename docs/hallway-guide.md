@@ -5,7 +5,7 @@ This guide explains everything that was added to build Floor 4. It goes in the s
 What was built:
 
 - Two new classrooms to the left of the starting room: **Room 403**, which faces left, and **Room 402**, which has a different layout.
-- A **hallway** (3 screens) running past the classrooms, based on your mockups but built from the `Classroom2` tiles.
+- A **hallway** (3 screens) running past the classrooms, based on your mockups but built from the classroom tiles (`tiles/classroom`).
 - **Stairwells** at both ends of the hallway. The east one, next to Room 404, is destroyed. The west one works, but going down isn't implemented yet.
 - **6 new stair tiles** in the same style.
 - A **linked list** that connects every room, which replaces the old `mapX`/`mapY` grid.
@@ -55,20 +55,22 @@ This chain of screens, where each one points at its neighbours, is a **doubly li
 
 | Package | Class | Job |
 |---|---|---|
-| `tile` | `TileSet` | Loads every tile image once and knows which tiles are solid |
-| `tile` | `TileMap` | One screen: draws it, and answers "can I walk here?" and "am I on a door?" |
-| `tile` | `MapBuilder` | Helper for building a `TileMap` step by step |
-| `tile` | `Classroom` | The 3 classroom layouts |
-| `tile` | `Hallway` | Builds a hallway screen |
-| `tile` | `Stairs` | Builds the 2 stairwell screens |
-| `world` | `Room` | A **node** of the linked list: one screen plus its links |
-| `world` | `Floor` | The linked list itself: `head`, `tail`, `append()` |
-| `world` | `World` | Creates every room and links them together |
-| `Nightmareon404` | `GamePanel` | Keeps a pointer to the room the player is in |
-| `Nightmareon404` | `Player` | Follows the links when walking through a door or off an edge |
-| `Nightmareon404` | `MapPreviewDebug` | Debug tool: prints the list and saves a picture of every room |
+| `nightmare404.tile` | `TileSet` | Loads every tile image once and knows which tiles are solid |
+| `nightmare404.tile` | `TileMap` | One screen: draws it, and answers "can I walk here?" and "am I on a door?" |
+| `nightmare404.tile` | `MapBuilder` | Helper for building a `TileMap` step by step |
+| `nightmare404.map` | `Classroom` | The 3 classroom layouts |
+| `nightmare404.map` | `Hallway` | Builds a hallway screen |
+| `nightmare404.map` | `Stairs` | Builds the 2 stairwell screens |
+| `nightmare404.world` | `Room` | A **node** of the linked list: one screen plus its links |
+| `nightmare404.world` | `Floor` | The linked list itself: `head`, `tail`, `append()` |
+| `nightmare404.world` | `World` | Creates every room and links them together |
+| `nightmare404.main` | `GamePanel` | Keeps a pointer to the room the player is in |
+| `nightmare404.entity` | `Player` | Follows the links when walking through a door or off an edge |
+| `nightmare404.debug` | `MapPreviewDebug` | Debug tool: prints the list and saves a picture of every room |
 
-**Rule of thumb:** the `tile` package knows what rooms **look like**, and the `world` package knows how rooms **connect**.
+**Rule of thumb:** the `tile` and `map` packages know what rooms **look like**, and the `world` package knows how rooms **connect**.
+
+> These are the package names since the 2026-11-03 cleanup. When this guide was written, the classes in `tile` and `map` shared one package called `tile`, and `GamePanel`, `Player` and `MapPreviewDebug` were in `Nightmareon404`. [project-structure-guide.md](project-structure-guide.md) explains the change.
 
 ---
 
@@ -106,9 +108,9 @@ All classrooms have their doors at **columns 5–6 and 18–19**, and the hallwa
 
 ## Step 2 — New stair tiles
 
-![The 6 new stair tiles](images/stair_tiles.png)
+![The 6 new stair tiles](images/hallway/stair_tiles.png)
 
-The stairs needed pictures that don't exist in `Classroom2`, so I drew 6 new 32×32 tiles in **`res/tiles/Stairs/`**:
+The stairs needed pictures that don't exist in the classroom tiles, so I drew 6 new 32×32 tiles in **`src/main/resources/tiles/stairs/`**:
 
 | File | What it is | Solid? |
 |---|---|---|
@@ -125,7 +127,7 @@ The stairs needed pictures that don't exist in `Classroom2`, so I drew 6 new 32�
 
 ## Step 3 — `TileSet`: every tile in one place
 
-**File:** [`src/tile/TileSet.java`](../src/tile/TileSet.java)
+**File:** [`src/main/java/nightmare404/tile/TileSet.java`](../src/main/java/nightmare404/tile/TileSet.java)
 
 Before, the classroom loaded its own 36 images. With 8 screens, loading the same images 8 times would waste memory and time. So all images are loaded **once**, in `TileSet`, and every screen shares them.
 
@@ -135,9 +137,9 @@ Each tile has a number (its **ID**), which is its index in the `images` array:
 
 | IDs | What | Where they come from |
 |---|---|---|
-| 0–35 | the classroom tiles | `res/tiles/Classroom2` (the same numbers as the file names) |
+| 0–35 | the classroom tiles | `src/main/resources/tiles/classroom` (the same numbers as the file names) |
 | 36–50 | mirrored furniture (`CHAIR_L`, `DESK_L`, ...) | **made in code** by flipping tiles 15–33 |
-| 51–56 | stair tiles | `res/tiles/Stairs` |
+| 51–56 | stair tiles | `src/main/resources/tiles/stairs` |
 
 The IDs have names (constants) so the code is readable: `TileSet.CHAIR` instead of `15`.
 
@@ -176,7 +178,7 @@ Everything else blocks the player: walls, furniture, void, rubble, holes and bro
 
 ## Step 4 — `TileMap`: one screen, with collision worked out for you
 
-**File:** [`src/tile/TileMap.java`](../src/tile/TileMap.java)
+**File:** [`src/main/java/nightmare404/tile/TileMap.java`](../src/main/java/nightmare404/tile/TileMap.java)
 
 A `TileMap` is one screen. It holds the same **4 layers** as your `ClassroomMap`, drawn in this order:
 
@@ -217,7 +219,7 @@ Walking off the **top or bottom** is impossible, but walking off the **left or r
 
 ## Step 5 — `MapBuilder`: placing tiles with code
 
-**File:** [`src/tile/MapBuilder.java`](../src/tile/MapBuilder.java)
+**File:** [`src/main/java/nightmare404/tile/MapBuilder.java`](../src/main/java/nightmare404/tile/MapBuilder.java)
 
 Writing 4 grids of 25×18 numbers for every screen is a lot of typing and easy to get wrong. The classrooms still use grids, because those are easy to read and edit visually. The hallway and stairs screens are very repetitive, so they're built with commands:
 
@@ -261,7 +263,7 @@ The file names describe **where the stone strip sits inside the tile**, not whic
 
 ## Step 6 — The three classrooms
 
-**File:** [`src/tile/Classroom.java`](../src/tile/Classroom.java)
+**File:** [`src/main/java/nightmare404/map/Classroom.java`](../src/main/java/nightmare404/map/Classroom.java)
 
 ### One shell, different furniture
 
@@ -277,13 +279,13 @@ In the bottom wall row (row 16), the door tiles decide what happens:
 
 ### Room 404 — the starting room (unchanged)
 
-![Room 404](images/07_room_404.png)
+![Room 404](images/hallway/07_room_404.png)
 
 This is your layout exactly. I compared it pixel by pixel with the old version: **0 differences**.
 
 ### Room 403 — facing left
 
-![Room 403](images/05_room_403.png)
+![Room 403](images/hallway/05_room_403.png)
 
 To "mix up the orientation", Room 403 is a **mirror image** of 404's arrangement:
 - The teacher's desk (`TEACHER_DESK_TOP_L`), the teacher's chair and the board are on the **left** wall (columns 3–5).
@@ -310,7 +312,7 @@ Its collision map (`#` = solid, `D` = door):
 
 ### Room 402 — a different arrangement
 
-![Room 402](images/03_room_402.png)
+![Room 402](images/hallway/03_room_402.png)
 
 Room 402 faces right like 404, but with **5 desk columns** (instead of 4), a **wide aisle** across rows 9–10, and different damage. **Only the left door works**; the right one is broken.
 
@@ -340,9 +342,9 @@ Room 402 faces right like 404, but with **5 desk columns** (instead of 4), a **w
 
 ## Step 7 — The hallway screens
 
-**File:** [`src/tile/Hallway.java`](../src/tile/Hallway.java)
+**File:** [`src/main/java/nightmare404/map/Hallway.java`](../src/main/java/nightmare404/map/Hallway.java)
 
-![Hallway outside Room 402](images/02_hallway_room_402.png)
+![Hallway outside Room 402](images/hallway/02_hallway_room_402.png)
 
 This is a **temporary mockup**, like your pictures but built from your tiles:
 
@@ -395,7 +397,7 @@ The second `set` matters: the wall base under the door is solid, so without it, 
 
 ## Step 8 — The stairwells
 
-**File:** [`src/tile/Stairs.java`](../src/tile/Stairs.java)
+**File:** [`src/main/java/nightmare404/map/Stairs.java`](../src/main/java/nightmare404/map/Stairs.java)
 
 Both stairwells use the same layout, mirrored: the hallway comes in from one side and opens into a walled stairwell. The staircase is built by `staircase(b, left)`:
 
@@ -440,13 +442,13 @@ Walking up a flight gets you onto the landing, and from there you can go down th
 
 ### West Stairs — working
 
-![West Stairs](images/01_west_stairs.png)
+![West Stairs](images/hallway/01_west_stairs.png)
 
-At the left end of the hallway. The steps are walkable (you can walk all the way down them), but **nothing happens yet**. Going to another floor is the next step ([Next steps](#next-steps)).
+At the left end of the hallway. Its stairs now lead to Floor 3: see [`floor3-library-guide.md`](floor3-library-guide.md).
 
 ### East Stairs — destroyed
 
-![East Stairs](images/08_east_stairs_destroyed.png)
+![East Stairs](images/hallway/08_east_stairs_destroyed.png)
 
 Next to Room 404. It's built with the same `staircase()` and then damaged:
 - **Holes** across the full width of each flight, so there's no way down
@@ -468,7 +470,7 @@ Next to Room 404. It's built with the same `staircase()` and then damaged:
 
 ## Step 9 — The linked list
 
-**Files:** [`src/world/Room.java`](../src/world/Room.java), [`src/world/Floor.java`](../src/world/Floor.java), [`src/world/World.java`](../src/world/World.java)
+**Files:** [`src/main/java/nightmare404/world/Room.java`](../src/main/java/nightmare404/world/Room.java), [`src/main/java/nightmare404/world/Floor.java`](../src/main/java/nightmare404/world/Floor.java), [`src/main/java/nightmare404/world/World.java`](../src/main/java/nightmare404/world/World.java)
 
 ### What is a linked list?
 
@@ -556,14 +558,14 @@ After:    head -> [West] <-> [Hall 402] <-> [Hall 403] <- tail
 
 Adding to the end takes the same 3 steps however long the list is, because `tail` points straight at the end. That's called **O(1)**, or constant time.
 
-#### Attaching a classroom: `addClassroom()`
+#### Attaching a classroom: `addRoomBehind()`
 
 ```java
-public Room addClassroom(String name, TileMap map, Room hallway) {
-    Room classroom = new Room(name, this, map);
-    classroom.door = hallway;    // classroom -> hallway
-    hallway.door = classroom;    // hallway -> classroom
-    return classroom;
+public Room addRoomBehind(String name, TileMap map, Room hallway) {
+    Room room = new Room(name, this, map);
+    room.door = hallway;    // classroom -> hallway
+    hallway.door = room;    // hallway -> classroom
+    return room;
 }
 ```
 
@@ -577,16 +579,16 @@ Both directions are linked, so you can go in and come back out.
 floor4 = new Floor(4);
 
 // 1. The hallway, left to right
-Room westStairs = floor4.append("West Stairs", Stairs.west(tiles, ts));
+Room westStairs = floor4.append("West Stairs", Stairs.west(tiles, ts, true, false));
 Room hall402    = floor4.append("Hallway (Room 402)", Hallway.outside(...ROOM_402...));
 Room hall403    = floor4.append("Hallway (Room 403)", Hallway.outside(...ROOM_403...));
 Room hall404    = floor4.append("Hallway (Room 404)", Hallway.outside(...ROOM_404...));
 floor4.append("East Stairs (destroyed)", Stairs.eastDestroyed(tiles, ts));
 
 // 2. The classrooms, each attached to its hallway screen
-floor4.addClassroom("Room 402", Classroom.build(...ROOM_402), hall402);
-floor4.addClassroom("Room 403", Classroom.build(...ROOM_403), hall403);
-Room room404 = floor4.addClassroom("Room 404", Classroom.build(...ROOM_404), hall404);
+floor4.addRoomBehind("Room 402", Classroom.build(...ROOM_402), hall402);
+floor4.addRoomBehind("Room 403", Classroom.build(...ROOM_403), hall403);
+Room room404 = floor4.addRoomBehind("Room 404", Classroom.build(...ROOM_404), hall404);
 
 start = room404;
 ```
@@ -726,17 +728,18 @@ Everything was checked with simulated key presses (no window needed):
 ### Debug tools you can run
 
 - **`MapPreviewDebug`**: prints the linked list and saves a picture of every room. Run it after changing a map:
-  `java -Djava.awt.headless=true -cp "bin;res" Nightmareon404.MapPreviewDebug map_previews`
   In Eclipse: right-click the file → *Run As → Java Application*. The pictures go to `map_previews/` in the project.
+  From a terminal, after `run-checks.bat` has compiled everything:
+  `java -Djava.awt.headless=true -cp build/test/classes nightmare404.debug.MapPreviewDebug map_previews`
 - **`WalkStripDebug`**: the walk-animation check from before.
 
 ---
 
 ## Step 12 — A camera that follows the player in the hallway
 
-**Files:** [`GamePanel.java`](../src/Nightmareon404/GamePanel.java) (`cameraX()`, `paintComponent()`), [`Player.java`](../src/Nightmareon404/Player.java) (`checkScreenEdges()`, `blocked()`)
+**Files:** [`GamePanel.java`](../src/main/java/nightmare404/main/GamePanel.java) (`cameraX()`, `paintComponent()`), [`Player.java`](../src/main/java/nightmare404/entity/Player.java) (`checkScreenEdges()`, `blocked()`)
 
-![The camera halfway between two hallway screens](images/camera_seam.png)
+![The camera halfway between two hallway screens](images/hallway/camera_seam.png)
 
 ### The problem
 
@@ -818,7 +821,7 @@ Going through a door is still a straight cut, which is good: walking into a clas
 
 ## Step 13 — Drawing faster: caching each map
 
-**Files:** [`TileMap.java`](../src/tile/TileMap.java) (`draw()`, `render()`, `newScreenImage()`, `clearCache()`), [`GamePanel.java`](../src/Nightmareon404/GamePanel.java) (`ROOM_NAME_FONT`)
+**Files:** [`TileMap.java`](../src/main/java/nightmare404/tile/TileMap.java) (`draw()`, `render()`, `newScreenImage()`, `clearCache()`), [`GamePanel.java`](../src/main/java/nightmare404/main/GamePanel.java) (`ROOM_NAME_FONT`)
 
 ### The problem
 
@@ -911,22 +914,22 @@ Caching works because the map is **static** (it doesn't change). Things that mov
 
 | File | Change |
 |---|---|
-| `res/tiles/Stairs/*.png` | **new**: 6 stair tiles |
-| `src/tile/TileSet.java` | **new**: loads all tiles once; mirrored furniture; solid/walkable |
-| `src/tile/TileMap.java` | **new**: one screen; computed collision and doors |
-| `src/tile/MapBuilder.java` | **new**: helper for building maps |
-| `src/tile/Hallway.java` | **new**: hallway screens |
-| `src/tile/Stairs.java` | **new**: the two stairwells |
-| `src/world/Room.java` | **new**: linked-list node |
-| `src/world/Floor.java` | **new**: the linked list |
-| `src/world/World.java` | **new**: builds and links Floor 4 |
-| `src/Nightmareon404/MapPreviewDebug.java` | **new**: debug tool |
-| `src/tile/Classroom.java` | rewritten: shared shell + 3 furniture grids; the SOLID/DOORS arrays are replaced by computed collision |
-| `src/Nightmareon404/GamePanel.java` | `mapX`/`mapY`/`tileM` replaced by `world` + `currentRoom`; camera (`cameraX()`) and neighbour drawing |
-| `src/Nightmareon404/Player.java` | moves by following `left`/`right`/`door` links; smooth edge crossing; collision checks the neighbour at a seam |
+| `src/main/resources/tiles/stairs/*.png` | **new**: 6 stair tiles |
+| `src/main/java/nightmare404/tile/TileSet.java` | **new**: loads all tiles once; mirrored furniture; solid/walkable |
+| `src/main/java/nightmare404/tile/TileMap.java` | **new**: one screen; computed collision and doors |
+| `src/main/java/nightmare404/tile/MapBuilder.java` | **new**: helper for building maps |
+| `src/main/java/nightmare404/map/Hallway.java` | **new**: hallway screens |
+| `src/main/java/nightmare404/map/Stairs.java` | **new**: the two stairwells |
+| `src/main/java/nightmare404/world/Room.java` | **new**: linked-list node |
+| `src/main/java/nightmare404/world/Floor.java` | **new**: the linked list |
+| `src/main/java/nightmare404/world/World.java` | **new**: builds and links Floor 4 |
+| `src/test/java/nightmare404/debug/MapPreviewDebug.java` | **new**: debug tool |
+| `src/main/java/nightmare404/map/Classroom.java` | rewritten: shared shell + 3 furniture grids; the SOLID/DOORS arrays are replaced by computed collision |
+| `src/main/java/nightmare404/main/GamePanel.java` | `mapX`/`mapY`/`tileM` replaced by `world` + `currentRoom`; camera (`cameraX()`) and neighbour drawing |
+| `src/main/java/nightmare404/entity/Player.java` | moves by following `left`/`right`/`door` links; smooth edge crossing; collision checks the neighbour at a seam |
 | `src/tile/Tilemanager.java`, `src/tile/Tile.java` | **removed**: replaced by `TileSet`/`TileMap`. The old open "plain rooms" (walk off any edge forever) are gone; the world is now exactly the linked rooms |
 
-The old images in `res/tiles/` (outside `Classroom2` and `Stairs`) are no longer used.
+The old images in `res/tiles/` (outside `Classroom2` and `Stairs`) were no longer used. They were deleted in the 2026-11-03 cleanup.
 
 ---
 
@@ -934,12 +937,7 @@ The old images in `res/tiles/` (outside `Classroom2` and `Stairs`) are no longer
 
 ### Making the west stairs work
 
-A sketch of what's needed:
-
-1. Build Floor 3 in `World` the same way as Floor 4 (`new Floor(3)`, `append`, `addClassroom`).
-2. Link the floors: `floor4.below = floor3; floor3.above = floor4;` and set each floor's `stairs`.
-3. Give the stairs a trigger, for example "the player stands on the bottom step, row 13". A `TileMap` could find `STAIR_STEP` tiles the way it finds doors.
-4. In `Player`, when the trigger fires: `gp.enterRoom(gp.currentRoom.floor.below.stairs)` and place the player on the landing.
+Done: Floor 3, the working stairs and the library are explained in [`floor3-library-guide.md`](floor3-library-guide.md).
 
 ### Ideas to practise linked lists
 

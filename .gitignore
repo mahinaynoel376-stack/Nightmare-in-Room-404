@@ -1,0 +1,23 @@
+# Files git should NOT keep. Everything here can be rebuilt from the source, or is personal to one computer.
+
+# Compiled output: Eclipse builds into bin/, build-jar.bat and run-checks.bat into build/
+bin/
+build/
+*.class
+
+# The packaged game. Share it through a GitHub Release instead of committing it.
+dist/
+
+# Pictures saved by the debug tools
+map_previews/
+down_walk_strip.png
+
+# Python's cache (from the art scripts in tools/art)
+__pycache__/
+
+# Editor and operating system clutter
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
