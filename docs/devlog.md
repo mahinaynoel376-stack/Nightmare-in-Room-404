@@ -295,9 +295,78 @@ Template for new entries:
 
 ---
 
+## 2026-11-10 — A shorter walk: faster steps, a sprint key, narrower hallways
+
+**Goal:** a groupmate found the walking area too big.
+**What changed:**
+- **Speed:** walking went from 3 to 4 px per frame, and holding **Shift** sprints at 6 px (`Player.WALK_SPEED` / `SPRINT_SPEED`). The walk animation speeds up to match, so the feet don't slide. Swing key strokes include the modifiers held at the time ("pressed W" doesn't fire while Shift is down), so WASD is bound both with and without Shift.
+- **Pillars:** each hallway screen used to draw its own pillars at columns 2 and 22, so every seam had two pillars 4 tiles apart. Now there's one pillar per seam, split in half across it (`Hallway.seamPillars`), and none next to the stairwells, which have their own wall.
+- **Narrower hallway screens:** the three room-front screens on each floor are 17 columns instead of 25, so a floor is 101 tiles long instead of 125 (about 19% shorter). The rooms behind keep their size. Because the doors are no longer in the same columns on both sides, going through a door now matches doors **by order** (left door to left door) instead of by nearest column, and `Floor.addRoomBehind` checks both sides have the same number of working doors. The camera now draws neighbours on both sides, since a 544 px screen is narrower than the 800 px view.
+- **Checks:** `StairsEntryCheck` held Up for a fixed 200 ticks, which at a different speed walks down a floor and straight back up; it now stops when the floor changes. The other checks use the new door columns (`Hallway.HALL_DOOR_COLS` / `ROOM_DOOR_COLS`) and measure positions by screen widths instead of `800`.
+
+---
+
+## 2026-11-12 — New player sprites
+
+**What changed:** the main character has new art: a grey jacket over a white shirt, black trousers and messy black hair. Still 32 × 64, the same 12 frames, so they're straight replacements for the files in `src/main/resources/characters/player/`.
+- The new `down_idle` has the same head as the walk frames, so Down uses the normal walk cycle again (`walk1 → idle → walk2 → idle`) instead of holding each stride for two steps.
+- The walk frames bob the body 1 px lower than the idle frame. `WalkStripDebug` compared heads pixel for pixel and reported that as a change, so it now allows up to 2 px of up-and-down bob.
+
+---
+
+## 2026-11-12 — Narrower stairwells, and the broken stairs alternate
+
+**What changed:**
+- **Stairwells the same width as the hallway:** the West and East Stairs screens were still 25 columns, so the two ends of each floor looked stretched next to the 17-column room fronts. They're now 17 columns too, so a floor is 85 tiles long (it was 125 before the hallways were shortened). Both ends come from one builder, `Stairs.build(..., Side, Flight down, Flight up)`; the east stairwell is the west one mirrored.
+- **The broken stairs alternate:** before, the west stairs worked on every floor and the east ones were always destroyed, so you could go straight down without crossing a floor. Now the way down switches ends on each floor: Floor 4 west, Floor 3 east, Floor 2 west, then Floor 1 east to the exit. A flight joins two floors, so each middle stairwell has one working flight and one that has caved in (holes and broken steps). The east stairwells on Floors 4 and 1 work in neither direction, so they're the full ruin with rubble everywhere.
+- **Code:** each flight is `OPEN`, `BLOCKED` (no floor that way) or `COLLAPSED`. A flight that doesn't work has no zone in its `Staircase` (null), so it can't take you anywhere. `Floor.stairs` is replaced by `Floor.upStairs()` / `downStairs()`, which find the right stairwell along the hallway list, and `Floor.connectStairs` refuses at start-up to link two floors whose flights aren't at the same end of the building. The LABORATORY sign moved to Floor 2's east stairs, where you now arrive.
+- **Checks:** the stair checks now test the alternation (collapsed flights block, working ones lead to the right stairwell) and read the arrival spots from each `Staircase` instead of hard-coding pixels. A scripted play-through using only key presses gets from Room 404 to the quadrangle in about 43 s of walking.
+
+---
+
+## 2026-11-12 — A staircase with guard rails and depth
+
+**Goal:** the stairs were a flat block (a light landing, two striped flights and a thin rail), with nothing showing that one flight goes down and the other goes up.
+**What changed:**
+- **One detailed picture:** the staircase is now drawn as a single 7 × 7-tile picture by `tools/art/make_stair_tiles.py` and cut into tiles in reading order (`TileSet.STAIRCASE_FIRST`, like the bus): a balustrade, the down flight, a divider, the up flight, a balustrade.
+- **Guard rails:** each balustrade is a stone wall with an iron handrail on top: a thin baluster at every step, a thicker post at every block, and a heavy newel post at the bottom end, with the wall's front face showing below it. They're solid, so they also replace the invisible side walls the stairs used before. The staircase grew from 5 to 7 columns, but the flights are in the same columns as before, so walking on them hasn't changed.
+- **Depth:** the down flight is a pit: its inner walls widen and everything in it darkens as it goes down, and the back wall carries on below floor level to a dark lower landing. The up flight shows the risers facing you and its steps get lighter as they climb to a raised, lit landing. The balustrades cast shadows onto the flights.
+- **Collapsed flights:** the cracks (`STAIR_STEP_BROKEN`) and holes (`STAIR_HOLE`) are now see-through overlays on the objects layer, so they sit on top of the new steps instead of replacing them. The old landing, step and rail tiles aren't used any more; the script still makes them, pixel for pixel the same.
+
+---
+
+## 2026-11-12 — The staircase as a box, and a main entrance in the middle
+
+**What changed:**
+- **The staircase is a complete box:** the stairwells now rise two rows higher than the hallway (their back wall starts at row 1), which leaves floor between the back wall and the staircase. A back balustrade closes the staircase at the top. It runs left to right, so its railing shows its posts from the side, and corner posts join it to the side balustrades. A stone threshold along the bottom finishes the frame without blocking the way onto the flights. The staircase picture is now 7 × 8 tiles. You can walk round behind it, but not onto it from there.
+- **A main entrance in the middle:** the way out of the building used to be the exit at the east end. Now both side exits are boarded up, and the main entrance is in the middle of the ground floor: a doorway 4 tiles wide (twice a side exit) in the corridor's low front wall, in front of the Principal's Office, with pillars either side and a stone path across the grass. In the quadrangle it comes out in the middle of the building's face, with a paved path down to the plaza; the old side doorway there is boarded up too. The book barricade now stands just in front of the main entrance. The art comes from a new script, `tools/art/make_entrance_tiles.py`.
+- **Doors are linked one by one:** that middle hallway screen now has two kinds of doors: the office's (in its back wall) and the main entrance (in its front wall). So each screen now knows, for each of its doors, which room it leads to and which door you come out of (`Room.doorLeadsTo` / `doorArrivesAt`). `Floor.addRoomBehind` links the doors in a hallway's back wall; the new `Floor.addOutside` links the ones in its front wall. `Room.door` is still the room behind a hallway screen.
+- **Checks:** `Floor1Check` and `QuadCheck` test the boarded-up side exits and the way in and out through the main entrance; `StairsEntryCheck` tests the floor behind the staircase. The key-only play-through now takes about 37 s from Room 404 to the quadrangle.
+
+---
+
+## 2026-11-12 — No more locked bloody doors; side gates at both ends
+
+**What changed:**
+- **The locked bloody doors are gone:** the four decorative doors that led nowhere (in the Chemistry Lab, the Library entrance, the Principal's Office and on the quadrangle's face) are now plain wall. Their tiles and legend letters still exist, so one can be put back by writing an `X` in a map.
+- **Side gates at both ends:** on the quadrangle's face, the boarded-up side doorway moved from beside the main entrance (columns 36-37) out to the east end (43-44), and a matching one was added at the west end (5-6), so the face is symmetrical: a boarded side exit at each end, the main entrance in the middle, just like inside. Each has a paved path to the nearest gate path, framed by lampposts; the creature's trail now starts at the east one. Made with `tools/art/make_quad_maps.py`, so the arrays still match the script.
+
+---
+
+## 2026-11-12 — New hand-drawn props
+
+**What changed:** seven new drawings, kept in `docs/images/props` and cut into tiles by `tools/art/make_prop_tiles.py` (into `tiles/props`):
+- **Windows:** the plain window and the one with red curtains are now the windows of every room in the building: the classrooms, labs, library, offices, hallways (and the floor below seen over the railing), stairwells and the quadrangle's face, so they all match. They're drawn a little wider than a tile, so to keep each one whole in a single tile the script takes out a few columns where nothing changes (plain glass, plain curtain). (A first try made them 2 tiles wide, but the classrooms place their windows by tile number, so they showed half a window.) The area windows (`LAB_WINDOW`, `LIB_WINDOW`, `G_WINDOW`, `Q_WINDOW`) are no longer used.
+- **Trees:** the small round trees (36 of them, which looked like bushes) are now 13 big 2 x 2 trees, round the edges and on the lawns. Their leafy top can be walked past behind; the trunk blocks.
+- **New things in the quadrangle:** 8 bushes either side of each doorway and of the path south (they block walking but not shots), 4 mossy rocks as cover on the lawns, and 4 overgrown trash cans by the benches, the car park and the court.
+- **The bus:** the new bus replaces the wrecked one. It's drawn the size of a bush, so it's scaled up 3 times to be bus-sized (its pixels are bigger than everything else's; a full-size redraw, 160 x 96, would look crisper). It's 5 x 3 tiles: the roof is the first 4 columns, the ladder (column 2) is still the only way up, and the lower front (column 4) is solid.
+- **Layout:** big things in the quadrangle's THINGS map are written as their top-left letter with `+` on the rest of their tiles (`Quadrangle.PROPS` fills them in); `make_quad_maps.py` checks each one is on grass and overlaps nothing. The facade's windows and lamps are now placed symmetrically around the main entrance. The old tree and bus tiles are no longer used (their IDs are kept so nothing after them moves).
+
+---
+
 ## Open issues and ideas
 
-- Redraw `down_idle`'s head to match the walk frames (then Down can go back to `walk1 → idle → walk2 → idle`).
+- ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).
 - ~~Make the west stairs work~~ (done: Floor 3, 2026-11-01). ~~Floor 2~~ (done: the labs, 2026-11-01). ~~Floor 1~~ (done: the ground floor, 2026-11-02). ~~The quadrangle~~ (done: 2026-11-03). Next: the last-stand gameplay.
 - Hazard tiles (toxic puddles, slime) that drain health, the first real use of the HP bar.
 - A way to open the sealed lab doors (a keycard?).

@@ -86,7 +86,7 @@ The red line with the brick wall under it is a **railing**. Below it you can see
 
 ### Keeping every screen on the same grid
 
-Every screen is **25 columns × 18 rows** of 32 px tiles, the same as the classroom. To make walking between screens feel continuous, every hallway-type screen uses **the same rows**:
+Every screen is **18 rows** of 32 px tiles. Rooms and the stairs screens are **25 columns** wide (one full 800 px screen); the hallway screens in front of the rooms are narrower, **17 columns** (`Hallway.WIDTH`), so the walk along each floor is shorter. To make walking between screens feel continuous, every hallway-type screen uses **the same rows**:
 
 | Rows | What's there | Can you walk there? |
 |---|---|---|
@@ -100,9 +100,9 @@ Every screen is **25 columns × 18 rows** of 32 px tiles, the same as the classr
 
 The corridor is always rows 7–11, so when you walk off the right edge of one screen at row 9, you arrive on row 9 of the next screen, on floor.
 
-### Keeping doors in the same columns
+### Keeping doors in the same order
 
-All classrooms have their doors at **columns 5–6 and 18–19**, and the hallway screens put their doors in the **same columns**. When you walk through a door, you come out at the door with the same column on the other side, so the player never jumps sideways.
+All classrooms (and labs and offices) have their doors at **columns 5–6 and 18–19** (`Hallway.ROOM_DOOR_COLS`). The narrower hallway screen in front of them draws those doors at **columns 2–3 and 13–14** (`Hallway.HALL_DOOR_COLS`): different columns, but the **same order**, left door first. When you walk through door number 0 (the left one), you come out at door number 0 on the other side, and the same for door 1, so you always come out of the door you went in through.
 
 ---
 
@@ -352,7 +352,7 @@ This is a **temporary mockup**, like your pictures but built from your tiles:
 |---|---|
 | brown wall | `02_wall` + `03_wall_base` |
 | grey cap along the top | `wall_h` strips (row 3) |
-| vertical pillars between classrooms | `pillar()` at columns 2 and 22, where the classrooms' side walls are |
+| vertical pillars between classrooms | one pillar on each seam between two room-front screens, split in half across it (`seamPillars()`, picked by `Hallway.Position`); none next to the stairwells, whose own wall is there |
 | doors (crossed out = broken) | `21/22` (working) or `34/35` (broken) |
 | windows | `27_window`, `28_window_curtain` |
 | wooden corridor floor | `01_floor` |
@@ -364,15 +364,16 @@ This is a **temporary mockup**, like your pictures but built from your tiles:
 `Hallway.outside(...)` is given the classroom's `OBJECTS` grid and **copies its bottom-wall door tiles**:
 
 ```java
-for (int col : DOOR_COLS) {               // 5 and 18
+for (int d = 0; d < ROOM_DOOR_COLS.length; d++) {     // door 0 = left, door 1 = right
     for (int half = 0; half < 2; half++) {
-        int id = classroomObjects[Classroom.DOOR_ROW][col + half];
-        b.set(LAYER_OBJECTS, col + half, BASE_ROW, id);
-        if (id == DOOR_LEFT || id == DOOR_RIGHT) {
-            b.set(LAYER_FLOOR, col + half, BASE_ROW, FLOOR);  // the wall base is solid; a working door isn't
+        int id = room.tileAt(LAYER_OBJECTS, ROOM_DOOR_COLS[d] + half, Classroom.DOOR_ROW);   // cols 5 and 18
+        if (id == EMPTY) continue;
+        int col = HALL_DOOR_COLS[d] + half;                                                  // cols 2 and 13
+        b.set(LAYER_OBJECTS, col, BASE_ROW, id);
+        if (!tiles.isSolid(id)) {
+            b.set(LAYER_FLOOR, col, BASE_ROW, FLOOR);  // the wall base is solid; a working door isn't
         }
     }
-    ...
 }
 ```
 
@@ -398,6 +399,8 @@ The second `set` matters: the wall base under the door is solid, so without it, 
 ## Step 8 — The stairwells
 
 **File:** [`src/main/java/nightmare404/map/Stairs.java`](../src/main/java/nightmare404/map/Stairs.java)
+
+> **Update (2026-11-12):** the stairwells are now **17 columns** wide, like the room-front hallway screens, and both ends are built by one method, `Stairs.build(..., Side, Flight down, Flight up)` (the east one is the west one mirrored). Each flight is `OPEN`, `BLOCKED` (no floor that way: rubble on the bottom step) or `COLLAPSED` (holes and broken steps). The way down **alternates** between the two ends of the building (Floor 4 west, Floor 3 east, Floor 2 west), so every floor has to be crossed; `World` has the full table. A floor has no single `stairs` field any more: `Floor.upStairs()` / `downStairs()` find the stairwell whose way up / down works, and `Floor.connectStairs` refuses to link two floors whose flights aren't at the same end. Some column numbers further down this step describe the older 25-column stairwells.
 
 Both stairwells use the same layout, mirrored: the hallway comes in from one side and opens into a walled stairwell. The staircase is built by `staircase(b, left)`:
 
@@ -686,10 +689,12 @@ if (room.left == null && x < 0) x = 0;        // null link = wall
 #### Walking through a door
 
 ```java
+TileMap here = gp.currentRoom.map;
+int index = here.doorIndex(here.doorTouching(solidArea));   // which door: 0 = left, 1 = right
 Room next = gp.currentRoom.door;
 gp.enterRoom(next);
 
-Rectangle door = next.map.nearestDoor(solidArea.x + solidArea.width / 2);
+Rectangle door = next.map.door(index);                       // the door with the same number
 x = door.x + door.width / 2 - size / 2;            // centred on the door
 if (next.map.isFloorAbove(door)) {
     y = door.y - size - 2;                         // into a classroom: stand just above its door
@@ -698,7 +703,7 @@ if (next.map.isFloorAbove(door)) {
 }
 ```
 
-- `nearestDoor` picks the door in the new room closest to where you were. Doors share columns, so it's the matching door.
+- `doorIndex` / `door(i)` number each map's working doors from left to right. A room and its hallway screen have their doors in the same order (not the same columns, since the hallway screen is narrower), so door `i` here is door `i` there. `Floor.addRoomBehind` refuses at start-up to link two maps whose number of working doors differs.
 - `isFloorAbove` checks which side of the door is floor. A classroom's doors are in its **bottom** wall (floor above), and a hallway's doors are in its **top** wall (floor below).
 - The **2 px gap** makes sure the player isn't still touching the door on arrival. Otherwise they'd be sent straight back.
 
@@ -754,17 +759,24 @@ view.translate(-camX, 0);    // move the drawing origin
 currentRoom.map.draw(view);  // the room is drawn camX pixels further left
 ```
 
-If `camX` is 200, the room is drawn 200 px to the left, so you see its right part. The empty space on the right then has to show **the next room**, and the linked list already knows which one that is: `currentRoom.right`. It's drawn one screen width further along:
+If `camX` is 200, the room is drawn 200 px to the left, so you see its right part. The empty space on the right then has to show **the next room**, and the linked list already knows which one that is: `currentRoom.right`. It's drawn right after the current room's right edge.
+
+The hallway screens in front of the rooms are only 544 px wide, narrower than the 800 px view, so in the middle of one you can see a bit of **both** neighbours. The camera follows the links outwards on each side until the view is covered:
 
 ```java
-if (camX < 0) {
-    drawNeighbour(view, currentRoom.left, -screenWidth);   // room on the left
-} else if (camX > 0) {
-    drawNeighbour(view, currentRoom.right, screenWidth);   // room on the right
+int leftEdge = 0;
+for (Room r = currentRoom.left; r != null && camX < leftEdge; r = r.left) {
+    leftEdge -= r.map.widthPx();
+    drawNeighbour(view, r, leftEdge);                // to the left of the last one drawn
+}
+int rightEdge = currentRoom.map.widthPx();
+for (Room r = currentRoom.right; r != null && camX + screenWidth > rightEdge; r = r.right) {
+    drawNeighbour(view, r, rightEdge);               // to the right of the last one drawn
+    rightEdge += r.map.widthPx();
 }
 ```
 
-So the hallway screens stay separate nodes, and the camera simply draws two of them side by side.
+So the hallway screens stay separate nodes, and the camera simply draws them side by side.
 
 ### Where the camera points
 
@@ -793,23 +805,23 @@ The clamp gives three behaviours from one rule:
 The player's `x` is always measured from the **current room's** left edge. When the player crosses into the next room, the same spot in the world gets a different number:
 
 ```
-          Hallway 403 (x 0-799)          Hallway 404 (x 0-799)
+          Hallway 403 (x 0-543)          Hallway 404 (x 0-543)
    |------------------------------|------------------------------|
-                               ^ player at x = 790 in Hallway 403
+                               ^ player at x = 534 in Hallway 403
                                  = x = -10 in Hallway 404
 ```
 
-So instead of teleporting to the far edge, the player is moved to the next node and `x` is shifted by exactly one screen width (`x -= 800`). The camera is calculated from `x`, so it shifts by the same amount. Both changes cancel out, and **nothing on screen moves**. The tests confirmed this: across all four crossings, the player and the camera never moved more than 3 px in a frame (the walking speed).
+So instead of teleporting to the far edge, the player is moved to the next node and `x` is shifted by exactly the width of the screen they left (`x -= room.map.widthPx()`, 544 px for a room-front screen). The camera is calculated from `x`, so it shifts by the same amount. Both changes cancel out, and **nothing on screen moves**. The tests confirmed this: across all four crossings, the player and the camera never moved more than 3 px in a frame (the walking speed).
 
 The switch happens when the player's **centre** crosses the edge, not their side. This means the player is never more than half a tile outside the current room.
 
 ### Collision at the seam
 
-Near an edge, part of the hitbox can stick into the neighbouring room. `blocked()` checks that part against the neighbour's map, moved by one screen width:
+Near an edge, part of the hitbox can stick into the neighbouring room. `blocked()` checks that part against the neighbour's map, moved by the current screen's width:
 
 ```java
-if (solidArea.x + solidArea.width > gp.screenWidth && room.right != null) {
-    return room.right.map.collides(shifted(-gp.screenWidth));
+if (solidArea.x + solidArea.width > room.map.widthPx() && room.right != null) {
+    return room.right.map.collides(shifted(-room.map.widthPx()));
 }
 ```
 

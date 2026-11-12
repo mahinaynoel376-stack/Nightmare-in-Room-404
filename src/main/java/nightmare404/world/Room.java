@@ -1,5 +1,8 @@
 package nightmare404.world;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import nightmare404.tile.TileMap;
 
 // One screen of the game, and one NODE of the linked list.
@@ -18,7 +21,14 @@ public class Room {
 
     public Room left;    // The screen you reach by walking off the left edge
     public Room right;   // The screen you reach by walking off the right edge
-    public Room door;    // The screen on the other side of this screen's doors
+    public Room door;    // The room behind this hallway screen (or, for a room, the hallway screen in front of it)
+
+    // Where each working door of this screen leads, by its number (TileMap.door(i)): the room on the
+    // other side, and which of that room's doors you come out of. Usually all of a screen's doors
+    // lead to the same room (door, above), but the hallway screen in the middle of the ground floor
+    // also has the school's main entrance, which leads outside. Floor sets these up.
+    private final Room[] doorTo;
+    private final int[] doorToNumber;
 
     // false: the camera follows the player and scrolls into the neighbouring screens (the hallway).
     // true:  the camera stays still; walking off the edge cuts to the next screen (the library).
@@ -31,6 +41,35 @@ public class Room {
         this.name = name;
         this.floor = floor;
         this.map = map;
+        doorTo = new Room[map.doorCount()];
+        doorToNumber = new int[map.doorCount()];
+    }
+
+    // Links door number mine of this screen with door number theirs of other, both ways
+    void linkDoor(int mine, Room other, int theirs) {
+        doorTo[mine] = other;
+        doorToNumber[mine] = theirs;
+        other.doorTo[theirs] = this;
+        other.doorToNumber[theirs] = mine;
+    }
+
+    // The room that door number i leads to, or null if it doesn't lead anywhere
+    public Room doorLeadsTo(int i) {
+        return doorTo[i];
+    }
+
+    // Which door of that room you come out of
+    public int doorArrivesAt(int i) {
+        return doorToNumber[i];
+    }
+
+    // Every room this screen's doors lead to, each one once
+    public List<Room> linkedRooms() {
+        List<Room> rooms = new ArrayList<>();
+        for (Room r : doorTo) {
+            if (r != null && !rooms.contains(r)) rooms.add(r);
+        }
+        return rooms;
     }
 
     @Override

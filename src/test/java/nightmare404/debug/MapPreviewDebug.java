@@ -31,8 +31,8 @@ public class MapPreviewDebug {
             String prefix = "floor" + floor.number + "_";
             for (Room r = floor.head; r != null; r = r.right) {
                 save(r, ts, new File(outDir, String.format("%02d_%s%s.png", n++, prefix, fileName(r.name))));
-                if (r.door != null) {
-                    for (Room side = Floor.leftEnd(r.door); side != null; side = side.right) {
+                for (Room linked : r.linkedRooms()) {
+                    for (Room side = Floor.leftEnd(linked); side != null; side = side.right) {
                         save(side, ts, new File(outDir, String.format("%02d_%s%s.png", n++, prefix, fileName(side.name))));
                     }
                 }

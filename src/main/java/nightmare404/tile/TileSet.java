@@ -86,7 +86,7 @@ public class TileSet {
     public static final int LIB_FLOOR_2 = 58;
     public static final int LIB_WALL = 59;
     public static final int LIB_WALL_BASE = 60;
-    public static final int LIB_WINDOW = 61;
+    public static final int LIB_WINDOW = 61;   // (not used since 2026-11-12: every room uses WINDOW)
     public static final int LIB_DOOR_BLOODY = 62;
     public static final int LIB_TABLE = 63;
     public static final int LIB_BOXES = 64;
@@ -129,7 +129,7 @@ public class TileSet {
     public static final int LAB_FLOOR_2 = 101;
     public static final int LAB_WALL = 102;
     public static final int LAB_WALL_BASE = 103;
-    public static final int LAB_WINDOW = 104;
+    public static final int LAB_WINDOW = 104;   // (not used since 2026-11-12: every room uses WINDOW)
     public static final int LAB_DOOR_BLOODY = 105;
     public static final int LAB_TABLE = 106;
     public static final int LAB_BOXES = 107;
@@ -176,7 +176,7 @@ public class TileSet {
     public static final int G_FLOOR_2 = 152;
     public static final int G_WALL = 153;
     public static final int G_WALL_BASE = 154;
-    public static final int G_WINDOW = 155;
+    public static final int G_WINDOW = 155;   // (not used since 2026-11-12: every room uses WINDOW)
     public static final int G_DOOR_BLOODY = 156;
     public static final int G_TABLE = 157;
     public static final int G_BOXES = 158;
@@ -203,21 +203,20 @@ public class TileSet {
     public static final int Q_ASPHALT_2 = 183;
     public static final int Q_WALL = 184;          // The building's outside wall
     public static final int Q_WALL_BASE = 185;
-    public static final int Q_WINDOW = 186;
+    public static final int Q_WINDOW = 186;        // (not used since 2026-11-12: every room uses WINDOW)
     public static final int Q_DOOR_BLOODY = 187;
     public static final int Q_TABLE = 188;         // Picnic table (on asphalt)
     public static final int Q_BOXES = 189;         // Crates (on asphalt)
     public static final int Q_LAMP = 190;          // Wall lamp
     public static final int PAVING = 191;
-    public static final int TREE = 192;
+    public static final int TREE = 192;            // (not used since 2026-11-12: see TREE_FIRST, the 2 x 2 tree)
     public static final int GATE_H = 193;          // Fence with a padlocked gate
     public static final int PARK_BENCH = 194;      // (on paving)
     public static final int FENCE_H = 195;
     public static final int FENCE_V = 196;         // The fence turned for the side edges
     public static final int GATE_V = 197;
-    public static final int BUS_FIRST = 198;       // The wrecked bus: 7 x 3 tiles, IDs 198-218 in reading order.
-    public static final int BUS_WIDTH = 7;         // Rows 0-1 are its roof (walkable), row 2 its side;
-    public static final int BUS_HEIGHT = 3;        // the first tile of row 2 is the ladder (walkable)
+    public static final int OLD_BUS_FIRST = 198;   // The first wrecked bus, 7 x 3 tiles (198-218). Not used since
+                                                   // 2026-11-12 (see BUS_FIRST); kept so the IDs after it don't move.
     public static final int BOOK_BARRICADE_1 = 219;
     public static final int BOOK_BARRICADE_2 = 220;
     public static final int HOOP_N = 221;          // Basketball hoop at the north end of the court
@@ -228,7 +227,32 @@ public class TileSet {
     public static final int LAMPPOST_BOTTOM = 226;
     public static final int PAINT_LINE = 227;      // Worn parking line
 
-    public static final int COUNT = 228;
+    // --- The staircase (228-283): one 7 x 8 picture, a box cut into tiles in reading order like the bus.
+    //     Columns: balustrade, down flight (2), divider, up flight (2), balustrade. Row 0 is the back
+    //     balustrade closing the box, rows 1-2 the landings, rows 3-7 the flights. Only the four
+    //     flight columns of rows 1-7 can be walked on.
+    //     (The cracks and holes of a collapsed flight are see-through overlays: STAIR_STEP_BROKEN, STAIR_HOLE.)
+    public static final int STAIRCASE_FIRST = 228;
+    public static final int STAIRCASE_WIDTH = 7;
+    public static final int STAIRCASE_HEIGHT = 8;
+
+    // --- The school's main entrance (284-287): a doorway 4 tiles wide, twice a side exit (in tiles/ground) ---
+    public static final int MAIN_ENTRANCE_FIRST = 284;
+    public static final int MAIN_ENTRANCE_WIDTH = 4;
+
+    // --- Hand-drawn props (288-312), cut by tools/art/make_prop_tiles.py into tiles/props ---
+    // (The new windows replace the pictures of WINDOW and WINDOW_CURTAIN, and every room uses them.)
+    public static final int TREE_FIRST = 288;      // 2 x 2: the leafy top (walk past behind it), then the trunk
+    public static final int BUSH_FIRST = 292;      // 2 x 1 (you can shoot through it)
+    public static final int ROCKS_FIRST = 294;     // 2 x 1
+    public static final int TRASH_CAN_FIRST = 296; // 1 x 2: the lid (walk past behind it), then the can
+    public static final int BUS_FIRST = 298;       // The wrecked bus: 5 x 3 tiles, IDs 298-312 in reading order.
+    public static final int BUS_WIDTH = 5;         // Rows 0-1 of its first 4 columns are the roof (walkable);
+    public static final int BUS_HEIGHT = 3;        // row 2 is its side, except the ladder (walkable);
+    public static final int BUS_LADDER_COL = 2;    // column 4 is its front, lower than the roof
+    public static final int BUS_ROOF_WIDTH = 4;
+
+    public static final int COUNT = 313;
 
     private static final String CLASSROOM_DIR = "/tiles/classroom/";
     private static final String[] CLASSROOM_FILES = {
@@ -278,6 +302,7 @@ public class TileSet {
     };
 
     private static final String STAIRS_DIR = "/tiles/stairs/";
+    private static final String PROPS_DIR = "/tiles/props/";
     private static final String[] STAIR_FILES = {
         "stair_landing.png", "stair_step.png", "stair_rail.png",
         "stair_step_broken.png", "stair_hole.png", "rubble.png"
@@ -391,6 +416,21 @@ public class TileSet {
         for (int i = 0; i < QUAD_FILES.length; i++) {
             images[Q_ASPHALT_1 + i] = load(QUAD_DIR + QUAD_FILES[i]);
         }
+        for (int i = 0; i < STAIRCASE_WIDTH * STAIRCASE_HEIGHT; i++) {
+            images[STAIRCASE_FIRST + i] = load(STAIRS_DIR + "staircase_" + i + ".png");
+        }
+        for (int i = 0; i < MAIN_ENTRANCE_WIDTH; i++) {
+            images[MAIN_ENTRANCE_FIRST + i] = load(GROUND_DIR + "main_entrance_" + i + ".png");
+        }
+        // The hand-drawn props. The two windows replace the classroom set's old windows; every room
+        // in the building (and its outside face) uses WINDOW, so they all look the same.
+        images[WINDOW] = load(PROPS_DIR + "window.png");
+        images[WINDOW_CURTAIN] = load(PROPS_DIR + "window_curtain.png");
+        loadNumbered(TREE_FIRST, "tree", 4);
+        loadNumbered(BUSH_FIRST, "bush", 2);
+        loadNumbered(ROCKS_FIRST, "rocks", 2);
+        loadNumbered(TRASH_CAN_FIRST, "trash_can", 2);
+        loadNumbered(BUS_FIRST, "bus", BUS_WIDTH * BUS_HEIGHT);
 
         java.util.Arrays.fill(solid, true);
         for (int id : WALKABLE) {
@@ -405,11 +445,33 @@ public class TileSet {
         for (int id = SIGN_FACULTY; id < SIGN_RECORDS + SIGN_WIDTH; id++) {
             solid[id] = false;
         }
-        for (int i = 0; i <= 2 * BUS_WIDTH; i++) {
-            solid[BUS_FIRST + i] = false;     // The bus roof (2 rows) and the ladder just below it
+        for (int i = 0; i < MAIN_ENTRANCE_WIDTH; i++) {
+            solid[MAIN_ENTRANCE_FIRST + i] = false;   // A door: you walk into it to go through
         }
+        // Up in the air: the tree's leafy top and the trash can's lid, which you walk past behind
+        for (int id : new int[] {TREE_FIRST, TREE_FIRST + 1, TRASH_CAN_FIRST}) {
+            solid[id] = false;
+        }
+        for (int c = 0; c < BUS_ROOF_WIDTH; c++) {
+            solid[BUS_FIRST + c] = false;                  // The roof (2 rows)...
+            solid[BUS_FIRST + BUS_WIDTH + c] = false;
+        }
+        solid[BUS_FIRST + 2 * BUS_WIDTH + BUS_LADDER_COL] = false;   // ...and the ladder up to it
+        for (int row = 1; row < STAIRCASE_HEIGHT; row++) {
+            for (int col : new int[] {1, 2, 4, 5}) {
+                solid[STAIRCASE_FIRST + row * STAIRCASE_WIDTH + col] = false;   // The flights and landings
+            }
+        }
+        shootThrough[BUSH_FIRST] = shootThrough[BUSH_FIRST + 1] = true;   // Leaves don't stop a shot
         for (int id : SHOOT_THROUGH) {
             shootThrough[id] = true;
+        }
+    }
+
+    // Loads count tiles named name_0.png, name_1.png... from the props folder into IDs first, first + 1...
+    private void loadNumbered(int first, String name, int count) {
+        for (int i = 0; i < count; i++) {
+            images[first + i] = load(PROPS_DIR + name + "_" + i + ".png");
         }
     }
 
@@ -422,6 +484,7 @@ public class TileSet {
     // starts a door, or null if it doesn't. To add a new kind of door, add one line here.
     public static int[] doorSize(int id) {
         if (id == DOOR_LEFT || id == LAB_DOOR_L || id == EXIT_L) return new int[] {2, 1};
+        if (id == MAIN_ENTRANCE_FIRST) return new int[] {MAIN_ENTRANCE_WIDTH, 1};
         if (id == BIG_DOOR_TL) return new int[] {4, 2};
         return null;
     }

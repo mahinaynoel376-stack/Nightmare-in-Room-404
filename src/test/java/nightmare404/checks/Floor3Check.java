@@ -20,6 +20,8 @@ public class Floor3Check {
         gp.upPressed = gp.downPressed = gp.leftPressed = gp.rightPressed = false;
     }
     static void go(Floor f, String room, int col, int row) { gp.currentRoom = f.find(room); p.x = col * 32; p.y = row * 32; p.update(); }
+    static boolean in(Floor f, String room) { return gp.currentRoom == f.find(room); }
+    static boolean atFoot(java.awt.Point foot) { return p.x == foot.x && p.y == foot.y; }
 
     public static void main(String[] a) {
         gp = new GamePanel(); p = gp.flor;
@@ -30,31 +32,35 @@ public class Floor3Check {
         check("Floor 4 has nothing above", f4.above == null);
 
         System.out.println("2. Down the west stairs (left flight) from Floor 4");
-        go(f4, "West Stairs", 9, 14); walk("U", 200);
-        check("arrived on Floor 3's West Stairs", gp.currentRoom == f3.stairs);
-        check("standing at the foot of Floor 3's up (right) flight", p.x == 400 && p.y == 448);
+        go(f4, "West Stairs", 5, 14); walk("U", 200);
+        check("arrived on Floor 3's West Stairs (Floor 3's way up)", in(f3, "West Stairs") && gp.currentRoom == f3.upStairs());
+        check("standing at the foot of Floor 3's up (right) flight", atFoot(gp.currentRoom.map.stairs.upFoot));
 
         System.out.println("3. Back up (right flight) from Floor 3");
         walk("U", 200);
-        check("arrived on Floor 4's West Stairs", gp.currentRoom == f4.stairs);
-        check("standing at the foot of Floor 4's down (left) flight", p.x == 304 && p.y == 448);
+        check("arrived on Floor 4's West Stairs", in(f4, "West Stairs"));
+        check("standing at the foot of Floor 4's down (left) flight", atFoot(gp.currentRoom.map.stairs.downFoot));
 
-        System.out.println("4. Flights to floors that don't exist yet are blocked");
-        go(f4, "West Stairs", 12, 14); walk("U", 200);
-        check("Floor 4 right flight (up, no Floor 5): blocked by rubble, still on Floor 4", gp.currentRoom == f4.stairs && row() >= 14);
-        go(f3, "West Stairs", 9, 14); walk("U", 200);
-        check("Floor 3 left flight now leads down to Floor 2", gp.currentRoom.floor.number == 2);
+        System.out.println("4. Flights that don't work are blocked; the way down alternates ends");
+        go(f4, "West Stairs", 8, 14); walk("U", 200);
+        check("Floor 4 right flight (up, no Floor 5): blocked by rubble, still on Floor 4", in(f4, "West Stairs") && row() >= 14);
+        go(f3, "West Stairs", 5, 14); walk("U", 200);
+        check("Floor 3 west left flight has collapsed: no way down at this end", in(f3, "West Stairs") && row() >= 14);
+        go(f3, "East Stairs", 10, 14); walk("U", 200);
+        check("Floor 3 east right flight has collapsed too: the way up is the west end", in(f3, "East Stairs") && row() >= 14);
+        go(f3, "East Stairs", 7, 14); walk("U", 200);
+        check("Floor 3 east left flight leads down to Floor 2's East Stairs", in(gp.world.floor2, "East Stairs"));
 
         System.out.println("5. Floor 3 hallway to the library door");
-        go(f3, "West Stairs", 18, 9); walk("R", 400);
+        go(f3, "West Stairs", 15, 9); walk("R", 400);
         check("stairs -> Hallway (Library West)", gp.currentRoom.name.equals("Hallway (Library West)"));
         go(f3, "Hallway (Library West)", 12, 8); walk("U", 120);
         check("no door on the west part of the library front: blocked", gp.currentRoom.name.equals("Hallway (Library West)") && row() == 7);
-        go(f3, "Hallway (Library West)", 20, 9); walk("R", 400);
+        go(f3, "Hallway (Library West)", 14, 9); walk("R", 400);
         check("-> Hallway (Library Entrance)", gp.currentRoom.name.equals("Hallway (Library Entrance)"));
         go(f3, "Hallway (Library East)", 12, 8); walk("U", 120);
         check("no door on the east part either: blocked", gp.currentRoom.name.equals("Hallway (Library East)") && row() == 7);
-        go(f3, "Hallway (Library Entrance)", 11, 8); walk("U", 120);
+        go(f3, "Hallway (Library Entrance)", 7, 8); walk("U", 120);
         check("the big double door leads into Library (Entrance)", gp.currentRoom.name.equals("Library (Entrance)"));
         check("  arrived just inside, above the door (row 14)", row() == 14 && p.solidArea.x >= 10 * 32 && p.solidArea.x + 16 <= 14 * 32);
         check("  camera doesn't scroll in the library", gp.cameraX() == 0);

@@ -18,6 +18,12 @@ import nightmare404.tile.TileSet;
 //   rows 7-11   the corridor the player walks along
 //   row  12     the railing at the edge of the corridor (solid)
 //   rows 13-17  the floor below, seen over the railing (darkened, can't be reached)
+//
+// The screens in front of the rooms are narrower than a room (17 columns instead of 25), so the
+// walk along the hallway is shorter. The rooms behind keep their full size. Columns, left to right:
+//
+//   |.DD..W..W..W..DD.|     | = half of the pillar between two rooms (cols 0 and 16)
+//    0 2     8     13 16    doors at cols 2-3 and 13-14, windows (or a plaque) in between
 public class Hallway {
     static final int CAP_ROW = 3;
     static final int WINDOW_ROW = 5;
@@ -29,18 +35,35 @@ public class Hallway {
     static final int BELOW_BASE_ROW = 16;
     static final int BELOW_FLOOR_ROW = 17;
 
-    // Door positions shared by every classroom: the left column of each 2-tile door
-    static final int[] DOOR_COLS = {5, 18};
-    // The classrooms' side walls are in these columns, so the pillars between rooms go here too
-    static final int[] PILLAR_COLS = {2, 22};
+    // How many columns wide a room-front screen is, and its last column
+    public static final int WIDTH = 17;
+    private static final int LAST = WIDTH - 1;
+
+    // The left column of each 2-tile door: where it is in the room's bottom wall (the same in every
+    // classroom, lab and office), and where it's drawn on the narrower hallway screen.
+    // The first door of one list matches the first of the other, and so on (see Player.goThroughDoor).
+    public static final int[] ROOM_DOOR_COLS = {5, 18};
+    public static final int[] HALL_DOOR_COLS = {2, 13};
+
+    // Where a screen sits in its floor's row of three room fronts (between the two stairwells).
+    // It decides where the pillars go: ONE pillar between two rooms, standing right on the seam
+    // between their screens (see seamPillars). Next to a stairwell there's no pillar, because the
+    // stairwell's own wall already stands there.
+    public enum Position { FIRST, MIDDLE, LAST }
+
+    // The pillar between two rooms is split across the seam between their hallway screens: its left
+    // strip is the right half of the left screen's last column, its right strip the left half of the
+    // right screen's first column. The camera scrolls across the seam, so the halves show as one pillar.
+    private static void seamPillars(MapBuilder b, Position pos) {
+        if (pos != Position.FIRST) b.wallVLeft(LAYER_OBJECTS, 0, CAP_ROW, BASE_ROW);     // Right half of the pillar on the left seam
+        if (pos != Position.LAST) b.wallVRight(LAYER_WALLS_V, LAST, CAP_ROW, BASE_ROW);  // Left half of the pillar on the right seam
+    }
 
     // The hallway screen in front of one classroom (Floor 4).
-    // Its doors copy the classroom's bottom wall: same columns, broken in the same places.
-    public static TileMap outside(TileSet tiles, int ts, TileMap classroom, int[] windowCols, int[] curtainCols) {
+    // Its doors copy the classroom's bottom wall: same order, broken in the same places.
+    public static TileMap outside(TileSet tiles, int ts, TileMap classroom, Position pos, int[] windowCols, int[] curtainCols) {
         MapBuilder b = corridorScreen(false);
-        for (int col : PILLAR_COLS) {
-            b.pillar(col, CAP_ROW, BASE_ROW);
-        }
+        seamPillars(b, pos);
         copyDoors(b, tiles, classroom);
         windows(b, windowCols, curtainCols, false);
         return b.build(tiles, ts);
@@ -49,51 +72,71 @@ public class Hallway {
     // The hallway screen in front of a one-screen room with a name plaque (the labs and the offices):
     // pillars between rooms, the room's doors, two windows, and the plaque in the middle of the wall.
     // ground: true on the ground floor, where the corridor looks out on grass instead of the floor below.
-    private static MapBuilder namedRoomFront(TileSet tiles, TileMap room, int sign, boolean ground) {
+    private static MapBuilder namedRoomFront(TileSet tiles, TileMap room, Position pos, int sign, boolean ground) {
         MapBuilder b = corridorScreen(ground);
-        for (int col : PILLAR_COLS) {
-            b.pillar(col, CAP_ROW, BASE_ROW);
-        }
+        seamPillars(b, pos);
         copyDoors(b, tiles, room);
-        windows(b, new int[] {8, 15}, new int[] {}, ground);
+        windows(b, new int[] {5, 11}, new int[] {}, ground);
         for (int i = 0; i < SIGN_WIDTH; i++) {
-            b.set(LAYER_OBJECTS, 11 + i, CAP_ROW + 1, sign + i);   // Plaque above the middle of the wall
+            b.set(LAYER_OBJECTS, 7 + i, CAP_ROW + 1, sign + i);   // Plaque above the middle of the wall
         }
         return b;
     }
 
     // The hallway screen in front of one office (Floor 1, the ground floor)
-    public static TileMap officeFront(TileSet tiles, int ts, TileMap office, Office.Part part) {
-        MapBuilder b = namedRoomFront(tiles, office, Office.sign(part), true);
+    public static TileMap officeFront(TileSet tiles, int ts, TileMap office, Office.Part part, Position pos) {
+        MapBuilder b = namedRoomFront(tiles, office, pos, Office.sign(part), true);
         switch (part) {
-            case FACULTY -> b.set(LAYER_OBJECTS, 10, 9, BLOOD_SPLAT);
-            case PRINCIPAL -> b.set(LAYER_OBJECTS, 17, WINDOW_ROW, FIRE_ALARM);
+            case FACULTY -> b.set(LAYER_OBJECTS, 7, 9, BLOOD_SPLAT);
+            case PRINCIPAL -> {
+                b.set(LAYER_OBJECTS, 12, WINDOW_ROW, FIRE_ALARM);
+                mainEntrance(b);                                      // The middle of the building
+            }
             case RECORDS -> {
-                b.set(LAYER_OBJECTS, 5, WINDOW_ROW, SCRATCHES);       // Claw marks over the broken door
-                b.set(LAYER_OBJECTS, 14, 10, CRACK);
+                b.set(LAYER_OBJECTS, 2, WINDOW_ROW, SCRATCHES);       // Claw marks over the broken door
+                b.set(LAYER_OBJECTS, 10, 10, CRACK);
             }
         }
         return b.build(tiles, ts);
     }
 
+    // The school's main entrance, in the corridor's low front wall: a doorway 4 tiles wide (twice a
+    // side exit) between two support pillars, with a stone path leading out across the grass. It's a
+    // door (TileSet.doorSize knows it), linked to the quadrangle by Floor.addOutside.
+    public static final int ENTRANCE_COL = 6;   // Its left column: columns 6-9, the middle of the screen
+    private static void mainEntrance(MapBuilder b) {
+        for (int i = 0; i < MAIN_ENTRANCE_WIDTH; i++) {
+            int col = ENTRANCE_COL + i;
+            b.set(LAYER_WALLS_H, col, RAIL_ROW, EMPTY);              // Open up the low wall here
+            b.set(LAYER_OBJECTS, col, RAIL_ROW, MAIN_ENTRANCE_FIRST + i);
+            for (int row = BELOW_CAP_ROW; row <= BELOW_FLOOR_ROW; row++) {
+                b.set(LAYER_FLOOR, col, row, (col * 3 + row) % 4 == 0 ? G_FLOOR_2 : G_FLOOR_1);   // The path outside
+            }
+        }
+        for (int col : new int[] {ENTRANCE_COL - 1, ENTRANCE_COL + MAIN_ENTRANCE_WIDTH}) {
+            b.set(LAYER_OBJECTS, col, RAIL_ROW, PILLAR_TOP);
+            b.set(LAYER_OBJECTS, col, RAIL_ROW + 1, PILLAR_BOTTOM);
+        }
+    }
+
     // The hallway screen in front of one lab (Floor 2): like a classroom's, plus a name plaque
     // in the middle of the wall and some signs of what happened.
-    public static TileMap labFront(TileSet tiles, int ts, TileMap lab, Lab.Part part) {
-        MapBuilder b = namedRoomFront(tiles, lab, Lab.sign(part), false);
+    public static TileMap labFront(TileSet tiles, int ts, TileMap lab, Lab.Part part, Position pos) {
+        MapBuilder b = namedRoomFront(tiles, lab, pos, Lab.sign(part), false);
         switch (part) {
             case CHEMISTRY -> {
-                b.set(LAYER_OBJECTS, 18, WINDOW_ROW, HAZARD_DECAL);  // Warning sign over the sealed door
-                b.set(LAYER_OBJECTS, 10, 9, TOXIC_PUDDLE);
+                b.set(LAYER_OBJECTS, 13, WINDOW_ROW, HAZARD_DECAL);  // Warning sign over the sealed door
+                b.set(LAYER_OBJECTS, 7, 9, TOXIC_PUDDLE);
             }
             case BIOLOGY -> {
-                b.set(LAYER_OBJECTS, 17, WINDOW_ROW, HANDPRINT);
-                b.set(LAYER_OBJECTS, 13, 10, FOOTPRINTS);
+                b.set(LAYER_OBJECTS, 12, WINDOW_ROW, HANDPRINT);
+                b.set(LAYER_OBJECTS, 9, 10, FOOTPRINTS);
             }
             case CONTAINMENT -> {
-                b.set(LAYER_OBJECTS, 5, WINDOW_ROW, HAZARD_DECAL);   // Warning sign over the sealed door
+                b.set(LAYER_OBJECTS, 2, WINDOW_ROW, HAZARD_DECAL);   // Warning sign over the sealed door
                 // The trail from the smashed pod carries on out of the door and along the corridor,
                 // towards the collapsed east stairs
-                int[][] trail = {{18, 7}, {19, 8}, {20, 8}, {21, 9}, {22, 9}, {23, 10}, {24, 10}};
+                int[][] trail = {{13, 7}, {14, 8}, {15, 9}, {16, 10}};
                 for (int i = 0; i < trail.length; i++) {
                     b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], i % 2 == 0 ? FOOTPRINTS : SLIME);
                 }
@@ -102,74 +145,71 @@ public class Hallway {
         return b.build(tiles, ts);
     }
 
-    // Copies a room's doors (from its bottom wall) onto this hallway's wall, in the same columns.
+    // Copies a room's doors (from its bottom wall) onto this hallway's wall, in the same order.
     // A working door also needs walkable floor under it, because the wall base is solid.
     private static void copyDoors(MapBuilder b, TileSet tiles, TileMap room) {
-        for (int col : DOOR_COLS) {
+        for (int d = 0; d < ROOM_DOOR_COLS.length; d++) {
             for (int half = 0; half < 2; half++) {
-                int id = room.tileAt(LAYER_OBJECTS, col + half, Classroom.DOOR_ROW);
+                int id = room.tileAt(LAYER_OBJECTS, ROOM_DOOR_COLS[d] + half, Classroom.DOOR_ROW);
                 if (id == EMPTY) continue;
-                b.set(LAYER_OBJECTS, col + half, BASE_ROW, id);
+                int col = HALL_DOOR_COLS[d] + half;
+                b.set(LAYER_OBJECTS, col, BASE_ROW, id);
                 if (!tiles.isSolid(id)) {
-                    b.set(LAYER_FLOOR, col + half, BASE_ROW, FLOOR);
+                    b.set(LAYER_FLOOR, col, BASE_ROW, FLOOR);
                 }
             }
         }
     }
 
     // The hallway screen in front of one third of the library (Floor 3).
-    // The library is one long room, so there are pillars only at its two ends,
-    // and the only way in is the big double door on the middle screen.
+    // The library is one long room, so there are no pillars between its screens (and its two ends
+    // meet the stairwells, whose walls are already there). The only way in is the big double door
+    // on the middle screen.
     public static TileMap libraryFront(TileSet tiles, int ts, Library.Part part) {
         MapBuilder b = corridorScreen(false);
         switch (part) {
             case WEST -> {
-                b.pillar(2, CAP_ROW, BASE_ROW);                        // The library's west end
-                windows(b, new int[] {6, 10, 14, 18}, new int[] {}, false);
-                b.set(LAYER_OBJECTS, 3, CAP_ROW + 1, COBWEB_LEFT);
-                b.set(LAYER_OBJECTS, 8, CAP_ROW + 1, SCRATCHES);        // Claw marks on the wall...
-                b.set(LAYER_OBJECTS, 15, 9, BLOOD_SPLAT);               // ...and blood on the floor
+                windows(b, new int[] {2, 6, 10, 14}, new int[] {}, false);
+                b.set(LAYER_OBJECTS, 0, CAP_ROW + 1, COBWEB_LEFT);
+                b.set(LAYER_OBJECTS, 5, CAP_ROW + 1, SCRATCHES);        // Claw marks on the wall...
+                b.set(LAYER_OBJECTS, 10, 9, BLOOD_SPLAT);               // ...and blood on the floor
             }
             case ENTRANCE -> {
-                b.bigDoor(10, WINDOW_ROW, FLOOR);                       // The only way into the library
-                b.set(LAYER_OBJECTS, 11, CAP_ROW + 1, LIBRARY_PLAQUE_L);
-                b.set(LAYER_OBJECTS, 12, CAP_ROW + 1, LIBRARY_PLAQUE_R);
-                windows(b, new int[] {5, 19}, new int[] {}, false);
-                b.set(LAYER_OBJECTS, 15, WINDOW_ROW, HANDPRINT);        // A bloody handprint beside the door
-                b.set(LAYER_OBJECTS, 7, 10, CRACK);
+                b.bigDoor(6, WINDOW_ROW, FLOOR);                        // The only way into the library
+                b.set(LAYER_OBJECTS, 7, CAP_ROW + 1, LIBRARY_PLAQUE_L);
+                b.set(LAYER_OBJECTS, 8, CAP_ROW + 1, LIBRARY_PLAQUE_R);
+                windows(b, new int[] {3, 13}, new int[] {}, false);
+                b.set(LAYER_OBJECTS, 11, WINDOW_ROW, HANDPRINT);        // A bloody handprint beside the door
+                b.set(LAYER_OBJECTS, 4, 10, CRACK);
             }
             case EAST -> {
-                b.pillar(22, CAP_ROW, BASE_ROW);                       // The library's east end
-                windows(b, new int[] {6, 10, 14, 18}, new int[] {}, false);
-                b.set(LAYER_OBJECTS, 21, CAP_ROW + 1, COBWEB_RIGHT);
-                b.set(LAYER_OBJECTS, 9, 8, BLOOD_DRIPS);
+                windows(b, new int[] {2, 6, 10, 14}, new int[] {}, false);
+                b.set(LAYER_OBJECTS, LAST, CAP_ROW + 1, COBWEB_RIGHT);
+                b.set(LAYER_OBJECTS, 6, 8, BLOOD_DRIPS);
             }
         }
         return b.build(tiles, ts);
     }
 
     // Everything every hallway screen has: the front wall, the corridor, the low wall, and what's
-    // seen beyond it: the floor below (with its own classroom pillars and doors) on the upper floors,
-    // or grass on the ground floor. Each kind of hallway screen then adds its own doors, windows
-    // and pillars on top.
+    // seen beyond it: the floor below (with its own doors; its real pillars come in with the view,
+    // see floorBelow) on the upper floors, or grass on the ground floor. Each kind of hallway screen
+    // then adds its own doors, windows and pillars on top.
     private static MapBuilder corridorScreen(boolean ground) {
-        MapBuilder b = new MapBuilder();
-        b.fill(LAYER_FLOOR, 0, 0, 24, 17, VOID);
+        MapBuilder b = new MapBuilder(WIDTH, ROWS);
+        b.fill(LAYER_FLOOR, 0, 0, LAST, ROWS - 1, VOID);
 
-        wallFace(b, CAP_ROW, 0, 24);
-        corridor(b, 0, 24);
-        railing(b, 0, 24);
+        wallFace(b, CAP_ROW, 0, LAST);
+        corridor(b, 0, LAST);
+        railing(b, 0, LAST);
         if (ground) {
-            outsideGrass(b, 0, 24);
+            outsideGrass(b, 0, LAST);
             return b;
         }
-        floorBelow(b, 0, 24);
+        floorBelow(b, 0, LAST);
 
-        for (int col : PILLAR_COLS) {
-            b.pillar(col, BELOW_CAP_ROW, BELOW_BASE_ROW);
-        }
         // The floor below has its own (unreachable) doors
-        for (int col : DOOR_COLS) {
+        for (int col : HALL_DOOR_COLS) {
             b.set(LAYER_OBJECTS, col, BELOW_BASE_ROW, DOOR_LEFT);
             b.set(LAYER_OBJECTS, col + 1, BELOW_BASE_ROW, DOOR_RIGHT);
         }

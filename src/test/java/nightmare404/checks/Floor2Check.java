@@ -2,6 +2,7 @@ package nightmare404.checks;
 
 import nightmare404.entity.Player;
 import nightmare404.main.GamePanel;
+import nightmare404.map.Hallway;
 import nightmare404.world.Floor;
 import nightmare404.world.Room;
 
@@ -21,20 +22,23 @@ public class Floor2Check {
     }
     static void go(Floor f, String room, int col, int row) { gp.currentRoom = f.find(room); p.x = col * 32; p.y = row * 32; p.update(); }
     static boolean in(String room) { return gp.currentRoom.name.equals(room); }
+    static boolean atFoot(java.awt.Point foot) { return p.x == foot.x && p.y == foot.y; }
 
-    // Walks up into the hallway door at the given column; returns true if it led into the lab
-    static void doorTest(Floor f, String hallway, String lab, int doorCol, boolean shouldWork) {
-        go(f, hallway, doorCol, 8); walk("U", 120);
+    // Walks up into hallway door number d (0 = left, 1 = right). The lab's door number d is in a
+    // different column (the hallway screen is narrower), but it's the one you should arrive at.
+    static void doorTest(Floor f, String hallway, String lab, int d, boolean shouldWork) {
+        int hallCol = Hallway.HALL_DOOR_COLS[d], roomCol = Hallway.ROOM_DOOR_COLS[d];
+        go(f, hallway, hallCol, 8); walk("U", 120);
         if (shouldWork) {
-            check(hallway + ": door at cols " + doorCol + "-" + (doorCol + 1) + " -> " + lab, in(lab));
-            check("  arrived just above the same door inside (row 15)", row() == 15 && col() >= doorCol && col() <= doorCol + 1);
+            check(hallway + ": door at cols " + hallCol + "-" + (hallCol + 1) + " -> " + lab, in(lab));
+            check("  arrived just above the same door inside (row 15)", row() == 15 && col() >= roomCol && col() <= roomCol + 1);
             walk("D", 120);
-            check("  and back out to the hallway below it (row 7)", in(hallway) && row() == 7 && col() >= doorCol && col() <= doorCol + 1);
-            go(f, lab, doorCol, 14); walk("D", 120);
+            check("  and back out to the hallway below it (row 7)", in(hallway) && row() == 7 && col() >= hallCol && col() <= hallCol + 1);
+            go(f, lab, roomCol, 14); walk("D", 120);
             check("  " + lab + ": walking down into that door leads out too", in(hallway));
         } else {
-            check(hallway + ": sealed door at cols " + doorCol + "-" + (doorCol + 1) + " doesn't open", in(hallway) && row() == 7);
-            go(f, lab, doorCol, 14); walk("D", 120);
+            check(hallway + ": sealed door at cols " + hallCol + "-" + (hallCol + 1) + " doesn't open", in(hallway) && row() == 7);
+            go(f, lab, roomCol, 14); walk("D", 120);
             check("  " + lab + ": blocked from inside too", in(lab) && row() == 15);
         }
     }
@@ -49,30 +53,36 @@ public class Floor2Check {
         int n = 0; for (Floor f = gp.world.top; f != null; f = f.below) n++;
         check("walking the floor list from the top visits 4 floors", n == 4);
 
-        System.out.println("2. Stairs between Floor 3 and Floor 2");
-        go(f3, "West Stairs", 9, 14); walk("U", 200);
-        check("Floor 3 left flight -> Floor 2, at the foot of its up flight", gp.currentRoom == f2.stairs && p.x == 400 && p.y == 448);
+        System.out.println("2. Stairs: Floor 3 <-> 2 at the east end, Floor 2 <-> 1 at the west end");
+        go(f3, "East Stairs", 7, 14); walk("U", 200);
+        check("Floor 3 east left flight -> Floor 2's East Stairs, at the foot of its up flight",
+                gp.currentRoom == f2.find("East Stairs") && atFoot(gp.currentRoom.map.stairs.upFoot));
         walk("U", 200);
-        check("Floor 2 right flight -> Floor 3, at the foot of its down flight", gp.currentRoom == f3.stairs && p.x == 304 && p.y == 448);
-        go(f2, "West Stairs", 9, 14); walk("U", 200);
-        check("Floor 2 left flight now leads down to Floor 1", gp.currentRoom.floor.number == 1);
-        go(f4, "West Stairs", 9, 14); walk("U", 200); walk("L", 1); go(f3, "West Stairs", 9, 14); walk("U", 200);
-        check("all the way down: Floor 4 -> 3 -> 2", gp.currentRoom.floor == f2);
+        check("Floor 2 east right flight -> Floor 3's East Stairs, at the foot of its down flight",
+                gp.currentRoom == f3.find("East Stairs") && atFoot(gp.currentRoom.map.stairs.downFoot));
+        go(f2, "East Stairs", 7, 14); walk("U", 200);
+        check("Floor 2 east left flight has collapsed: no way down at this end", gp.currentRoom == f2.find("East Stairs") && row() >= 14);
+        go(f2, "West Stairs", 8, 14); walk("U", 200);
+        check("Floor 2 west right flight has collapsed: no way up at this end", gp.currentRoom == f2.find("West Stairs") && row() >= 14);
+        go(f2, "West Stairs", 5, 14); walk("U", 200);
+        check("Floor 2 west left flight leads down to Floor 1", gp.currentRoom.floor.number == 1);
+        go(f4, "West Stairs", 5, 14); walk("U", 200); go(f3, "East Stairs", 7, 14); walk("U", 200);
+        check("all the way down: Floor 4 (west) -> 3 (east) -> 2", gp.currentRoom.floor == f2);
 
         System.out.println("3. Along the Floor 2 hallway");
-        go(f2, "West Stairs", 20, 9);
-        String[] order = {"Hallway (Chemistry Lab)", "Hallway (Biology Lab)", "Hallway (Containment Lab)", "East Stairs (collapsed)"};
+        go(f2, "West Stairs", 15, 9);
+        String[] order = {"Hallway (Chemistry Lab)", "Hallway (Biology Lab)", "Hallway (Containment Lab)", "East Stairs"};
         for (String next : order) { walk("R", 600); check("-> " + next, in(next)); }
         walk("R", 600);
-        check("the building's east wall stops you", in("East Stairs (collapsed)"));
+        check("the building's east wall stops you", in("East Stairs"));
 
         System.out.println("4. Lab doors (working doors open both ways, sealed ones block both ways)");
-        doorTest(f2, "Hallway (Chemistry Lab)", "Chemistry Lab", 5, true);
-        doorTest(f2, "Hallway (Chemistry Lab)", "Chemistry Lab", 18, false);
-        doorTest(f2, "Hallway (Biology Lab)", "Biology Lab", 5, true);
-        doorTest(f2, "Hallway (Biology Lab)", "Biology Lab", 18, true);
-        doorTest(f2, "Hallway (Containment Lab)", "Containment Lab", 5, false);
-        doorTest(f2, "Hallway (Containment Lab)", "Containment Lab", 18, true);
+        doorTest(f2, "Hallway (Chemistry Lab)", "Chemistry Lab", 0, true);
+        doorTest(f2, "Hallway (Chemistry Lab)", "Chemistry Lab", 1, false);
+        doorTest(f2, "Hallway (Biology Lab)", "Biology Lab", 0, true);
+        doorTest(f2, "Hallway (Biology Lab)", "Biology Lab", 1, true);
+        doorTest(f2, "Hallway (Containment Lab)", "Containment Lab", 0, false);
+        doorTest(f2, "Hallway (Containment Lab)", "Containment Lab", 1, true);
 
         System.out.println("5. Inside the labs");
         go(f2, "Chemistry Lab", 12, 10);

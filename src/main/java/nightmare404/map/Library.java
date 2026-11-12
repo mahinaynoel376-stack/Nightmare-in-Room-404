@@ -65,7 +65,7 @@ public class Library {
         "                         ",
         "BBBwLwBBBwwqQwwwBBBwLwBBB",
         "BBBwWwBBBwwSHhwwBBBwWwBBB",
-        "_______________X_________",
+        "_________________________",
         ".........................",
         "......o..................",
         "..ctc..ctc.....*......s..",
@@ -130,7 +130,7 @@ public class Library {
     // Map.entry(key, value) pairs a character with a tile ID.
     private static final Map<Character, Integer> LEGEND = Map.ofEntries(
             Map.entry('.', EMPTY), Map.entry('w', EMPTY), Map.entry('_', EMPTY),
-            Map.entry('B', BOOKSHELF), Map.entry('W', LIB_WINDOW), Map.entry('L', WALL_LAMP),
+            Map.entry('B', BOOKSHELF), Map.entry('W', WINDOW), Map.entry('L', WALL_LAMP),
             Map.entry('X', LIB_DOOR_BLOODY),
             Map.entry('S', BLOOD_WRITING_1), Map.entry('H', BLOOD_WRITING_2), Map.entry('h', BLOOD_WRITING_3),
             Map.entry('q', QUIET_SIGN_L), Map.entry('Q', QUIET_SIGN_R),

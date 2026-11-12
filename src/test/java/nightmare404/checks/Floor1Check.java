@@ -2,14 +2,12 @@ package nightmare404.checks;
 
 import nightmare404.entity.Player;
 import nightmare404.main.GamePanel;
-import nightmare404.tile.MapBuilder;
-import nightmare404.tile.TileMap;
-import nightmare404.tile.TileSet;
+import nightmare404.map.Hallway;
 import nightmare404.world.Floor;
 import nightmare404.world.Room;
 
-// Simulated play-through of the ground floor: stairs, offices, grass, both exits, and a test that the
-// open exit is ready for the quadrangle (by attaching a stand-in outdoor screen, only inside this test)
+// Simulated play-through of the ground floor: stairs, offices, grass, the boarded-up side exits and
+// the main entrance out to the quadrangle
 public class Floor1Check {
     static GamePanel gp; static Player p; static int fails = 0;
 
@@ -25,16 +23,20 @@ public class Floor1Check {
     }
     static void go(Floor f, String room, int col, int row) { gp.currentRoom = f.find(room); p.x = col * 32; p.y = row * 32; p.update(); }
     static boolean in(String room) { return gp.currentRoom.name.equals(room); }
+    static boolean atFoot(java.awt.Point foot) { return p.x == foot.x && p.y == foot.y; }
 
-    static void doorTest(Floor f, String hallway, String room, int doorCol, boolean works) {
-        go(f, hallway, doorCol, 8); walk("U", 120);
+    // Walks up into hallway door number d (0 = left, 1 = right), which leads to the office's door number d
+    static void doorTest(Floor f, String hallway, String room, int d, boolean works) {
+        int hallCol = Hallway.HALL_DOOR_COLS[d], roomCol = Hallway.ROOM_DOOR_COLS[d];
+        go(f, hallway, hallCol, 8); walk("U", 120);
         if (works) {
-            check(hallway + ": door at cols " + doorCol + "-" + (doorCol + 1) + " -> " + room, in(room) && row() == 15);
+            check(hallway + ": door at cols " + hallCol + "-" + (hallCol + 1) + " -> " + room + ", above the same door",
+                    in(room) && row() == 15 && col() >= roomCol && col() <= roomCol + 1);
             walk("D", 120);
-            check("  and back out below the same door", in(hallway) && row() == 7 && col() >= doorCol && col() <= doorCol + 1);
+            check("  and back out below the same door", in(hallway) && row() == 7 && col() >= hallCol && col() <= hallCol + 1);
         } else {
-            check(hallway + ": broken door at cols " + doorCol + "-" + (doorCol + 1) + " is blocked", in(hallway) && row() == 7);
-            go(f, room, doorCol, 14); walk("D", 120);
+            check(hallway + ": broken door at cols " + hallCol + "-" + (hallCol + 1) + " is blocked", in(hallway) && row() == 7);
+            go(f, room, roomCol, 14); walk("D", 120);
             check("  blocked from inside too", in(room) && row() == 15);
         }
     }
@@ -49,55 +51,58 @@ public class Floor1Check {
         check("walking the floor list from the top visits 4 floors", n == 4);
 
         System.out.println("2. Stairs");
-        go(f2, "West Stairs", 9, 14); walk("U", 200);
-        check("Floor 2 left flight -> Floor 1, at the foot of its up flight", gp.currentRoom == f1.stairs && p.x == 400 && p.y == 448);
+        go(f2, "West Stairs", 5, 14); walk("U", 200);
+        check("Floor 2 west left flight -> Floor 1's West Stairs, at the foot of its up flight",
+                gp.currentRoom == f1.find("West Stairs") && atFoot(gp.currentRoom.map.stairs.upFoot));
         walk("U", 200);
-        check("Floor 1 right flight -> back up to Floor 2", gp.currentRoom == f2.stairs);
-        go(f1, "West Stairs", 9, 14); walk("U", 200);
-        check("Floor 1 left flight (no basement): blocked by rubble", gp.currentRoom == f1.stairs && row() >= 14);
+        check("Floor 1 right flight -> back up to Floor 2's West Stairs", gp.currentRoom == f2.find("West Stairs"));
+        go(f1, "West Stairs", 5, 14); walk("U", 200);
+        check("Floor 1 left flight (no basement): blocked by rubble", in("West Stairs") && row() >= 14);
+        go(f1, "East Stairs", 10, 14); walk("U", 200);
+        check("Floor 1 east right flight has collapsed: blocked", in("East Stairs") && row() >= 14);
 
         System.out.println("3. Along the ground floor hallway");
-        go(f1, "West Stairs", 20, 9);
-        for (String next : new String[] {"Hallway (Faculty Room)", "Hallway (Principal's Office)", "Hallway (Records Room)", "East Stairs (Exit)"}) {
+        go(f1, "West Stairs", 15, 9);
+        for (String next : new String[] {"Hallway (Faculty Room)", "Hallway (Principal's Office)", "Hallway (Records Room)", "East Stairs"}) {
             walk("R", 600); check("-> " + next, in(next));
         }
         go(f1, "Hallway (Principal's Office)", 12, 10); walk("D", 120);
         check("the low wall keeps you off the grass", in("Hallway (Principal's Office)") && row() == 11);
 
         System.out.println("4. Office doors");
-        doorTest(f1, "Hallway (Faculty Room)", "Faculty Room", 5, true);
-        doorTest(f1, "Hallway (Faculty Room)", "Faculty Room", 18, false);
-        doorTest(f1, "Hallway (Principal's Office)", "Principal's Office", 5, true);
-        doorTest(f1, "Hallway (Principal's Office)", "Principal's Office", 18, true);
-        doorTest(f1, "Hallway (Records Room)", "Records Room", 5, false);
-        doorTest(f1, "Hallway (Records Room)", "Records Room", 18, true);
+        doorTest(f1, "Hallway (Faculty Room)", "Faculty Room", 0, true);
+        doorTest(f1, "Hallway (Faculty Room)", "Faculty Room", 1, false);
+        doorTest(f1, "Hallway (Principal's Office)", "Principal's Office", 0, true);
+        doorTest(f1, "Hallway (Principal's Office)", "Principal's Office", 1, true);
+        doorTest(f1, "Hallway (Records Room)", "Records Room", 0, false);
+        doorTest(f1, "Hallway (Records Room)", "Records Room", 1, true);
         go(f1, "Principal's Office", 10, 12); walk("U", 200);
         check("Principal's Office: through the gap in the counter", in("Principal's Office") && row() <= 9);
         go(f1, "Principal's Office", 8, 12); walk("U", 200);
         check("Principal's Office: the counter blocks elsewhere", in("Principal's Office") && row() == 11);
 
-        System.out.println("5. The exits");
-        go(f1, "West Stairs", 5, 14); walk("D", 200);
+        System.out.println("5. The way out: both side exits are boarded up, the main entrance is in the middle");
+        go(f1, "West Stairs", 3, 14); walk("D", 200);
         check("west exit is boarded up: can't get through", in("West Stairs") && row() == 15);
-        check("  and it isn't a door", f1.find("West Stairs").map.nearestDoor(0) == null);
-        Room east = f1.find("East Stairs (Exit)");
-        check("east exit is a door (ready to link)", east.map.nearestDoor(0) != null);
-        check("  it's the world's groundExit, linked to the Quadrangle", gp.world.groundExit == east && east.door == gp.world.quadrangle);
-        go(f1, "East Stairs (Exit)", 18, 14); walk("D", 200);
-        check("walking into the east exit now takes you outside, to the Quadrangle", gp.currentRoom == gp.world.quadrangle);
-
-        System.out.println("6. Ready for the quadrangle: attach a stand-in outdoor screen, as the real one will be");
-        MapBuilder b = new MapBuilder();
-        b.fill(TileMap.LAYER_FLOOR, 0, 0, 24, 17, TileSet.GRASS_1);
-        b.set(TileMap.LAYER_OBJECTS, 18, 0, TileSet.EXIT_L).set(TileMap.LAYER_OBJECTS, 19, 0, TileSet.EXIT_R);
-        Room outside = f1.addRoomBehind("Stand-in Quadrangle", b.build(gp.tiles, 32), gp.world.groundExit);
-        go(f1, "East Stairs (Exit)", 18, 14); walk("D", 200);
-        check("walking out of the east exit -> the outside screen", gp.currentRoom == outside);
-        check("  arrived just below its doorway", row() == 1 && col() >= 18 && col() <= 19);
+        check("  and it isn't a door", f1.find("West Stairs").map.doorCount() == 0);
+        go(f1, "East Stairs", 12, 14); walk("D", 200);
+        check("east exit is boarded up too", in("East Stairs") && row() == 15);
+        check("  and it isn't a door", f1.find("East Stairs").map.doorCount() == 0);
+        Room middle = f1.find("Hallway (Principal's Office)"), quad = gp.world.quadrangle;
+        int entrance = middle.map.doorsInBottomWall().get(0);
+        check("the main entrance is in the middle hallway screen (the world's groundExit)", gp.world.groundExit == middle);
+        check("  4 tiles wide: twice a side exit", middle.map.door(entrance).width == 4 * 32);
+        check("  it leads to the Quadrangle, and the Quadrangle's doorway leads back",
+                middle.doorLeadsTo(entrance) == quad && quad.doorLeadsTo(0) == middle && quad.door == middle);
+        check("  the screen's other doors still lead to the Principal's Office", middle.door == f1.find("Principal's Office")
+                && middle.doorLeadsTo(middle.map.doorsInTopWall().get(0)) == middle.door);
+        go(f1, "Hallway (Principal's Office)", Hallway.ENTRANCE_COL + 1, 10); walk("D", 200);
+        check("walking into the main entrance takes you outside, to the Quadrangle", gp.currentRoom == quad);
         walk("U", 200);
-        check("walking back in -> East Stairs, just above the exit", in("East Stairs (Exit)") && row() == 15 && col() >= 18 && col() <= 19);
+        check("  and walking back in -> the middle hallway, just above the entrance", in("Hallway (Principal's Office)")
+                && row() == 11 && col() >= Hallway.ENTRANCE_COL && col() <= Hallway.ENTRANCE_COL + 3);
 
-        System.out.println("7. Linked list integrity (Floor 1)");
+        System.out.println("6. Linked list integrity (Floor 1)");
         int count = 0; Room prev = null; boolean back = true;
         for (Room r = f1.head; r != null; r = r.right) { back &= r.left == prev; prev = r; count++; }
         check("hallway: 5 screens, every left link points back, tail is last", back && count == 5 && f1.size == 5 && f1.tail == prev);

@@ -4,6 +4,7 @@ import java.awt.Point;
 
 import nightmare404.entity.Player;
 import nightmare404.main.GamePanel;
+import nightmare404.map.Hallway;
 import nightmare404.map.Quadrangle;
 import nightmare404.tile.TileMap;
 import nightmare404.tile.TileSet;
@@ -33,15 +34,22 @@ public class QuadCheck {
 
         System.out.println("1. The quadrangle and its links");
         check("50 x 36 tiles (2 x 2 rooms' worth)", m.cols == 50 && m.rows == 36 && m.widthPx() == 1600 && m.heightPx() == 1152);
-        check("linked both ways with the ground floor's open exit", exit.door == quad && quad.door == exit);
+        check("linked both ways with the main entrance, in the middle of the ground floor",
+                exit.doorLeadsTo(exit.map.doorsInBottomWall().get(0)) == quad && quad.door == exit);
         check("outdoors (the screen says Outside)", quad.outdoors);
 
         System.out.println("2. Getting in and out");
-        gp.currentRoom = exit; p.x = 18 * 32; p.y = 14 * 32; p.update(); walk("D", 200);
-        check("walking out of the east exit -> the quadrangle", inQuad());
-        check("  arrived just below the doorway (cols 36-37, row 4)", row() == 4 && col() >= 36 && col() <= 37);
+        gp.currentRoom = exit; p.x = (Hallway.ENTRANCE_COL + 1) * 32; p.y = 10 * 32; p.update(); walk("D", 200);
+        check("walking out of the main entrance -> the quadrangle", inQuad());
+        check("  arrived just below its doorway, in the middle of the building's face (cols 23-26, row 4)",
+                row() == 4 && col() >= 23 && col() <= 26);
         walk("U", 200);
-        check("walking back into the doorway -> East Stairs, just above the exit", gp.currentRoom == exit && row() == 15);
+        check("walking back into the doorway -> the middle hallway, just above the entrance", gp.currentRoom == exit && row() == 11);
+        for (int col : new int[] {5, 43}) {
+            quad(col, 6); walk("U", 200);
+            check("the side doorway at cols " + col + "-" + (col + 1) + " is boarded up: no way in", inQuad() && row() == 4);
+            check("  and it isn't a door (the main entrance is the only one)", m.doorCount() == 1);
+        }
 
         System.out.println("3. The camera follows the player");
         quad(25, 18);
@@ -55,13 +63,13 @@ public class QuadCheck {
         quad(25, 18); int cx = gp.cameraX(), cy = gp.cameraY(); walk("D", 10);
         check("walking moves the camera with the player", gp.cameraY() > cy && gp.cameraX() == cx);
 
-        System.out.println("4. Stronghold 1: the wrecked bus (roof at cols 8-14, rows 27-28; ladder at col 8, row 29)");
-        quad(8, 31); walk("U", 200);
-        check("up the ladder onto the roof", inQuad() && row() <= 28 && col() == 8);
+        System.out.println("4. Stronghold 1: the wrecked bus (roof at cols 8-11, rows 27-28; ladder at col 10, row 29; its front at col 12)");
+        quad(10, 31); walk("U", 200);
+        check("up the ladder onto the roof", inQuad() && row() <= 28 && col() == 10);
         walk("R", 300);
-        check("along the roof to the front", row() <= 28 && col() == 14);
+        check("along the roof to the front", row() <= 28 && col() == 11);
         walk("R", 100);
-        check("  can't step off the front", col() == 14);
+        check("  can't step off the front (onto the bus's lower front)", col() == 11);
         quad(11, 28); walk("D", 100);
         check("  can't step off the side (it's the bus's side)", row() == 28);
         quad(11, 27); walk("U", 100);
@@ -73,7 +81,7 @@ public class QuadCheck {
         quad(5, 28); walk("R", 200);
         check("from behind: blocked by the roof's back edge", col() == 7);
         quad(17, 28); walk("L", 200);
-        check("from in front: blocked by the roof's front edge", col() == 15);
+        check("from in front: blocked by the bus's front", col() == 13);
         quad(6, 29); walk("R", 200);
         check("onto the ladder from the side: blocked (only from below)", col() == 7);
 
@@ -98,7 +106,8 @@ public class QuadCheck {
         check("the gate (cols 33-34) is the way in and out", row() <= 20);
         TileSet ts = gp.tiles;
         check("the fence blocks walking but not shots", ts.isSolid(TileSet.FENCE_H) && ts.isShootThrough(TileSet.FENCE_H)
-                && ts.isShootThrough(TileSet.FENCE_V) && !ts.isShootThrough(TileSet.TREE) && !ts.isShootThrough(TileSet.BUS_FIRST + 15));
+                && ts.isShootThrough(TileSet.FENCE_V) && !ts.isShootThrough(TileSet.TREE_FIRST + 2) && !ts.isShootThrough(TileSet.BUS_FIRST + 11)
+                && ts.isShootThrough(TileSet.BUSH_FIRST) && !ts.isShootThrough(TileSet.ROCKS_FIRST));
 
         System.out.println("7. The perimeter");
         quad(5, 20); walk("L", 300);

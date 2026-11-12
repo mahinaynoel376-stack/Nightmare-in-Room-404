@@ -16,20 +16,35 @@ def t(c, r, ch):
     things[r][c] = ch
 
 
+def prop(c, r, w, h, ch, on='.'):
+    # A thing w x h tiles big: its letter on its top-left tile, '+' on the rest (filled in by the
+    # game, see Quadrangle.PROPS). Every tile must be free, and the ground under it one of `on`.
+    for rr in range(r, r + h):
+        for cc in range(c, c + w):
+            assert things[rr][cc] == '.', f'({cc},{rr}) already has {things[rr][cc]!r}'
+            assert ground[rr][cc] in on, f'({cc},{rr}) is {ground[rr][cc]!r}, not one of {on!r}'
+            things[rr][cc] = '+'
+    things[r][c] = ch
+
+
 # ---- The building's south face along the top ----
 g(0, 0, W - 1, 0, ' ')                 # top edge (a stone strip is added in code)
 g(0, 1, W - 1, 2, 'w')
 g(0, 3, W - 1, 3, '_')
-g(36, 3, 37, 3, ',')                   # the doorway from the East Stairs (placed in code)
-for c in (4, 10, 16, 22, 28, 42, 46):
+g(23, 3, 26, 3, ',')                   # the main entrance, in the middle (placed in code)
+for c in (5, 43):
+    g(c, 3, c + 1, 3, ',')             # the side exits at the two ends, boarded up (placed in code)
+for c in (2, 10, 16, 33, 39, 47):
     t(c, 2, 'W')                       # windows
-for c in (7, 19, 31, 44):
+for c in (7, 20, 29, 42):
     t(c, 1, 'L')                       # lamps
-t(13, 3, 'X')                          # a locked side door
 
 # ---- Paths ----
 g(1, 4, W - 2, 4, ',')                 # walkway along the building
-g(36, 5, 37, 13, ',')                  # from the doorway, south
+g(23, 5, 26, 12, ',')                  # from the main entrance, south to the plaza
+g(5, 5, 6, 16, ',')                    # from the west side exit, south to the west gate path
+g(43, 5, 44, 9, ',')                   # from the east side exit, south to the east gate path
+g(36, 10, 37, 13, ',')                 # east gate path -> the plaza
 g(30, 13, 37, 14, ',')                 # ...west to the plaza
 g(19, 13, 30, 21, ',')                 # the central plaza
 g(1, 17, 18, 18, ',')                  # plaza -> west gate
@@ -66,27 +81,32 @@ for r in (10, 11):
 for c in (24, 25):
     things[H - 1][c] = 'G'             # south gate
 
-# ---- Trees: cover, and they frame the paths ----
-for c in (3, 6, 9, 12, 15, 18, 21):
-    t(c, 6, 'T')
-for r in (9, 12, 15, 21, 27, 30, 33):
-    t(2, r, 'T')
-for c in (4, 8, 12, 16, 20, 28, 34, 38, 42, 45):
-    t(c, 34, 'T')
-for r in (6, 8, 14, 17, 19, 24, 28, 32):
-    t(47, r, 'T')
-for c, r in ((17, 14), (17, 20), (32, 19), (40, 15), (43, 7)):
-    t(c, r, 'T')
+# ---- Trees (2 x 2): cover, spread round the edges and the lawns ----
+for c, r in ((9, 6), (17, 6), (2, 11), (30, 5), (37, 6), (40, 15), (46, 15),
+             (1, 21), (1, 27), (28, 26), (47, 23), (21, 32), (28, 32)):
+    prop(c, r, 2, 2, 'T')
+
+# ---- Bushes (2 x 1): either side of each doorway, and of the path south ----
+for c, r in ((2, 5), (7, 5), (21, 5), (27, 5), (41, 5), (45, 5), (21, 23), (26, 23)):
+    prop(c, r, 2, 1, 'h')
+
+# ---- Rocks (2 x 1): low cover out on the lawns ----
+for c, r in ((12, 13), (34, 17), (8, 21), (44, 18)):
+    prop(c, r, 2, 1, 'o')
+
+# ---- Trash cans (1 x 2): by the plaza's benches, the car park and the court ----
+for c, r in ((19, 15), (30, 15), (22, 27), (35, 19)):
+    prop(c, r, 1, 2, 'n', on='.,')
 
 # ---- The plaza: flagpole in the middle, benches, lampposts ----
 t(24, 16, 'A'); t(24, 17, 'a')
 for c, r in ((20, 15), (29, 15), (20, 19), (29, 19)):
     t(c, r, 'B')
-for c, r in ((18, 12), (34, 11), (18, 21), (30, 22), (35, 7), (38, 7), (21, 25)):
+for c, r in ((18, 12), (34, 11), (18, 21), (30, 22), (42, 7), (45, 7), (4, 7), (7, 7), (21, 25)):
     t(c, r, 'Q'); t(c, r + 1, 'q')     # lamppost: top, then bottom
 
-# ---- The creature's trail: from the doorway to the south gate ----
-for c, r, ch in ((37, 6, 'f'), (36, 9, 'f'), (37, 12, 'f'), (34, 14, 's'), (30, 14, 'f'), (27, 16, 'f'),
+# ---- The creature's trail: from the east side exit to the south gate ----
+for c, r, ch in ((44, 6, 'f'), (43, 9, 'f'), (40, 11, 'f'), (37, 12, 'f'), (34, 14, 's'), (30, 14, 'f'), (27, 16, 'f'),
                  (25, 19, 'f'), (24, 22, 's'), (25, 25, 'f'), (24, 28, 'f'), (25, 31, 'f'), (24, 34, 's')):
     t(c, r, ch)
 

@@ -26,6 +26,7 @@ public class GamePanel extends JPanel implements Runnable {
 
     // Movement tracking booleans
     public boolean upPressed, downPressed, leftPressed, rightPressed;
+    public boolean sprintPressed; // Shift held down
 
     // Entities (public: the UI and the checks in other packages read the player)
     public Player flor;
@@ -58,28 +59,40 @@ public class GamePanel extends JPanel implements Runnable {
         InputMap im = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = this.getActionMap();
 
-        // Bind W, A, S, D Presses ("pressed" modifier is required)
-        im.put(KeyStroke.getKeyStroke("pressed W"), "upPress");
-        im.put(KeyStroke.getKeyStroke("pressed S"), "downPress");
-        im.put(KeyStroke.getKeyStroke("pressed A"), "leftPress");
-        im.put(KeyStroke.getKeyStroke("pressed D"), "rightPress");
+        // A KeyStroke includes the modifiers held at the time, so "pressed W" doesn't fire while
+        // Shift is held down (that's "shift pressed W"). Bind both versions so WASD keeps working
+        // while sprinting, and so letting go of W mid-sprint still stops the player.
+        for (String mod : new String[] {"", "shift "}) {
+            // Bind W, A, S, D Presses ("pressed" modifier is required)
+            im.put(KeyStroke.getKeyStroke(mod + "pressed W"), "upPress");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed S"), "downPress");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed A"), "leftPress");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed D"), "rightPress");
 
-        // Bind W, A, S, D Releases
-        im.put(KeyStroke.getKeyStroke("released W"), "upRelease");
-        im.put(KeyStroke.getKeyStroke("released S"), "downRelease");
-        im.put(KeyStroke.getKeyStroke("released A"), "leftRelease");
-        im.put(KeyStroke.getKeyStroke("released D"), "rightRelease");
+            // Bind W, A, S, D Releases
+            im.put(KeyStroke.getKeyStroke(mod + "released W"), "upRelease");
+            im.put(KeyStroke.getKeyStroke(mod + "released S"), "downRelease");
+            im.put(KeyStroke.getKeyStroke(mod + "released A"), "leftRelease");
+            im.put(KeyStroke.getKeyStroke(mod + "released D"), "rightRelease");
+
+            // Shift (sprint). Pressing Shift reports the Shift modifier as already down and
+            // releasing it reports it as up, so binding both versions covers either case.
+            im.put(KeyStroke.getKeyStroke(mod + "pressed SHIFT"), "sprintPress");
+            im.put(KeyStroke.getKeyStroke(mod + "released SHIFT"), "sprintRelease");
+        }
 
         // Map Actions to toggle booleans
         am.put("upPress", new MoveAction("up", true));
         am.put("downPress", new MoveAction("down", true));
         am.put("leftPress", new MoveAction("left", true));
         am.put("rightPress", new MoveAction("right", true));
+        am.put("sprintPress", new MoveAction("sprint", true));
 
         am.put("upRelease", new MoveAction("up", false));
         am.put("downRelease", new MoveAction("down", false));
         am.put("leftRelease", new MoveAction("left", false));
         am.put("rightRelease", new MoveAction("right", false));
+        am.put("sprintRelease", new MoveAction("sprint", false));
     }
 
     private class MoveAction extends AbstractAction {
@@ -98,6 +111,7 @@ public class GamePanel extends JPanel implements Runnable {
                 case "down" -> downPressed = pressed;
                 case "left" -> leftPressed = pressed;
                 case "right" -> rightPressed = pressed;
+                case "sprint" -> sprintPressed = pressed;
             }
         }
     }
@@ -149,14 +163,21 @@ public class GamePanel extends JPanel implements Runnable {
         // room on whichever side has scrolled into view
         int camX = cameraX();
         int camY = cameraY();
-        int mapWidth = currentRoom.map.widthPx();
         Graphics2D view = (Graphics2D) g2d.create();
         view.translate(-camX, -camY);
         currentRoom.map.draw(view);
-        if (camX < 0 && currentRoom.left != null) {
-            drawNeighbour(view, currentRoom.left, -currentRoom.left.map.widthPx());
-        } else if (camX + screenWidth > mapWidth && currentRoom.right != null) {
-            drawNeighbour(view, currentRoom.right, mapWidth);
+        // The hallway's room-front screens are narrower than the view, so the view can reach into
+        // the neighbours on BOTH sides. Follow the links outwards, drawing each neighbour next to
+        // the last one, until the view is covered (or the hallway ends).
+        int leftEdge = 0;
+        for (Room r = currentRoom.left; r != null && camX < leftEdge; r = r.left) {
+            leftEdge -= r.map.widthPx();
+            drawNeighbour(view, r, leftEdge);
+        }
+        int rightEdge = currentRoom.map.widthPx();
+        for (Room r = currentRoom.right; r != null && camX + screenWidth > rightEdge; r = r.right) {
+            drawNeighbour(view, r, rightEdge);
+            rightEdge += r.map.widthPx();
         }
         flor.draw(view);
         view.dispose();
@@ -180,7 +201,8 @@ public class GamePanel extends JPanel implements Runnable {
     // neighbouring room there to show. So one-screen rooms (classrooms) never scroll, the hallway
     // stops at the stairwells, and a big map (the quadrangle) scrolls until its own edges.
     // In the hallway the player is always inside the current room, so the camera moves at most
-    // half a screen past its edges, and only the neighbours next to the current room need drawing.
+    // half a screen past its edges. The stairs screens at the two ends are a full screen wide,
+    // so stopping at the edge of the end screen is enough to never show past the building.
     public int cameraX() {
         if (currentRoom.fixedScreen) return 0;   // Screen-to-screen rooms (the library) never scroll
         int camX = flor.x + tileSize / 2 - screenWidth / 2;

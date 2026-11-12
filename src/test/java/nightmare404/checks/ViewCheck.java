@@ -35,7 +35,7 @@ public class ViewCheck {
                     }
                 }
                 boolean doorsOk = true;
-                for (int x = 0; x < 800; x += 16) {
+                for (int x = 0; x < map.widthPx(); x += 16) {
                     Rectangle d = map.nearestDoor(x);
                     if (d != null && d.y >= 13 * 32) doorsOk = false;
                 }

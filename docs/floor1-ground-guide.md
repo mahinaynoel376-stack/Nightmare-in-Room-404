@@ -2,6 +2,8 @@
 
 This guide follows on from [`floor2-lab-guide.md`](floor2-lab-guide.md). Here's what was added:
 
+> **Update (2026-11-12):** the way out has moved. Both side exits are now **boarded up**, and the school's **main entrance** is in the middle of the ground floor: a doorway 4 tiles wide in the corridor's low front wall, in front of the Principal's Office (`Hallway.mainEntrance`), linked to the quadrangle with `Floor.addOutside`. Floor 1 is also reached by the west stairs from Floor 2, but the way down alternates ends on every floor. See the 2026-11-12 entries in [`devlog.md`](devlog.md). The rest of this guide describes the first version.
+
 - **Floor 1**, the ground floor, reached by going down the west stairs from Floor 2.
 - **Three offices**: the Faculty Room, the Principal's Office and the Records Room.
 - **The outdoors**: the corridor looks out on **grass** instead of the floor below.

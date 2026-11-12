@@ -15,7 +15,9 @@ Run every command from the **project folder** (`GameProd`). Each script **overwr
 
 | Script | Makes | Reads |
 |---|---|---|
-| `make_stair_tiles.py` | the 6 stair tiles | the classroom tiles (for the palette) |
+| `make_stair_tiles.py` | the staircase (one 7 × 8 picture cut into 56 tiles), the crack and hole overlays, rubble, and 3 older single stair tiles | the classroom tiles (for the palette) |
+| `make_entrance_tiles.py` | the school's main entrance (4 tiles), and nothing else | nothing |
+| `make_prop_tiles.py` | the hand-drawn props, cut into tiles: the two windows (one tile each), the tree, bush, rocks, trash can and the bus (scaled up 3x) | `docs/images/props` |
 | `make_library_tiles.py` | the 43 library tiles | the library sheet and the classroom wall |
 | `make_lab_tiles.py` | the 51 lab tiles | the lab sheet and the library sheet |
 | `make_ground_tiles.py` | the 31 ground-floor tiles | the ground sheet |
@@ -24,6 +26,8 @@ Run every command from the **project folder** (`GameProd`). Each script **overwr
 
 ```bat
 python tools/art/make_stair_tiles.py   src/main/resources/tiles/classroom src/main/resources/tiles/stairs stairs_preview.png
+python tools/art/make_entrance_tiles.py src/main/resources/tiles/ground entrance_preview.png
+python tools/art/make_prop_tiles.py   docs/images/props src/main/resources/tiles/props props_preview.png
 python tools/art/make_library_tiles.py docs/images/floor3-library/library_sheet.png src/main/resources/tiles/classroom/02_wall.png src/main/resources/tiles/library library_preview.png
 python tools/art/make_lab_tiles.py     docs/images/floor2-lab/lab_sheet.png docs/images/floor3-library/library_sheet.png src/main/resources/tiles/lab lab_preview.png
 python tools/art/make_ground_tiles.py  docs/images/floor1-ground/ground_sheet.png src/main/resources/tiles/ground ground_preview.png

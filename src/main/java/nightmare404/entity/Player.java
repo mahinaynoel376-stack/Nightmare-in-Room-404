@@ -40,17 +40,21 @@ public class Player {
     private int spriteCounter = 0;  // Counts update() ticks between walk frames
     // Walk cycle per direction (same order as DIRECTIONS): stride, legs together, other stride, legs together.
     // The idle frame acts as the "passing" pose so the legs don't snap between two wide strides.
-    // DOWN skips it: down_idle's hair parts on the opposite side to down_walk1/2, so showing it
-    // mid-walk made the head flip every step. Each stride is held for two steps instead.
     private static final int[][] WALK_CYCLES = {
         {1, 0, 2, 0}, // up
-        {1, 1, 2, 2}, // down
+        {1, 0, 2, 0}, // down
         {1, 0, 2, 0}, // left
         {1, 0, 2, 0}, // right
     };
     private static final int WALK_STEPS = 4; // Length of every cycle above
     private int walkStep = 0;       // Index into WALK_CYCLES[direction]
-    private final int animationSpeed = 8; // Ticks per walk frame (60 FPS / 8 = 7.5 frames per second)
+    // Movement speeds in pixels per tick (at 60 FPS: walk = 240 px/s, sprint = 360 px/s)
+    public static final int WALK_SPEED = 4;
+    public static final int SPRINT_SPEED = 6;
+    // Ticks per walk frame. Both cover 24 px per step, so the feet keep pace with the ground
+    // and the legs move faster when sprinting (walk = 10 steps/s, sprint = 15 steps/s).
+    public static final int WALK_ANIM_TICKS = 6;
+    public static final int SPRINT_ANIM_TICKS = 4;
 
     public Player(GamePanel gp) {
         this.gp = gp;
@@ -67,7 +71,7 @@ public class Player {
         x = Classroom.START_COL * gp.tileSize;
         y = Classroom.START_ROW * gp.tileSize;
         syncHitbox();
-        speed = 3; // Pixels per tick (180 px/s at 60 FPS)
+        speed = WALK_SPEED; // Current speed; update() switches it to SPRINT_SPEED while Shift is held
         maxHealth = 100;
         health = maxHealth;
     }
@@ -92,6 +96,8 @@ public class Player {
     public void update() {
         // 1. Read input (the last key checked decides which way the sprite faces)
         moving = gp.upPressed || gp.downPressed || gp.leftPressed || gp.rightPressed;
+        speed = gp.sprintPressed ? SPRINT_SPEED : WALK_SPEED;
+        int animTicks = gp.sprintPressed ? SPRINT_ANIM_TICKS : WALK_ANIM_TICKS;
         int dx = 0, dy = 0;
         if (gp.upPressed) { dy -= speed; direction = 0; }
         if (gp.downPressed) { dy += speed; direction = 1; }
@@ -101,8 +107,9 @@ public class Player {
         // 2. Move, stopping at walls and furniture. Then, if we stepped onto a door or off the
         //    side of the screen, follow the current room's link to the next room.
         moveWithCollision(dx, dy);
-        if (gp.currentRoom.door != null && gp.currentRoom.map.doorTouching(solidArea) != null) {
-            goThroughDoor();
+        Rectangle doorHere = gp.currentRoom.map.doorTouching(solidArea);
+        if (doorHere != null && gp.currentRoom.doorLeadsTo(gp.currentRoom.map.doorIndex(doorHere)) != null) {
+            goThroughDoor(doorHere);
         } else if (!checkStairs()) {
             checkScreenEdges();
         }
@@ -113,7 +120,7 @@ public class Player {
         // 4. Advance the walk animation while moving, reset it when standing still
         if (moving) {
             spriteCounter++;
-            if (spriteCounter >= animationSpeed) {
+            if (spriteCounter >= animTicks) {
                 walkStep = (walkStep + 1) % WALK_STEPS;
                 spriteCounter = 0;
             }
@@ -164,14 +171,17 @@ public class Player {
         return new Rectangle(solidArea.x + dx, solidArea.y, solidArea.width, solidArea.height);
     }
 
-    // Follows the door link (classroom <-> hallway) and stands the player just past the matching door.
-    // Classrooms and their hallway screens put their doors in the same columns, so the player
-    // comes out at the door they went in through.
-    private void goThroughDoor() {
-        Room next = gp.currentRoom.door;
+    // Follows the link of the door being touched (classroom <-> hallway, main entrance <-> quadrangle)
+    // and stands the player just past the door it's linked to. A room and its hallway screen have
+    // their doors in the same order (but not the same columns: the hallway screen is narrower), and
+    // each door knows which door it leads to, so the player comes out at the door they went in through.
+    private void goThroughDoor(Rectangle doorHere) {
+        Room here = gp.currentRoom;
+        int number = here.map.doorIndex(doorHere);
+        Room next = here.doorLeadsTo(number);
+        Rectangle door = next.map.door(here.doorArrivesAt(number));
         gp.enterRoom(next);
 
-        Rectangle door = next.map.nearestDoor(solidArea.x + solidArea.width / 2);
         x = door.x + door.width / 2 - size / 2;            // Centred on the door
         if (next.map.isFloorAbove(door)) {
             y = door.y - size - 2;                         // Classroom: hitbox ends 2 px above the door
@@ -212,27 +222,29 @@ public class Player {
     }
 
     // Stepping onto the landing at the top of a flight takes you to another floor (see Staircase):
-    // the left flight goes down, the right flight goes up. Returns true if the player changed floor.
+    // the left flight goes down, the right flight goes up. A flight that doesn't work has no zone
+    // (null), so it never takes you anywhere. Returns true if the player changed floor.
     private boolean checkStairs() {
         Staircase stairs = gp.currentRoom.map.stairs;
         if (stairs == null) return false;
         Floor floor = gp.currentRoom.floor;
-        if (floor.below != null && stairs.downZone.intersects(solidArea)) {
+        if (floor.below != null && stairs.downZone != null && stairs.downZone.intersects(solidArea)) {
             arriveOnStairs(floor.below, true);
             return true;
         }
-        if (floor.above != null && stairs.upZone.intersects(solidArea)) {
+        if (floor.above != null && stairs.upZone != null && stairs.upZone.intersects(solidArea)) {
             arriveOnStairs(floor.above, false);
             return true;
         }
         return false;
     }
 
-    // Moves to the stairs screen of the target floor, at the foot of the flight that leads back.
-    // (Went down? Then you arrive at the bottom of that floor's "up" flight, and vice versa.)
+    // Moves to the target floor's stairwell at the other end of the same flight, at its foot.
+    // (Went down? Then you arrive at the bottom of that floor's way up, and vice versa.)
     private void arriveOnStairs(Floor target, boolean wentDown) {
-        gp.enterRoom(target.stairs);
-        Staircase arrival = target.stairs.map.stairs;
+        Room room = wentDown ? target.upStairs() : target.downStairs();
+        gp.enterRoom(room);
+        Staircase arrival = room.map.stairs;
         Point foot = wentDown ? arrival.upFoot : arrival.downFoot;
         x = foot.x;
         y = foot.y;

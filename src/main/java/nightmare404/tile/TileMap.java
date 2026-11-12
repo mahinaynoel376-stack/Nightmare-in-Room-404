@@ -89,6 +89,7 @@ public class TileMap {
                 }
             }
         }
+        doors.sort((a, b) -> Integer.compare(a.x, b.x));   // Number the doors from left to right
     }
 
     // The tile ID at a cell in one layer (EMPTY if nothing is there).
@@ -172,6 +173,42 @@ public class TileMap {
             if (box.intersects(door)) return door;
         }
         return null;
+    }
+
+    // How many working doors this map has. They're numbered 0, 1, 2... from left to right.
+    public int doorCount() {
+        return doors.size();
+    }
+
+    // Working door number i, counting from the left
+    public Rectangle door(int i) {
+        return doors.get(i);
+    }
+
+    // The number of this door, counting from the left (-1 if it isn't one of this map's doors).
+    // A room and the hallway screen in front of it have their doors in the same order, so
+    // "door 0 here" leads to "door 0 there" even where the screens are different widths.
+    public int doorIndex(Rectangle door) {
+        return doors.indexOf(door);
+    }
+
+    // The numbers of the doors in this map's TOP wall (the floor is below them: a hallway's doors
+    // into the rooms behind it), or in its BOTTOM wall (the floor is above them: a room's way out,
+    // or the school's main entrance in the front of the hallway), left to right
+    public List<Integer> doorsInTopWall() {
+        return doorsWhereFloorIsAbove(false);
+    }
+
+    public List<Integer> doorsInBottomWall() {
+        return doorsWhereFloorIsAbove(true);
+    }
+
+    private List<Integer> doorsWhereFloorIsAbove(boolean above) {
+        List<Integer> numbers = new ArrayList<>();
+        for (int i = 0; i < doors.size(); i++) {
+            if (isFloorAbove(doors.get(i)) == above) numbers.add(i);
+        }
+        return numbers;
     }
 
     // The door whose centre is closest to x, or null if this map has no doors
