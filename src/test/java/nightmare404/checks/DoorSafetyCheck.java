@@ -12,7 +12,7 @@ public class DoorSafetyCheck {
     static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what); if (!ok) fails++; }
 
     public static void main(String[] a) {
-        GamePanel gp = new GamePanel();
+        GamePanel gp = new GamePanel(); gp.peaceful();
         Floor f2 = gp.world.floor2;
         boolean refused = false;
         try {   // The library's west screen has no door, so linking it by a door must be refused

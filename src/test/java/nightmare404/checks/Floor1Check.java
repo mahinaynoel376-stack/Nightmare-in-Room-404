@@ -3,6 +3,9 @@ package nightmare404.checks;
 import nightmare404.entity.Player;
 import nightmare404.main.GamePanel;
 import nightmare404.map.Hallway;
+import nightmare404.map.Stairs;
+import nightmare404.tile.TileMap;
+import nightmare404.tile.TileSet;
 import nightmare404.world.Floor;
 import nightmare404.world.Room;
 
@@ -42,7 +45,7 @@ public class Floor1Check {
     }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
         Floor f2 = gp.world.floor2, f1 = gp.world.floor1;
 
         System.out.println("1. Floors: 4 <-> 3 <-> 2 <-> 1");
@@ -82,16 +85,20 @@ public class Floor1Check {
         check("Principal's Office: the counter blocks elsewhere", in("Principal's Office") && row() == 11);
 
         System.out.println("5. The way out: both side exits are boarded up, the main entrance is in the middle");
-        go(f1, "West Stairs", 3, 14); walk("D", 200);
+        int west = Stairs.exitMiddle(Stairs.Side.WEST), east = Stairs.exitMiddle(Stairs.Side.EAST);
+        check("the side exits are in the middle of each stairwell (cols " + west + " and " + east + ")",
+                west == 7 && east == 9 && f1.find("West Stairs").map.tileAt(TileMap.LAYER_OBJECTS, west, 16) == TileSet.EXIT_BLOCKED_M
+                        && f1.find("East Stairs").map.tileAt(TileMap.LAYER_OBJECTS, east, 16) == TileSet.EXIT_BLOCKED_M);
+        go(f1, "West Stairs", west, 14); walk("D", 200);
         check("west exit is boarded up: can't get through", in("West Stairs") && row() == 15);
         check("  and it isn't a door", f1.find("West Stairs").map.doorCount() == 0);
-        go(f1, "East Stairs", 12, 14); walk("D", 200);
+        go(f1, "East Stairs", east, 14); walk("D", 200);
         check("east exit is boarded up too", in("East Stairs") && row() == 15);
         check("  and it isn't a door", f1.find("East Stairs").map.doorCount() == 0);
         Room middle = f1.find("Hallway (Principal's Office)"), quad = gp.world.quadrangle;
         int entrance = middle.map.doorsInBottomWall().get(0);
         check("the main entrance is in the middle hallway screen (the world's groundExit)", gp.world.groundExit == middle);
-        check("  4 tiles wide: twice a side exit", middle.map.door(entrance).width == 4 * 32);
+        check("  4 tiles wide", middle.map.door(entrance).width == 4 * 32);
         check("  it leads to the Quadrangle, and the Quadrangle's doorway leads back",
                 middle.doorLeadsTo(entrance) == quad && quad.doorLeadsTo(0) == middle && quad.door == middle);
         check("  the screen's other doors still lead to the Principal's Office", middle.door == f1.find("Principal's Office")

@@ -1,7 +1,10 @@
 package nightmare404.world;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import nightmare404.entity.Monster;
 import nightmare404.map.Classroom;
-import nightmare404.map.Ground;
 import nightmare404.map.Hallway;
 import nightmare404.map.Lab;
 import nightmare404.map.Library;
@@ -40,7 +43,7 @@ import nightmare404.tile.TileSet;
 //                 [Faculty Room]  [Principal's Office]  [Records Room]   <- offices (linked by door)
 //                        |              |                  |
 //   [West Stairs]<->[Hallway]<->[Hallway]<->[Hallway]<->[East Stairs]
-//   (exit boarded up)              |              (exit boarded up)
+//   (exit boarded up)              |              (exit boarded up)    <- in the middle of each stairwell
 //                                  |  the main entrance (in the hallway's front wall)
 //                             [Quadrangle]   <- outside: one 50 x 36 map
 //
@@ -63,6 +66,7 @@ public class World {
     public final Room quadrangle;   // The courtyard outside it (the last stand)
     public final Floor top;     // The highest floor: start here and follow .below to visit them all
     public final Room start;    // Where the game begins
+    public final List<Monster> monsters = new ArrayList<>();   // Every monster in the school (see Encounters)
 
     public World(TileSet tiles, int ts) {
         // ---------- Floor 4: the classrooms ----------
@@ -145,16 +149,16 @@ public class World {
 
         // 1. The hallway. Nothing below, so the stairs only go up (at the west end; the east flight has
         //    collapsed), and the corridor looks out on grass.
-        //    Each end of the building has a side exit between two support pillars, both boarded up:
-        //    the way out is the main entrance, in the middle (see Hallway.officeFront).
-        floor1.append("West Stairs", Stairs.ground(tiles, ts, Stairs.Side.WEST, Flight.OPEN, Ground.Exit.BLOCKED));
+        //    Each stairwell has a side exit in the middle of its bottom wall, between two support
+        //    pillars, boarded up: the way out is the main entrance, in the middle (see Hallway.officeFront).
+        floor1.append("West Stairs", Stairs.ground(tiles, ts, Stairs.Side.WEST, Flight.OPEN));
         Room hallFaculty = floor1.append("Hallway (Faculty Room)",
                 Hallway.officeFront(tiles, ts, faculty, Office.Part.FACULTY, Hallway.Position.FIRST));
         Room hallPrincipal = floor1.append("Hallway (Principal's Office)",
                 Hallway.officeFront(tiles, ts, principal, Office.Part.PRINCIPAL, Hallway.Position.MIDDLE));
         Room hallRecords = floor1.append("Hallway (Records Room)",
                 Hallway.officeFront(tiles, ts, records, Office.Part.RECORDS, Hallway.Position.LAST));
-        floor1.append("East Stairs", Stairs.ground(tiles, ts, Stairs.Side.EAST, Flight.COLLAPSED, Ground.Exit.BLOCKED));
+        floor1.append("East Stairs", Stairs.ground(tiles, ts, Stairs.Side.EAST, Flight.COLLAPSED));
 
         // 2. The three offices, each behind its own hallway screen
         floor1.addRoomBehind("Faculty Room", faculty, hallFaculty);
@@ -176,7 +180,11 @@ public class World {
         top = floor4;
 
         showFloorsBelow();
+        showOutside();
         start = startRoom;
+
+        // ---------- The monsters ----------
+        Encounters.populate(this, ts);
     }
 
     // Makes the view over every railing show the real floor below.
@@ -193,6 +201,24 @@ public class World {
                 up = up.right;
                 down = down.right;
             }
+        }
+    }
+
+    // The ground floor's hallway looks out on the quadrangle: the view under its low wall shows the
+    // real quadrangle (its walkway, bushes, trees and lamps), lined up so that the main entrance meets
+    // the quadrangle's doorway, as it does when you walk through it. Columns are counted along the
+    // whole floor, screen after screen, then shifted to the quadrangle's.
+    private void showOutside() {
+        int col = 0, entranceCol = 0;
+        for (Room r = floor1.head; r != null; r = r.right) {
+            if (r == groundExit) entranceCol = col + Hallway.ENTRANCE_COL;
+            col += r.map.cols;
+        }
+        int shift = Quadrangle.DOOR_COL - entranceCol;
+        col = 0;
+        for (Room r = floor1.head; r != null; r = r.right) {
+            r.map.showOutside(quadrangle.map, col + shift);
+            col += r.map.cols;
         }
     }
 

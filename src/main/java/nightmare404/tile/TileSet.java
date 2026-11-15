@@ -192,8 +192,8 @@ public class TileSet {
     public static final int GRASS_EDGE = 168;      // Grass with the shadow of the ledge above it
     public static final int EXIT_L = 169;          // A way out of the building (2 tiles): a door like any other
     public static final int EXIT_R = 170;
-    public static final int EXIT_BLOCKED_L = 171;  // The same doorway boarded up (solid)
-    public static final int EXIT_BLOCKED_R = 172;
+    public static final int EXIT_BLOCKED_L = 171;  // A doorway boarded up (solid), 3 tiles wide: L, M, R
+    public static final int EXIT_BLOCKED_R = 172;  // (its middle, EXIT_BLOCKED_M, came later: 313)
     public static final int SIGN_FACULTY = 173;
     public static final int SIGN_PRINCIPAL = 176;
     public static final int SIGN_RECORDS = 179;
@@ -236,7 +236,7 @@ public class TileSet {
     public static final int STAIRCASE_WIDTH = 7;
     public static final int STAIRCASE_HEIGHT = 8;
 
-    // --- The school's main entrance (284-287): a doorway 4 tiles wide, twice a side exit (in tiles/ground) ---
+    // --- The school's main entrance (284-287): a doorway 4 tiles wide (in tiles/ground) ---
     public static final int MAIN_ENTRANCE_FIRST = 284;
     public static final int MAIN_ENTRANCE_WIDTH = 4;
 
@@ -252,7 +252,10 @@ public class TileSet {
     public static final int BUS_LADDER_COL = 2;    // column 4 is its front, lower than the roof
     public static final int BUS_ROOF_WIDTH = 4;
 
-    public static final int COUNT = 313;
+    // --- The middle of the boarded-up exit (313), between EXIT_BLOCKED_L and EXIT_BLOCKED_R (in tiles/ground) ---
+    public static final int EXIT_BLOCKED_M = 313;
+
+    public static final int COUNT = 314;
 
     private static final String CLASSROOM_DIR = "/tiles/classroom/";
     private static final String[] CLASSROOM_FILES = {
@@ -431,6 +434,7 @@ public class TileSet {
         loadNumbered(ROCKS_FIRST, "rocks", 2);
         loadNumbered(TRASH_CAN_FIRST, "trash_can", 2);
         loadNumbered(BUS_FIRST, "bus", BUS_WIDTH * BUS_HEIGHT);
+        images[EXIT_BLOCKED_M] = load(GROUND_DIR + "exit_blocked_m.png");
 
         java.util.Arrays.fill(solid, true);
         for (int id : WALKABLE) {

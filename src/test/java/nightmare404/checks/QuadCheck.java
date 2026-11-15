@@ -28,7 +28,7 @@ public class QuadCheck {
     static boolean inQuad() { return gp.currentRoom == gp.world.quadrangle; }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
         Room quad = gp.world.quadrangle, exit = gp.world.groundExit;
         TileMap m = quad.map;
 
@@ -45,10 +45,18 @@ public class QuadCheck {
                 row() == 4 && col() >= 23 && col() <= 26);
         walk("U", 200);
         check("walking back into the doorway -> the middle hallway, just above the entrance", gp.currentRoom == exit && row() == 11);
+        check("the main entrance is the only door in the building's face", m.doorCount() == 1);
+        boolean plainWall = true;
+        for (int col = 0; col < m.cols; col++) {
+            int thing = m.tileAt(TileMap.LAYER_OBJECTS, col, Quadrangle.DOOR_ROW);
+            boolean entrance = col >= Quadrangle.DOOR_COL - 1 && col <= Quadrangle.DOOR_COL + TileSet.MAIN_ENTRANCE_WIDTH;
+            if (!entrance && (thing == TileSet.EXIT_BLOCKED_L || thing == TileSet.EXIT_BLOCKED_M
+                    || thing == TileSet.EXIT_BLOCKED_R || thing == TileSet.PILLAR_TOP)) plainWall = false;
+        }
+        check("no boarded-up side exits or pillars in it (those are inside the stairwells)", plainWall);
         for (int col : new int[] {5, 43}) {
             quad(col, 6); walk("U", 200);
-            check("the side doorway at cols " + col + "-" + (col + 1) + " is boarded up: no way in", inQuad() && row() == 4);
-            check("  and it isn't a door (the main entrance is the only one)", m.doorCount() == 1);
+            check("walking up the old side path at col " + col + " stops at the wall", inQuad() && row() == 4);
         }
 
         System.out.println("3. The camera follows the player");

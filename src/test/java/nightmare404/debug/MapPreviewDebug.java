@@ -12,7 +12,8 @@ import nightmare404.world.Room;
 import nightmare404.world.World;
 
 // Debug tool: walks the linked list, prints it, and saves a picture of every room
-// (hallway screens and the classrooms behind them) so you can check a map without playing.
+// (hallway screens and the classrooms behind them), with its monsters where they start,
+// so you can check a map without playing.
 // Run: in Eclipse, Run As > Java Application. Or, after run-checks.bat has compiled everything:
 //   java -Djava.awt.headless=true -cp build/test/classes nightmare404.debug.MapPreviewDebug [output folder]
 public class MapPreviewDebug {
@@ -47,6 +48,7 @@ public class MapPreviewDebug {
                 BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = img.createGraphics();
         room.map.draw(g2d);
+        for (nightmare404.entity.Monster m : room.monsters) m.draw(g2d, 0);   // The monsters, where they start
         g2d.dispose();
         ImageIO.write(img, "png", file);
     }

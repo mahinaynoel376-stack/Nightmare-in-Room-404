@@ -17,6 +17,7 @@ public class WalkStripDebug {
     private static final int STEPS = 4;
     private static final int HEAD_ROWS = 24; // Top of the sprite that holds the head and hair
     private static final int MAX_BOB = 2;    // How far (px) a walk frame may move the body up or down
+    private static final int MAX_SWAY = 2;   // ...and sideways
 
     public static void main(String[] args) throws IOException {
         String outPath = args.length > 0 ? args[0] : "down_walk_strip.png";
@@ -46,21 +47,24 @@ public class WalkStripDebug {
         System.out.println("Wrote " + new File(outPath).getAbsolutePath());
 
         // Compare each step's head with step 0's. The walk frames may bob the whole body up or down
-        // a pixel or two, which is fine, so each step is compared at the vertical shift that fits best.
+        // and sway it sideways a pixel or two, which is fine, so each step is compared at the shift
+        // that fits best. What's left is the head itself being drawn differently.
         boolean allSame = true;
         for (int step = 1; step < STEPS; step++) {
-            int diff = Integer.MAX_VALUE, bestShift = 0;
-            for (int shift = -MAX_BOB; shift <= MAX_BOB; shift++) {
-                int d = 0;
-                for (int y = top + MAX_BOB; y < top + HEAD_ROWS; y++) {
-                    for (int x = 0; x < ts; x++) {
-                        if (strip.getRGB(x, y) != strip.getRGB(step * ts + x, y + shift)) d++;
+            int diff = Integer.MAX_VALUE, bestBob = 0, bestSway = 0;
+            for (int bob = -MAX_BOB; bob <= MAX_BOB; bob++) {
+                for (int sway = -MAX_SWAY; sway <= MAX_SWAY; sway++) {
+                    int d = 0;
+                    for (int y = top + MAX_BOB; y < top + HEAD_ROWS; y++) {
+                        for (int x = MAX_SWAY; x < ts - MAX_SWAY; x++) {
+                            if (strip.getRGB(x, y) != strip.getRGB(step * ts + x + sway, y + bob)) d++;
+                        }
                     }
+                    if (d < diff) { diff = d; bestBob = bob; bestSway = sway; }
                 }
-                if (d < diff) { diff = d; bestShift = shift; }
             }
             System.out.println("Step " + step + " head pixels differing from step 0: " + diff
-                    + (bestShift != 0 ? " (with the body bobbing " + bestShift + " px)" : ""));
+                    + (bestBob != 0 || bestSway != 0 ? " (with the body bobbing " + bestBob + " px, swaying " + bestSway + " px)" : ""));
             if (diff > 0) allSame = false;
         }
         System.out.println(allSame ? "PASS: head is identical in every step" : "FAIL: head changes between steps");

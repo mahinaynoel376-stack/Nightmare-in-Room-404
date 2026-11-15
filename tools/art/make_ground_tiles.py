@@ -65,7 +65,7 @@ made['grass_1'] = grass(11)
 made['grass_2'] = grass(29)
 made['grass_edge'] = grass(47, shadow_rows=5)
 
-# ---- 4. Exits, 2 tiles (64 x 32): open stone steps, and the same doorway boarded up ----
+# ---- 4. Exits: open stone steps (2 tiles, 64 x 32), and a doorway boarded up (3 tiles) ----
 JAMB, JAMB_LIGHT = (74, 78, 88), (123, 127, 137)
 STEPS = [(146, 141, 124), (128, 123, 107), (110, 106, 92)]
 STEP_EDGE, STEP_SHADOW = (166, 161, 144), (72, 68, 58)
@@ -88,22 +88,24 @@ rect(p, 0, 0, 2, 31, JAMB); rect(p, 61, 0, 63, 31, JAMB)            # stone jamb
 rect(p, 2, 0, 2, 31, JAMB_LIGHT); rect(p, 61, 0, 61, 31, JAMB_LIGHT)
 made['exit_l'] = exit_open.crop((0, 0, 32, 32)); made['exit_r'] = exit_open.crop((32, 0, 64, 32))
 
-blocked = Image.new('RGBA', (64, 32), DARK + (255,))
+# The boarded-up exit is 3 tiles wide (96 x 32), so it can sit right in the middle of a stairwell
+blocked = Image.new('RGBA', (96, 32), DARK + (255,))
 p = blocked.load()
-rect(p, 0, 0, 2, 31, JAMB); rect(p, 61, 0, 63, 31, JAMB)
-rect(p, 2, 0, 2, 31, JAMB_LIGHT); rect(p, 61, 0, 61, 31, JAMB_LIGHT)
+rect(p, 0, 0, 2, 31, JAMB); rect(p, 93, 0, 95, 31, JAMB)
+rect(p, 2, 0, 2, 31, JAMB_LIGHT); rect(p, 93, 0, 93, 31, JAMB_LIGHT)
 for y0 in (3, 12, 21):                                              # planks nailed across
-    rect(p, 1, y0, 62, y0 + 6, WOOD)
-    rect(p, 1, y0, 62, y0, WOOD_LIGHT)
-    rect(p, 1, y0 + 6, 62, y0 + 6, WOOD_DARK)
-    for x in (4, 59):
+    rect(p, 1, y0, 94, y0 + 6, WOOD)
+    rect(p, 1, y0, 94, y0, WOOD_LIGHT)
+    rect(p, 1, y0 + 6, 94, y0 + 6, WOOD_DARK)
+    for x in (4, 47, 91):
         p[x, y0 + 3] = NAIL + (255,)
-for k in range(56):                                                 # one plank nailed diagonally on top
-    x, y = 4 + k, 27 - k * 22 // 55
+for k in range(88):                                                 # one plank nailed diagonally on top
+    x, y = 4 + k, 27 - k * 22 // 87
     for t in range(-2, 3):
         if 0 <= y + t < 32:
             p[x, y + t] = (WOOD_LIGHT if t == -2 else WOOD_DARK if t == 2 else WOOD) + (255,)
-made['exit_blocked_l'] = blocked.crop((0, 0, 32, 32)); made['exit_blocked_r'] = blocked.crop((32, 0, 64, 32))
+made['exit_blocked_l'] = blocked.crop((0, 0, 32, 32)); made['exit_blocked_m'] = blocked.crop((32, 0, 64, 32))
+made['exit_blocked_r'] = blocked.crop((64, 0, 96, 32))
 
 # ---- 5. Room plaques, 3 tiles (96 x 32): wood and brass, like the LIBRARY plaque ----
 FONT = {

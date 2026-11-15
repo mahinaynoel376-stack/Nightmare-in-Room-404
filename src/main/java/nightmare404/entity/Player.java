@@ -6,8 +6,12 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import javax.imageio.ImageIO;
 
+import nightmare404.battle.BattleScreen;
 import nightmare404.main.GamePanel;
 import nightmare404.map.Classroom;
 import nightmare404.tile.Staircase;
@@ -21,6 +25,24 @@ public class Player {
     public int speed;
     public int health;
     public int maxHealth;
+
+    // What the player carries into battle (see BattleScreen): first aid kits, and the locker items
+    // (Old Textbooks, Red Pens, Hall Passes). Both are used up in the battles and carry over between them.
+    public int kits;
+    public BattleScreen.Items items;
+
+    // The keys the bosses drop (see Encounters): each opens one floor's way down, or out
+    public final Set<String> keys = new LinkedHashSet<>();
+
+    // Giving up after losing a battle takes the player back to how they came onto the current floor:
+    // the same spot (Room 404 at the start, then the foot of the stairs they arrived by), the same
+    // health, kits, items and keys, and the monsters they've beaten on this floor since are back.
+    public Room checkpointRoom;
+    public int checkpointX, checkpointY;
+    private int savedHealth, savedKits;
+    private int[] savedItems;
+    private Set<String> savedKeys;
+    private Set<Monster> beatenBefore;  // Monsters on this floor already beaten when the player arrived
     public Rectangle solidArea;
 
     // The size of the player's feet tile; (x, y) is its top-left corner
@@ -72,8 +94,62 @@ public class Player {
         y = Classroom.START_ROW * gp.tileSize;
         syncHitbox();
         speed = WALK_SPEED; // Current speed; update() switches it to SPRINT_SPEED while Shift is held
-        maxHealth = 100;
+        maxHealth = BattleScreen.HERO_MAX_HP;
         health = maxHealth;
+        kits = BattleScreen.START_KITS;
+        items = new BattleScreen.Items(1, 1, 1);   // One of each to start with
+        setCheckpoint();
+    }
+
+    // Remembers how things are now, as the player comes onto a floor (see respawn)
+    public void setCheckpoint() {
+        checkpointRoom = gp.currentRoom;
+        checkpointX = x;
+        checkpointY = y;
+        savedHealth = health;
+        savedKits = kits;
+        savedItems = new int[] {items.textbooks, items.redPens, items.hallPasses};
+        savedKeys = new LinkedHashSet<>(keys);
+        beatenBefore = new HashSet<>();
+        for (Monster m : gp.world.monsters) {
+            if (m.room.floor == checkpointRoom.floor && m.defeated) beatenBefore.add(m);
+        }
+    }
+
+    // After losing a battle and giving up: back to how things were when the player came onto this
+    // floor. Monsters beaten on it since are back (with their loot), and every monster on it is back
+    // at its post.
+    public void respawn() {
+        for (Monster m : gp.world.monsters) {
+            if (m.room.floor != checkpointRoom.floor) continue;
+            if (m.defeated && !beatenBefore.contains(m)) {
+                m.defeated = false;
+                m.lootTaken = false;
+            }
+            m.reset();
+        }
+        health = savedHealth;
+        kits = savedKits;
+        items.textbooks = savedItems[0];
+        items.redPens = savedItems[1];
+        items.hallPasses = savedItems[2];
+        keys.clear();
+        keys.addAll(savedKeys);
+        gp.enterRoom(checkpointRoom);
+        x = checkpointX;
+        y = checkpointY;
+        direction = 1;
+        moving = false;
+        syncHitbox();
+    }
+
+    // Picks up what a boss dropped: its key and its supplies
+    public void collect(Loot loot) {
+        keys.add(loot.key());
+        kits += loot.kits();
+        items.textbooks += loot.textbooks();
+        items.redPens += loot.redPens();
+        items.hallPasses += loot.hallPasses();
     }
 
     public void getPlayerImage() {
@@ -108,7 +184,11 @@ public class Player {
         //    side of the screen, follow the current room's link to the next room.
         moveWithCollision(dx, dy);
         Rectangle doorHere = gp.currentRoom.map.doorTouching(solidArea);
-        if (doorHere != null && gp.currentRoom.doorLeadsTo(gp.currentRoom.map.doorIndex(doorHere)) != null) {
+        Room behindDoor = doorHere == null ? null : gp.currentRoom.doorLeadsTo(gp.currentRoom.map.doorIndex(doorHere));
+        if (behindDoor != null && behindDoor.outdoors && gp.currentRoom.floor.locked(keys)) {
+            // The way out of the building is locked until the player has the floor's key
+            gp.showNotice(gp.currentRoom.floor.lockedNote);
+        } else if (behindDoor != null) {
             goThroughDoor(doorHere);
         } else if (!checkStairs()) {
             checkScreenEdges();
@@ -229,6 +309,10 @@ public class Player {
         if (stairs == null) return false;
         Floor floor = gp.currentRoom.floor;
         if (floor.below != null && stairs.downZone != null && stairs.downZone.intersects(solidArea)) {
+            if (floor.locked(keys)) {   // The way down is locked until the player has the floor's key
+                gp.showNotice(floor.lockedNote);
+                return false;
+            }
             arriveOnStairs(floor.below, true);
             return true;
         }
@@ -250,6 +334,7 @@ public class Player {
         y = foot.y;
         direction = 1;   // Face down, away from the stairs
         syncHitbox();
+        setCheckpoint(); // A new floor: losing a battle here brings you back to these stairs
     }
 
     private void syncHitbox() {

@@ -3,6 +3,7 @@ package nightmare404.world;
 import java.util.ArrayList;
 import java.util.List;
 
+import nightmare404.entity.Monster;
 import nightmare404.tile.TileMap;
 
 // One screen of the game, and one NODE of the linked list.
@@ -33,6 +34,9 @@ public class Room {
     // false: the camera follows the player and scrolls into the neighbouring screens (the hallway).
     // true:  the camera stays still; walking off the edge cuts to the next screen (the library).
     public boolean fixedScreen = false;
+
+    // The monsters in this room (see Encounters); a beaten one stays in the list, marked defeated
+    public final List<Monster> monsters = new ArrayList<>();
 
     // true for places outside the building (the quadrangle): the screen says "Outside", not a floor number
     public boolean outdoors = false;

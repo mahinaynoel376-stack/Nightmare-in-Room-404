@@ -115,6 +115,25 @@ public class TileMap {
         clearCache();   // The picture has changed, so it must be drawn again
     }
 
+    // The same, for a view of a map that doesn't line up column for column with this one: the ground
+    // floor's hallway looking out on the quadrangle. Column c of the view shows the other map's column
+    // c + colShift; columns that fall outside the other map keep their stand-in (plain grass).
+    public void showOutside(TileMap outside, int colShift) {
+        for (View view : views) {
+            for (int row = view.row0(); row <= view.row1(); row++) {
+                int sourceRow = view.sourceRow0() + (row - view.row0());
+                for (int col = view.col0(); col <= view.col1(); col++) {
+                    int sourceCol = col + colShift;
+                    if (sourceCol < 0 || sourceCol >= outside.cols) continue;
+                    for (int layer = 0; layer < LAYERS; layer++) {
+                        layers[layer][row][col] = outside.layers[layer][sourceRow][sourceCol];
+                    }
+                }
+            }
+        }
+        clearCache();
+    }
+
     // This map's views (a copy of the list, so nobody can change it from outside)
     public List<View> views() {
         return List.copyOf(views);

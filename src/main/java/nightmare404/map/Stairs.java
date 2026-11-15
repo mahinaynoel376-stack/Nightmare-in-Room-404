@@ -53,16 +53,16 @@ public class Stairs {
     }
 
     // A ground-floor stairwell: no basement (the down flight is BLOCKED), the hallway's open side
-    // looks out on grass, and there's an exit in the stairwell's bottom wall.
+    // looks out on grass, and there's a boarded-up exit in the middle of the stairwell's bottom wall,
+    // right below the staircase (column 7 on the west, 9 on the east).
     // On the east side, a trail of footprints and slime leads from the stairs to the exit: whatever
-    // escaped upstairs came down here and went outside.
-    public static TileMap ground(TileSet tiles, int ts, Side side, Flight up, Ground.Exit exit) {
+    // escaped upstairs came down here and tried to get out.
+    public static TileMap ground(TileSet tiles, int ts, Side side, Flight up) {
         MapBuilder b = builder(ts, side, Flight.BLOCKED, up, true);
         Ground.grassWhereVoid(b, CAP_ROW + 1, new Rectangle());   // Nothing inside the building is void
-        int exitCol = side == Side.WEST ? 3 : LAST - 4;      // Columns 3-4 (west) or 12-13 (east)
-        Ground.exit(b, exitCol, BOTTOM_WALL_ROW, exit);
+        Ground.boardedExit(b, exitMiddle(side), BOTTOM_WALL_ROW);
         if (side == Side.EAST) {
-            int[][] trail = {{8, 14}, {10, 14}, {11, 15}, {12, 15}};
+            int[][] trail = {{7, 14}, {8, 14}, {8, 15}, {9, 15}};
             for (int i = 0; i < trail.length; i++) {
                 b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], i % 2 == 0 ? FOOTPRINTS : SLIME);
             }
@@ -73,6 +73,11 @@ public class Stairs {
     // The column a west-side column ends up in: the same on the west, mirrored on the east
     private static int mirror(Side side, int westCol) {
         return side == Side.WEST ? westCol : LAST - westCol;
+    }
+
+    // The middle of the stairwell (and of its staircase): column 7 on the west, 9 on the east
+    public static int exitMiddle(Side side) {
+        return mirror(side, 7);
     }
 
     // The down flight's left column: 5 on the west (staircase 4-10), 7 on the east (staircase 6-12)
@@ -171,7 +176,7 @@ public class Stairs {
     // Rubble scattered over the landing, the steps and the stairwell floor (rubble is solid).
     // Positions are relative to the staircase, and keep a way clear around it (to the ground floor's exit).
     private static void debris(MapBuilder b, int left) {
-        int[][] rubble = {{1, 7}, {3, 8}, {0, 9}, {4, 13}, {-2, 10}, {6, 12}, {6, 9}, {-3, 15}, {2, 15}};
+        int[][] rubble = {{1, 7}, {3, 8}, {0, 9}, {4, 13}, {-2, 10}, {6, 12}, {6, 9}, {-3, 15}, {5, 15}};
         for (int[] cell : rubble) {
             b.set(LAYER_OBJECTS, left + cell[0], cell[1], RUBBLE);
         }

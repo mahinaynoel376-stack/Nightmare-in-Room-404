@@ -364,13 +364,47 @@ Template for new entries:
 
 ---
 
+## 2026-11-14 — Updated player sprite sheet
+
+**What changed:** all 12 player frames now come from the new sprite sheet (rows: down, right, left, up; in each row the middle frame is the standing pose and the outer two are the steps). The front and back walks are new: the arms swing and the body sways a pixel or two sideways with each step. The side views are the same as the previous sheet's.
+- `WalkStripDebug` now allows that sideways sway as well as the up-and-down bob, so it only reports a head that's actually drawn differently. It does report one: in `down_walk2` and `up_walk2` the hair strands are drawn differently from the other frames (they look mirrored), so the hair detail changes slightly every other step. Left as drawn for now.
+
+---
+
+## 2026-11-15 — Monsters and word battles
+
+**What changed:** the battle screens from the `Battle_Screens` folder are in the game. Touching a monster opens its word battle in the game's window; winning removes it for good.
+- **The battle code** (`nightmare404.battle`): the 12 battle screens were the same engine 12 times, with different monsters and backgrounds. So the engine is in one class, `BattleScreen` (the original code, with its inner `GamePanel` renamed `BattlePanel` so it isn't confused with the game's), the monsters are in four files by area (`FourthFloorEnemies`, `LibraryEnemies`, `LaboratoryEnemies`, `LobbyEnemies`) and the six backgrounds are `Backdrop` classes holding the original `drawRoom` code. The changes to the original code: files load from `src/main/resources/battle` (so they're found inside the JAR), each `EnemyDef` names its background, the room signs name the game's rooms, the hero is the game's own player sprite, and `fight(...)` opens one battle in an existing window. `BattleScreen.main` still runs a fight on its own.
+- **Where the monsters are** (`nightmare404.world.Encounters`): Room 404 is safe; every other room has 2 or 3 monsters (23 in all), and each floor has a boss: the Brute at Floor 4's West Stairs, the Whisperer in Library (East), Test Subject X in the Containment Lab and the Principal in his office. Each floor's way down (on Floor 1, the main entrance) stays sealed until its boss is beaten.
+- **How they move** (`nightmare404.entity.Monster`): each walks a straight patrol along an aisle; within 3 tiles it chases you (slower than you walk), gives up 6 tiles away and walks back the way it came. Bosses stand guard. They have no walking frames, so they bob.
+- **Winning and losing:** health, first aid kits and locker items carry from battle to battle (you start with 3 kits and one of each item). Giving up after losing wakes you where you came onto the floor, with full health; that room's monsters go back to their posts.
+- **Checks:** `EncounterCheck` tests the placements, patrols, chasing, touching, the sealed exits, winning and losing, and that every battle's sprites, words and screen load. The other checks start with `gp.peaceful()` (every monster beaten), since they only test walking. `BattleScreensDebug` saves a picture of every battle screen; `MapPreviewDebug` now draws the monsters too.
+
+## 2026-11-15 — The quadrangle from Floor 1, bosses that guard, and keys
+
+**Goal:** four things: show the quadrangle below Floor 1's railing, put the Brute where nobody can get past, make giving up undo only what happened on the floor, and give the bosses a reward that opens the next floor.
+**What happened:**
+- **The quadrangle from Floor 1** (`TileMap.showOutside`, `World.showOutside`, `Hallway.corridorScreen`): the upper floors already show the floor below over the railing. Floor 1's hallway now shows the strip of the quadrangle in front of the building (its walkway, bushes, trees and lamps), shifted so the entrance path lines up under the main entrance. `ViewCheck` compares those cells with the quadrangle map.
+- **The Brute on the stairs** (`Encounters`, `Monster.nudge`, `Monster.reach`): it stands in the middle of Floor 4's way down, between the two columns of the flight, and a boss's reach is 2 tiles wide, so climbing at either edge still runs into it. The other bosses stay in their lairs (the Whisperer at the far end of the library, Test Subject X among the pods, the Principal behind his counter); the keys below make each of them a fight you can't skip.
+- **Loot and keys** (`Loot`, `Floor.exitKey`/`lockedNote`/`locked`): a beaten boss leaves a glinting key where it stood; standing on it picks it up with some supplies. The Brute drops the janitor's West Stairwell Key (+1 kit, +1 Red Pen); the Whisperer, the East Stairwell Key in a hollowed-out book (+1 kit, +1 Textbook, +1 Hall Pass); Test Subject X, a Security Keycard that overrides the lab lockdown on the west stairwell (+2 kits, +1 Red Pen, +1 Hall Pass); the Principal, the school's Master Key to the front doors (+2 kits, one of each item). Without the key, the way down (or out) shows a note saying what's missing. The bottom bar now shows every item and, in gold, the floor's key once you have it. Notices can run onto two lines.
+- **Giving up** (`Player.setCheckpoint`/`respawn`): arriving on a floor takes a snapshot: health, kits, items, keys, and which monsters on the floor were already beaten. Giving up restores exactly that, and the monsters beaten on this floor since come back (a boss with its key). Other floors aren't touched.
+**Decisions:** giving up restores kits, items and keys too, not only health; otherwise you could use up kits, give up and keep the boss's loot, or lose a key you'd need. Loot is picked up after the 1-second pause that follows a battle, so the key is seen glinting first.
+**Checks:** `EncounterCheck` now climbs the stairs at the middle and both edges of the flight into the Brute, picks up its key, goes down, gives up on Floor 3 with 80 HP (and gets 80 back, not 100), and tries every locked way out with and without its key.
+
+## 2026-11-15 — Side exits in the middle of the stairwells, not outside
+
+**What changed:** the boarded-up side exits (with their two pillars) now sit in the middle of each Floor 1 stairwell's bottom wall, right below the staircase (`Ground.boardedExit`, `Stairs.exitMiddle`: column 7 west, 9 east). A stairwell is 11 tiles wide, an odd number, so a 2-tile doorway could never be exactly centred: the boarded doorway is now 3 tiles wide, with a new middle tile (`EXIT_BLOCKED_M`, ID 313, drawn by `tools/art/make_ground_tiles.py` with the same planks). The east stairwell's footprint trail now leads to it, and the rubble that would have sat in front of it moved aside.
+The quadrangle's building face lost its two side exits and their pillars, so they're gone from the view over Floor 1's railing too. The paths that led from them stay, as garden paths off the walkway, and the gaps in the wall got a window each (columns 6 and 43, keeping the windows symmetric). `Floor1Check` and `QuadCheck` check the new layout.
+
+---
+
 ## Open issues and ideas
 
 - ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).
 - ~~Make the west stairs work~~ (done: Floor 3, 2026-11-01). ~~Floor 2~~ (done: the labs, 2026-11-01). ~~Floor 1~~ (done: the ground floor, 2026-11-02). ~~The quadrangle~~ (done: 2026-11-03). Next: the last-stand gameplay.
 - Hazard tiles (toxic puddles, slime) that drain health, the first real use of the HP bar.
-- A way to open the sealed lab doors (a keycard?).
+- A way to open the sealed lab doors (the Security Keycard could open them too?).
 - ~~Old unused images in `res/tiles/` (outside `Classroom2` and `Stairs`) can be deleted.~~ (done: the cleanup, 2026-11-03)
 - Design the real bottom UI (art, layout, what it shows). `BottomUI` is a placeholder.
-- Nothing changes `health` yet: it's always 100 until there are hazards or enemies.
+- ~~Nothing changes `health` yet~~ (done: battles, 2026-11-15).
 - Most of the project, including the 2026-11-03 cleanup, isn't committed to git yet; commit it so the history is safe.

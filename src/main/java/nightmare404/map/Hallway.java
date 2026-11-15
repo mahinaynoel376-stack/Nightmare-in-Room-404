@@ -100,8 +100,8 @@ public class Hallway {
         return b.build(tiles, ts);
     }
 
-    // The school's main entrance, in the corridor's low front wall: a doorway 4 tiles wide (twice a
-    // side exit) between two support pillars, with a stone path leading out across the grass. It's a
+    // The school's main entrance, in the corridor's low front wall: a doorway 4 tiles wide between
+    // two support pillars, with a stone path leading out across the grass. It's a
     // door (TileSet.doorSize knows it), linked to the quadrangle by Floor.addOutside.
     public static final int ENTRANCE_COL = 6;   // Its left column: columns 6-9, the middle of the screen
     private static void mainEntrance(MapBuilder b) {
@@ -203,7 +203,12 @@ public class Hallway {
         corridor(b, 0, LAST);
         railing(b, 0, LAST);
         if (ground) {
+            // Over the low wall: the quadrangle outside. Like the floor below on the upper floors, it's
+            // a VIEW (World.showOutside copies the quadrangle's own tiles in, from its walkway down),
+            // darkened, with plain grass standing in until then.
             outsideGrass(b, 0, LAST);
+            b.shade(0, BELOW_CAP_ROW, LAST, BELOW_FLOOR_ROW);
+            b.view(0, BELOW_CAP_ROW, LAST, BELOW_FLOOR_ROW, Quadrangle.WALKWAY_ROW);
             return b;
         }
         floorBelow(b, 0, LAST);

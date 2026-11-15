@@ -15,7 +15,7 @@ public class CameraCheck {
     static int offset(Room r) { int px = 0; for (Room n = r.left; n != null; n = n.left) px += n.map.widthPx(); return px; }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
         check("in Room 404 the camera doesn't scroll (camera = " + gp.cameraX() + ", " + gp.cameraY() + ")", gp.cameraX() == 0 && gp.cameraY() == 0);
 
         gp.currentRoom = gp.world.floor4.tail; p.x = 30; p.y = 9 * 32; p.update();   // East Stairs, left side

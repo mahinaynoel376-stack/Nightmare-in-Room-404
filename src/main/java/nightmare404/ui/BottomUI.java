@@ -16,6 +16,7 @@ public class BottomUI {
     private static final Color BAR_EMPTY = new Color(90, 20, 20);
     private static final Color BAR_FULL = new Color(60, 180, 75);
     private static final Font LABEL_FONT = new Font("Arial", Font.BOLD, 14);
+    private static final Font SMALL_FONT = new Font("Arial", Font.BOLD, 12);
 
     private static final int BAR_X = 48;         // Left edge of the health bar
     private static final int BAR_WIDTH = 160;
@@ -55,5 +56,18 @@ public class BottomUI {
 
         g2d.setColor(Color.WHITE);
         g2d.drawString(player.health + " / " + player.maxHealth, BAR_X + BAR_WIDTH + 10, textY);
+
+        // What the player carries into battle
+        g2d.setFont(SMALL_FONT);
+        g2d.drawString("Kits " + player.kits + "   Textbooks " + player.items.textbooks + "   Red Pens "
+                + player.items.redPens + "   Hall Passes " + player.items.hallPasses, BAR_X + BAR_WIDTH + 96, textY);
+
+        // The key to this floor's way out, once the player has it
+        String key = gp.currentRoom.floor.exitKey;
+        if (key != null && player.keys.contains(key)) {
+            String text = "Key: " + key;
+            g2d.setColor(new Color(232, 184, 70));
+            g2d.drawString(text, gp.screenWidth - 16 - g2d.getFontMetrics().stringWidth(text), textY);
+        }
     }
 }

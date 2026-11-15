@@ -2,8 +2,12 @@ package nightmare404.main;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.util.function.Consumer;
 import javax.swing.*;
 
+import nightmare404.battle.BattleScreen;
+import nightmare404.battle.BattleScreen.BattleResult;
+import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
 import nightmare404.tile.TileSet;
 import nightmare404.ui.BottomUI;
@@ -23,6 +27,7 @@ public class GamePanel extends JPanel implements Runnable {
     final int FPS = 60;
     // Created once and reused: making a new Font every frame (60 times a second) is wasted work
     private static final Font ROOM_NAME_FONT = new Font("Arial", Font.BOLD, 24);
+    private static final Font NOTICE_FONT = new Font("Arial", Font.BOLD, 16);
 
     // Movement tracking booleans
     public boolean upPressed, downPressed, leftPressed, rightPressed;
@@ -38,6 +43,20 @@ public class GamePanel extends JPanel implements Runnable {
     public World world;
     public Room currentRoom;
 
+    // Battles. Touching a monster opens its battle in this window (see openBattle); while it's on,
+    // the world is paused. After a battle the monsters in the room wait a moment (calm), so another
+    // one can't grab the player the instant they're back.
+    public volatile boolean inBattle;
+    private int calm;
+    private Room lastRoom;
+    // What starting a battle does. The checks swap this for something that doesn't open a window.
+    public Consumer<Monster> battleStarter = m -> SwingUtilities.invokeLater(() -> openBattle(m));
+    public long ticks;                      // Frames since the game began (the monsters bob with it)
+
+    // A short message at the bottom of the screen ("The doors won't open...")
+    private volatile String notice = "";
+    private volatile int noticeTicks;
+
     public GamePanel() {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setBackground(Color.BLACK);
@@ -49,6 +68,40 @@ public class GamePanel extends JPanel implements Runnable {
         flor = new Player(this);
         bottomUI = new BottomUI(this);
         setupKeyBindings();
+        lastRoom = currentRoom;
+        // Read the battle's 170,000-word dictionary now, in the background, so the first battle opens at once
+        Thread words = new Thread(BattleScreen::dictionary);
+        words.setDaemon(true);
+        words.start();
+    }
+
+    // Every monster beaten and every floor's key in the player's pocket: for the checks that only test walking
+    public void peaceful() {
+        for (Monster m : world.monsters) {
+            m.defeated = true;
+            if (m.loot != null) {
+                m.lootTaken = true;
+                flor.keys.add(m.loot.key());
+            }
+        }
+    }
+
+    public void showNotice(String text) {
+        showNotice(text, 150);   // 2.5 seconds
+    }
+
+    public void showNotice(String text, int ticks) {
+        notice = text;
+        noticeTicks = ticks;
+    }
+
+    // The notice on screen right now ("" if none)
+    public String notice() {
+        return noticeTicks > 0 ? notice : "";
+    }
+
+    private void releaseKeys() {
+        upPressed = downPressed = leftPressed = rightPressed = sprintPressed = false;
     }
 
     public void enterRoom(Room room) {
@@ -150,8 +203,70 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
-    private void update() {
+    public void update() {
+        if (inBattle) return;            // The world waits while a battle is on
+        ticks++;
+        if (noticeTicks > 0) noticeTicks--;
         flor.update();
+        if (currentRoom != lastRoom) {   // Just walked into a room: the monsters give you a moment
+            lastRoom = currentRoom;
+            calm = Math.max(calm, 30);
+        }
+        if (calm > 0) {
+            calm--;
+            return;
+        }
+        for (Monster m : currentRoom.monsters) {
+            if (m.lootUnder(flor)) {     // Walking over what a boss dropped picks it up
+                m.lootTaken = true;
+                flor.collect(m.loot);
+                showNotice(m.loot.found() + "\n" + m.loot.supplies(), 330);
+            }
+            if (m.defeated) continue;
+            m.update(flor);
+            if (m.touches(flor)) {
+                startBattle(m);
+                return;
+            }
+        }
+    }
+
+    // The player touched a monster: pause the world and open its battle
+    private void startBattle(Monster m) {
+        inBattle = true;
+        releaseKeys();                   // Keys let go during the battle would otherwise stay "held"
+        battleStarter.accept(m);
+    }
+
+    // Shows the battle in this window instead of the school, and puts the school back when it's over
+    private void openBattle(Monster m) {
+        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        BattleScreen.fight(frame, m.enemy, flor.health, flor.kits, flor.items, result -> {
+            frame.setContentPane(this);
+            frame.revalidate();
+            frame.repaint();
+            requestFocusInWindow();
+            endBattle(m, result);
+        });
+    }
+
+    // After a battle. Won: the monster is gone for good (a boss leaves its loot where it stood), and
+    // the player keeps their health and kits. Lost (and gave up): everything goes back to how it was
+    // when the player came onto this floor (see Player.respawn).
+    public void endBattle(Monster m, BattleResult result) {
+        if (result.won()) {
+            m.defeated = true;
+            flor.health = Math.max(1, result.heroHp());
+            flor.kits = result.kitsLeft();
+            if (m.boss) showNotice("The " + m.enemy.name() + " falls. Something glints where it stood...");
+        } else {
+            flor.respawn();
+            showNotice("You wake up with a gasp, back where you came onto this floor...");
+        }
+        lastRoom = currentRoom;
+        calm = 60;
+        releaseKeys();
+        inBattle = false;                // Last: the game loop starts updating again after this
     }
 
     @Override
@@ -166,6 +281,7 @@ public class GamePanel extends JPanel implements Runnable {
         Graphics2D view = (Graphics2D) g2d.create();
         view.translate(-camX, -camY);
         currentRoom.map.draw(view);
+        drawMonsters(view, currentRoom, true);
         // The hallway's room-front screens are narrower than the view, so the view can reach into
         // the neighbours on BOTH sides. Follow the links outwards, drawing each neighbour next to
         // the last one, until the view is covered (or the hallway ends).
@@ -180,6 +296,7 @@ public class GamePanel extends JPanel implements Runnable {
             rightEdge += r.map.widthPx();
         }
         flor.draw(view);
+        drawMonsters(view, currentRoom, false);
         view.dispose();
 
         // The room's name stays fixed on screen (drawn after the camera shift is undone)
@@ -187,6 +304,8 @@ public class GamePanel extends JPanel implements Runnable {
         g2d.setFont(ROOM_NAME_FONT);
         String where = currentRoom.outdoors ? "Outside" : "Floor " + currentRoom.floor.number;
         g2d.drawString(currentRoom.name + "  |  " + where, 20, 40);
+
+        if (noticeTicks > 0) drawNotice(g2d);
 
         // UI in the bottom row (fixed on screen, drawn last so nothing covers it)
         bottomUI.draw(g2d);
@@ -225,6 +344,49 @@ public class GamePanel extends JPanel implements Runnable {
         Graphics2D g = (Graphics2D) view.create();
         g.translate(offsetX, 0);
         neighbour.map.draw(g);
+        for (Monster m : neighbour.monsters) m.draw(g, ticks);
+        g.dispose();
+    }
+
+    // A room's monsters, in two passes so they overlap the player the right way round:
+    // behind = the ones whose feet are higher up the screen than the player's (drawn before the player)
+    private void drawMonsters(Graphics2D view, Room room, boolean behind) {
+        for (Monster m : room.monsters) {
+            if ((m.y <= flor.y) == behind) m.draw(view, ticks);
+        }
+    }
+
+    // The notice: a dark box just above the bottom bar (long lines wrap, "\n" starts a new one), fading out at the end
+    private void drawNotice(Graphics2D g2d) {
+        Graphics2D g = (Graphics2D) g2d.create();
+        g.setComposite(AlphaComposite.SrcOver.derive(Math.min(1f, noticeTicks / 30f)));
+        g.setFont(NOTICE_FONT);
+        FontMetrics fm = g.getFontMetrics();
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        for (String paragraph : notice.split("\n")) {   // "\n" starts a new line; long lines wrap
+            StringBuilder line = new StringBuilder();
+            for (String word : paragraph.split(" ")) {
+                String trial = line.length() == 0 ? word : line + " " + word;
+                if (fm.stringWidth(trial) > screenWidth - 120 && line.length() > 0) {
+                    lines.add(line.toString());
+                    line = new StringBuilder(word);
+                } else {
+                    line = new StringBuilder(trial);
+                }
+            }
+            lines.add(line.toString());
+        }
+        int w = 0;
+        for (String l : lines) w = Math.max(w, fm.stringWidth(l));
+        w += 32;
+        int h = 14 + 20 * lines.size();
+        int x = (screenWidth - w) / 2, y = screenHeight - tileSize - h - 12;
+        g.setColor(new Color(8, 6, 6, 220));
+        g.fillRect(x, y, w, h);
+        g.setColor(new Color(130, 18, 18));
+        g.drawRect(x, y, w, h);
+        g.setColor(new Color(206, 200, 184));
+        for (int i = 0; i < lines.size(); i++) g.drawString(lines.get(i), x + 16, y + 22 + 20 * i);
         g.dispose();
     }
 }

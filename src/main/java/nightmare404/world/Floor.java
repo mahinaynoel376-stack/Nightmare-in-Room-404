@@ -2,6 +2,7 @@ package nightmare404.world;
 
 import java.util.List;
 
+import nightmare404.entity.Monster;
 import nightmare404.tile.TileMap;
 
 // One floor of the school: a doubly linked list of hallway screens, from head (leftmost) to tail (rightmost).
@@ -18,9 +19,17 @@ public class Floor {
 
     public Floor above;     // The floor reached by going up the stairs (null = none yet)
     public Floor below;     // The floor reached by going down the stairs (null = none yet)
+    public Monster boss;    // This floor's boss (see Encounters), or null
+    public String exitKey;  // The key to this floor's way down (or out), which the boss drops, or null
+    public String lockedNote;   // What the player reads at the locked way out without it
 
     public Floor(int number) {
         this.number = number;
+    }
+
+    // True if this floor's way down (or out) is still locked for someone carrying these keys
+    public boolean locked(java.util.Set<String> keys) {
+        return exitKey != null && !keys.contains(exitKey);
     }
 
     // The stairwell whose way UP works (its right flight), or null if there isn't one.

@@ -29,8 +29,8 @@ import nightmare404.tile.TileSet;
 public class Quadrangle {
     public static final int WIDTH = 50, HEIGHT = 36;
 
-    private static final int DOOR_COL = 23, DOOR_ROW = 3;      // The main entrance (4 wide), in the middle
-    private static final int[] SIDE_EXIT_COLS = {5, 43};        // The side exits at the two ends, boarded up
+    public static final int DOOR_COL = 23, DOOR_ROW = 3;       // The main entrance (4 wide), in the middle
+    public static final int WALKWAY_ROW = 4;                    // The walkway along the building, just outside
     private static final int BUS_COL = 8, BUS_ROW = 27;         // Top-left of the bus
     private static final int CAGE_LEFT = 31, CAGE_TOP = 21, CAGE_RIGHT = 46, CAGE_BOTTOM = 33;
     private static final int CAGE_GATE_COL = 33;                // The 2-tile gap in the court's fence
@@ -60,7 +60,7 @@ public class Quadrangle {
         "                                                  ",
         "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
         "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
-        "_____,,________________,,,,________________,,_____",
+        "_______________________,,,,_______________________",
         ".,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.",
         ".....,,................,,,,................,,.....",
         ".....,,................,,,,................,,.....",
@@ -99,7 +99,7 @@ public class Quadrangle {
     private static final String[] THINGS = {
         "..................................................",
         ".......L............L........L............L.......",
-        "..W.......W.....W................W.....W.......W..",
+        "..W...W...W.....W................W.....W...W...W..",
         "..................................................",
         "|................................................|",
         "|.h+...h+............h+....h+.T+.........h+..h+..|",
@@ -194,16 +194,13 @@ public class Quadrangle {
 
     // The way back into the building: the main entrance, the same 4-wide doorway as on the other side,
     // between two pillars. It's a door (TileSet.doorSize knows it), so going through it follows the
-    // door link back. The side exits at the two ends of the building are boarded up, like they are inside.
+    // door link back. It's the only opening in this face of the building: the boarded-up side exits
+    // are inside the stairwells, round the ends of the building, out of sight from here.
     private static void doorway(MapBuilder b) {
         for (int i = 0; i < MAIN_ENTRANCE_WIDTH; i++) {
             b.set(LAYER_OBJECTS, DOOR_COL + i, DOOR_ROW, MAIN_ENTRANCE_FIRST + i);
         }
         pillars(b, DOOR_COL - 1, DOOR_COL + MAIN_ENTRANCE_WIDTH);
-        for (int col : SIDE_EXIT_COLS) {
-            b.set(LAYER_OBJECTS, col, DOOR_ROW, EXIT_BLOCKED_L).set(LAYER_OBJECTS, col + 1, DOOR_ROW, EXIT_BLOCKED_R);
-            pillars(b, col - 1, col + 2);
-        }
     }
 
     // A support pillar (2 tiles tall) in each of these columns, standing on the building's face
