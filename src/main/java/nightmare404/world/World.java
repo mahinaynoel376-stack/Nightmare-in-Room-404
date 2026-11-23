@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import nightmare404.entity.Monster;
+import nightmare404.entity.SubjectZero;
+import nightmare404.entity.TreeMonster;
 import nightmare404.map.Classroom;
 import nightmare404.map.Hallway;
 import nightmare404.map.Lab;
@@ -12,6 +14,7 @@ import nightmare404.map.Office;
 import nightmare404.map.Quadrangle;
 import nightmare404.map.Stairs;
 import nightmare404.map.Stairs.Flight;
+import nightmare404.story.Quests;
 import nightmare404.tile.TileMap;
 import nightmare404.tile.TileSet;
 
@@ -67,6 +70,7 @@ public class World {
     public final Floor top;     // The highest floor: start here and follow .below to visit them all
     public final Room start;    // Where the game begins
     public final List<Monster> monsters = new ArrayList<>();   // Every monster in the school (see Encounters)
+    public SubjectZero finalBoss;   // Asleep by the quadrangle's south gate until every tree is beaten
 
     public World(TileSet tiles, int ts) {
         // ---------- Floor 4: the classrooms ----------
@@ -183,8 +187,27 @@ public class World {
         showOutside();
         start = startRoom;
 
-        // ---------- The monsters ----------
+        // ---------- The monsters, then the clues ----------
         Encounters.populate(this, ts);
+        Quests.populate(this, ts);
+    }
+
+    // The quadrangle's trees (every one is a monster: see TreeMonster)
+    public List<TreeMonster> trees() {
+        List<TreeMonster> trees = new ArrayList<>();
+        for (Monster m : quadrangle.monsters) {
+            if (m instanceof TreeMonster t) trees.add(t);
+        }
+        return trees;
+    }
+
+    // How many of them are still standing
+    public int treesLeft() {
+        int left = 0;
+        for (TreeMonster t : trees()) {
+            if (!t.defeated) left++;
+        }
+        return left;
     }
 
     // Makes the view over every railing show the real floor below.

@@ -5,8 +5,12 @@ import nightmare404.battle.FourthFloorEnemies;
 import nightmare404.battle.LaboratoryEnemies;
 import nightmare404.battle.LibraryEnemies;
 import nightmare404.battle.LobbyEnemies;
+import nightmare404.battle.QuadrangleEnemies;
 import nightmare404.entity.Loot;
 import nightmare404.entity.Monster;
+import nightmare404.entity.SubjectZero;
+import nightmare404.entity.TreeMonster;
+import nightmare404.map.Quadrangle;
 
 // Where the monsters are. Every room has 2 (a few have 3), the starting room (Room 404) has none,
 // and each floor has a BOSS. Beaten, a boss drops the key to its floor's way out (locked till then)
@@ -18,6 +22,19 @@ import nightmare404.entity.Monster;
 //   Floor 2  BOSS Test Subject X, in the Containment Lab. Drops a Security Keycard (the lab's
 //            lockdown has shut the west stairwell).
 //   Floor 1  BOSS the Principal, behind his counter. Drops the Master Key to the front doors.
+//
+// Most hallway screens have ONE monster too, walking up and down the corridor. Not the one in front
+// of Room 404 (where you start), the library's entrance or the main entrance, nor the stairwells:
+//   Floor 4  a Crawler (Room 402), the Hall Monitor (Room 403)
+//   Floor 3  an Undead (Library West), a Bookworm (Library East)
+//   Floor 2  a Flask Slime (Chemistry Lab), Specimen 7 (Biology Lab)
+//   Floor 1  a Shadow Stalker (Faculty Room), the Substitute (Records Room)
+// They patrol rows 9-10, the middle of the corridor, which the clutter leaves clear (see Hallway.scatter).
+// There's room to slip past along the wall, but not without them noticing.
+//
+// Outside, every tree in the quadrangle (six of them) is a Hollow Oak, asleep until the player comes
+// out. Subject Zero, the FINAL BOSS, sleeps by the south gate until they're all down. They're all
+// fought out on the map, not in a battle screen (see TreeMonster, SubjectZero and battle.LastStand).
 //
 //   Floor 4  Room 402: Desk Mimic, Chalk Wraith      Room 403: 2 Crawlers, Hall Monitor
 //            (Room 404, where you start, is safe)
@@ -51,6 +68,8 @@ public class Encounters {
         e.patrol(f4, "Room 403", FourthFloorEnemies.CRAWLER, 7, 10, 21, 10);         // The middle aisle
         e.patrol(f4, "Room 403", FourthFloorEnemies.CRAWLER, 20, 6, 4, 6);           // Along the front
         e.patrol(f4, "Room 403", FourthFloorEnemies.HALL_MONITOR, 10, 6, 10, 13);    // Down the gap between the desks
+        e.hallway(f4, "Hallway (Room 402)", FourthFloorEnemies.CRAWLER, 4, 10, 12, 10);
+        e.hallway(f4, "Hallway (Room 403)", FourthFloorEnemies.HALL_MONITOR, 10, 9, 4, 9);
         e.boss(f4, "West Stairs", FourthFloorEnemies.BRUTE, 5, 11, 16,               // On the stairs down, filling them
                 new Loot("West Stairwell Key", "The Brute crumbles. In the rubble: the janitor's key, tagged 4F WEST STAIRS.",
                         1, 0, 1, 0),
@@ -63,6 +82,8 @@ public class Encounters {
         e.patrol(f3, "Library (West)", LibraryEnemies.BOOKWORM, 5, 10, 17, 10);       // Along the stacks
         e.patrol(f3, "Library (West)", LibraryEnemies.BOOKWORM, 16, 14, 4, 14);
         e.patrol(f3, "Library (West)", LibraryEnemies.PAPERGOLEM, 4, 6, 20, 6);
+        e.hallway(f3, "Hallway (Library West)", LibraryEnemies.UNDEAD, 5, 9, 12, 9);
+        e.hallway(f3, "Hallway (Library East)", LibraryEnemies.BOOKWORM, 12, 10, 4, 10);
         e.boss(f3, "Library (East)", LibraryEnemies.WHISPERER, 19, 11, 0,             // The far end of the library
                 new Loot("East Stairwell Key", "The whispering stops. A hollowed-out book falls open: the East Stairwell Key.",
                         1, 1, 0, 1),
@@ -74,6 +95,8 @@ public class Encounters {
         e.patrol(f2, "Chemistry Lab", LaboratoryEnemies.LABASSISTANT, 19, 6, 5, 6);    // Along the back wall
         e.patrol(f2, "Biology Lab", LaboratoryEnemies.SPECIMEN7, 4, 11, 21, 11);
         e.patrol(f2, "Biology Lab", LaboratoryEnemies.ANATOMYMODEL, 21, 8, 4, 8);
+        e.hallway(f2, "Hallway (Chemistry Lab)", LaboratoryEnemies.FLASKSLIME, 4, 10, 12, 10);
+        e.hallway(f2, "Hallway (Biology Lab)", LaboratoryEnemies.SPECIMEN7, 10, 9, 4, 9);
         e.boss(f2, "Containment Lab", LaboratoryEnemies.TESTSUBJECTX, 6, 9, 0,         // Among the broken pods
                 new Loot("Security Keycard", "Test Subject X dissolves. Left in the slime: a keycard. LOCKDOWN OVERRIDE.",
                         2, 0, 1, 1),
@@ -86,15 +109,34 @@ public class Encounters {
         e.patrol(f1, "Records Room", LobbyEnemies.SHADOWSTALKER, 9, 6, 9, 12);         // Down the aisles
         e.patrol(f1, "Records Room", LobbyEnemies.SHADOWSTALKER, 16, 10, 16, 6);       //   between the shelves
         e.patrol(f1, "Records Room", LobbyEnemies.MASCOT, 4, 12, 13, 12);
+        e.hallway(f1, "Hallway (Faculty Room)", LobbyEnemies.SHADOWSTALKER, 12, 10, 4, 10);
+        e.hallway(f1, "Hallway (Records Room)", LobbyEnemies.SUBSTITUTE, 6, 9, 12, 9);
         e.boss(f1, "Principal's Office", LobbyEnemies.PRINCIPAL, 10, 7, 0,             // Behind his counter
                 new Loot("Master Key", "The Principal slumps over his desk. On his key ring: the school's Master Key.",
                         2, 1, 1, 1),
                 "The front doors are locked. Only the Principal has the key.");
+
+        // ---------- Outside: the quadrangle's trees ----------
+        for (java.awt.Point tree : Quadrangle.trees()) {
+            e.add(new TreeMonster(QuadrangleEnemies.HOLLOW_OAK, world.quadrangle, ts, tree.x, tree.y));
+        }
+        // At the end of the slime trail from the labs, in front of the south gate
+        world.finalBoss = new SubjectZero(QuadrangleEnemies.SUBJECT_ZERO, world.quadrangle, ts,
+                Quadrangle.ZERO_COL, Quadrangle.ZERO_ROW);
+        e.add(world.finalBoss);
     }
 
     // A monster walking back and forth between (col0, row0), where it starts, and (col1, row1)
     private void patrol(Floor floor, String room, EnemyDef enemy, int col0, int row0, int col1, int row1) {
         add(new Monster(enemy, find(floor, room), false, ts, new int[] {col0, row0}, new int[] {col1, row1}));
+    }
+
+    // A monster patrolling a hallway screen. It's the same monster as in the rooms, but the sign
+    // over its battle says where the fight is: "4F HALLWAY".
+    private void hallway(Floor floor, String screen, EnemyDef enemy, int col0, int row0, int col1, int row1) {
+        EnemyDef here = new EnemyDef(enemy.name(), enemy.sprite(), enemy.maxHp(), floor.number + "F HALLWAY",
+                enemy.notes(), enemy.attacks(), enemy.backdrop());
+        patrol(floor, screen, here, col0, row0, col1, row1);
     }
 
     // The floor's boss, standing guard at (col, row), shifted shiftX pixels to the right (16 = between

@@ -31,10 +31,9 @@ def prop(c, r, w, h, ch, on='.'):
 g(0, 0, W - 1, 0, ' ')                 # top edge (a stone strip is added in code)
 g(0, 1, W - 1, 2, 'w')
 g(0, 3, W - 1, 3, '_')
-g(23, 3, 26, 3, ',')                   # the main entrance, in the middle (placed in code)
-for c in (5, 43):
-    g(c, 3, c + 1, 3, ',')             # the side exits at the two ends, boarded up (placed in code)
-for c in (2, 10, 16, 33, 39, 47):
+g(23, 3, 26, 3, ',')                   # the main entrance, in the middle (placed in code): the only way in.
+                                       # (The boarded-up side exits are inside the stairwells, out of sight.)
+for c in (2, 6, 10, 16, 33, 39, 43, 47):
     t(c, 2, 'W')                       # windows
 for c in (7, 20, 29, 42):
     t(c, 1, 'L')                       # lamps
@@ -42,8 +41,8 @@ for c in (7, 20, 29, 42):
 # ---- Paths ----
 g(1, 4, W - 2, 4, ',')                 # walkway along the building
 g(23, 5, 26, 12, ',')                  # from the main entrance, south to the plaza
-g(5, 5, 6, 16, ',')                    # from the west side exit, south to the west gate path
-g(43, 5, 44, 9, ',')                   # from the east side exit, south to the east gate path
+g(5, 5, 6, 16, ',')                    # from the walkway, south to the west gate path
+g(43, 5, 44, 9, ',')                   # from the walkway, south to the east gate path
 g(36, 10, 37, 13, ',')                 # east gate path -> the plaza
 g(30, 13, 37, 14, ',')                 # ...west to the plaza
 g(19, 13, 30, 21, ',')                 # the central plaza
@@ -81,9 +80,9 @@ for r in (10, 11):
 for c in (24, 25):
     things[H - 1][c] = 'G'             # south gate
 
-# ---- Trees (2 x 2): cover, spread round the edges and the lawns ----
-for c, r in ((9, 6), (17, 6), (2, 11), (30, 5), (37, 6), (40, 15), (46, 15),
-             (1, 21), (1, 27), (28, 26), (47, 23), (21, 32), (28, 32)):
+# ---- Trees (2 x 2): six of them, spread round the edges and the lawns, none right by the entrance.
+#      Every one is a monster that wakes when the player comes outside (see TreeMonster). ----
+for c, r in ((37, 6), (2, 11), (46, 15), (28, 26), (1, 27), (21, 32)):
     prop(c, r, 2, 2, 'T')
 
 # ---- Bushes (2 x 1): either side of each doorway, and of the path south ----
@@ -105,7 +104,7 @@ for c, r in ((20, 15), (29, 15), (20, 19), (29, 19)):
 for c, r in ((18, 12), (34, 11), (18, 21), (30, 22), (42, 7), (45, 7), (4, 7), (7, 7), (21, 25)):
     t(c, r, 'Q'); t(c, r + 1, 'q')     # lamppost: top, then bottom
 
-# ---- The creature's trail: from the east side exit to the south gate ----
+# ---- The creature's trail: from the east end of the building to the south gate ----
 for c, r, ch in ((44, 6, 'f'), (43, 9, 'f'), (40, 11, 'f'), (37, 12, 'f'), (34, 14, 's'), (30, 14, 'f'), (27, 16, 'f'),
                  (25, 19, 'f'), (24, 22, 's'), (25, 25, 'f'), (24, 28, 'f'), (25, 31, 'f'), (24, 34, 's')):
     t(c, r, ch)

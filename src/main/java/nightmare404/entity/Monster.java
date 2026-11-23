@@ -25,6 +25,7 @@ import nightmare404.world.Room;
 // When it's beaten it drops its LOOT on that spot: the key to its floor's way out, and supplies.
 //
 // The monsters have no walking frames (only the standing sprite from their battle), so they bob a little.
+// (The quadrangle's trees are monsters too, with their own rules: see TreeMonster.)
 public class Monster {
     public static final int PATROL_SPEED = 2;           // Pixels per tick (the player walks at 4, sprints at 6)
     public static final int CHASE_SPEED = 3;
@@ -51,11 +52,16 @@ public class Monster {
     private int target;                     // The waypoint it's walking to
     private final ArrayDeque<Point> trail = new ArrayDeque<>();   // Where it's been while chasing
     private int stuck;
-    private final BufferedImage image;      // The battle sprite, scaled once to its size in the world
-    private final int phase;                // So the monsters don't all bob in step
+    protected final BufferedImage image;    // The battle sprite, scaled once to its size in the world
+    protected final int phase;              // So the monsters don't all bob in step
 
     // routeTiles: {col, row} pairs, the first being where it starts. One pair = it stands still.
     public Monster(EnemyDef enemy, Room room, boolean boss, int ts, int[]... routeTiles) {
+        this(enemy, room, boss, ts, boss ? BOSS_HEIGHT : HEIGHT, routeTiles);
+    }
+
+    // The same, drawn `height` pixels tall in the world (for monsters of another size, like the trees)
+    protected Monster(EnemyDef enemy, Room room, boolean boss, int ts, int height, int[]... routeTiles) {
         this.enemy = enemy;
         this.room = room;
         this.boss = boss;
@@ -63,7 +69,7 @@ public class Monster {
         for (int i = 0; i < routeTiles.length; i++) {
             route[i] = new Point(routeTiles[i][0] * ts, routeTiles[i][1] * ts);
         }
-        image = scaled(BattleScreen.Sprites.get(enemy.sprite(), true), boss ? BOSS_HEIGHT : HEIGHT);
+        image = scaled(BattleScreen.Sprites.get(enemy.sprite(), true), height);
         phase = Math.abs(enemy.name().hashCode() + routeTiles[0][0] * 7) % 60;
         reset();
     }
@@ -74,6 +80,16 @@ public class Monster {
         for (Point p : route) p.x += dx;
         reset();
         return this;
+    }
+
+    // How tall it's drawn in the world, in pixels
+    public int drawnHeight() {
+        return image.getHeight();
+    }
+
+    // The player has just walked into this monster's room. Most monsters don't care (they're on
+    // their rounds already); the quadrangle's trees start counting down to waking up.
+    public void playerArrived(Player player) {
     }
 
     // Back to its starting spot, not chasing anyone (after it beats the player, for example)
@@ -87,10 +103,13 @@ public class Monster {
         syncHitbox();
     }
 
+    // One step. player: null if the player isn't on this monster's screen (it's a neighbouring
+    // hallway screen, in view): then it just walks its round (or back to it).
     public void update(Player player) {
         if (defeated || boss || route.length < 2) return;   // Bosses stand guard
-        int dist = (int) Math.hypot(player.solidArea.getCenterX() - solidArea.getCenterX(),
-                                    player.solidArea.getCenterY() - solidArea.getCenterY());
+        int dist = player == null ? Integer.MAX_VALUE
+                : (int) Math.hypot(player.solidArea.getCenterX() - solidArea.getCenterX(),
+                                   player.solidArea.getCenterY() - solidArea.getCenterY());
         if (!chasing && dist < NOTICE_RANGE) {
             chasing = true;
             stuck = 0;
@@ -163,12 +182,12 @@ public class Monster {
     }
 
     // Walls and furniture block it, it never steps into a doorway, and it stays on its own screen
-    private boolean blocked() {
+    protected boolean blocked() {
         return room.map.collides(solidArea) || room.map.doorTouching(solidArea) != null
                 || x < 0 || x > room.map.widthPx() - 32;
     }
 
-    private void syncHitbox() {
+    protected void syncHitbox() {
         solidArea.x = x + 8;
         solidArea.y = y + 16;
     }
@@ -216,7 +235,7 @@ public class Monster {
 
     // The sprite scaled to `height` pixels tall (no wider than 1.3 times that), pixel for pixel for
     // small sprites and smoothly for big ones (the Hall Monitor's picture is 1200 x 960)
-    private static BufferedImage scaled(BufferedImage src, int height) {
+    protected static BufferedImage scaled(BufferedImage src, int height) {
         if (src == null) {
             BufferedImage missing = new BufferedImage(32, height, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = missing.createGraphics();

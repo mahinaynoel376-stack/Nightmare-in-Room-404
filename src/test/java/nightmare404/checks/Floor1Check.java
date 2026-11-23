@@ -69,7 +69,7 @@ public class Floor1Check {
         for (String next : new String[] {"Hallway (Faculty Room)", "Hallway (Principal's Office)", "Hallway (Records Room)", "East Stairs"}) {
             walk("R", 600); check("-> " + next, in(next));
         }
-        go(f1, "Hallway (Principal's Office)", 12, 10); walk("D", 120);
+        go(f1, "Hallway (Principal's Office)", 15, 10); walk("D", 120);   // Col 15: no clutter there (see Hallway.scatter)
         check("the low wall keeps you off the grass", in("Hallway (Principal's Office)") && row() == 11);
 
         System.out.println("4. Office doors");

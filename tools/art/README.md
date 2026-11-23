@@ -23,6 +23,8 @@ Run every command from the **project folder** (`GameProd`). Each script **overwr
 | `make_ground_tiles.py` | the 31 ground-floor tiles | the ground sheet |
 | `make_quad_tiles.py` | the 46 quadrangle tiles **and** the ground floor's 3 grass tiles | the quad sheet |
 | `make_quad_maps.py` | the quadrangle's layout (not images) | nothing |
+| `make_quest_art.py` | Subject Zero, the final boss: awake, striking and hurt (`battle/subject_zero*.png`), and asleep as a heap of leaves | Test Subject X's battle sprites |
+| `make_treant.py` | the Hollow Oak's 3 battle sprites (`battle/treant*.png`): the quadrangle's tree with eyes, a mouth, arms and roots | the tree tiles in `tiles/props` |
 
 ```bat
 python tools/art/make_stair_tiles.py   src/main/resources/tiles/classroom src/main/resources/tiles/stairs stairs_preview.png
@@ -32,7 +34,11 @@ python tools/art/make_library_tiles.py docs/images/floor3-library/library_sheet.
 python tools/art/make_lab_tiles.py     docs/images/floor2-lab/lab_sheet.png docs/images/floor3-library/library_sheet.png src/main/resources/tiles/lab lab_preview.png
 python tools/art/make_ground_tiles.py  docs/images/floor1-ground/ground_sheet.png src/main/resources/tiles/ground ground_preview.png
 python tools/art/make_quad_tiles.py    docs/images/quadrangle/quad_sheet.png src/main/resources/tiles/quad src/main/resources/tiles/ground quad_preview.png
+python tools/art/make_treant.py
+python tools/art/make_quest_art.py     src/main/resources quest_preview.png
 ```
+
+`make_treant.py` reads the tree tiles that `make_prop_tiles.py` makes, so run it after that one.
 
 **The order matters:** run `make_ground_tiles.py` **before** `make_quad_tiles.py`. The quad script replaces the ground floor's grass with the quad sheet's grass, so the building and the quadrangle share the same ground. Running the ground script afterwards would bring the old grass back.
 

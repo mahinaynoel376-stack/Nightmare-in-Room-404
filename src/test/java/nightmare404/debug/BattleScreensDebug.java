@@ -13,6 +13,8 @@ import nightmare404.battle.FourthFloorEnemies;
 import nightmare404.battle.LaboratoryEnemies;
 import nightmare404.battle.LibraryEnemies;
 import nightmare404.battle.LobbyEnemies;
+import nightmare404.battle.QuadrangleEnemies;
+import nightmare404.battle.TypingBattle;
 
 // Debug tool: draws the battle screen of every monster into a PNG (a few seconds into the fight,
 // after the fighters have walked in), so you can check the backgrounds and sprites without playing.
@@ -38,6 +40,9 @@ public class BattleScreensDebug {
             File file = new File(outDir, String.format("%02d_%s.png", n++, enemy.sprite()));
             ImageIO.write(image, "png", file);
         }
-        System.out.println("Saved " + ALL.size() + " battle screens to " + outDir.getAbsolutePath());
+        // The quadrangle's trees are fought with the typing race instead (a word up, timer running)
+        BufferedImage typing = TypingBattle.preview(QuadrangleEnemies.HOLLOW_OAK, 200);
+        ImageIO.write(typing, "png", new File(outDir, String.format("%02d_%s_typing.png", n, QuadrangleEnemies.HOLLOW_OAK.sprite())));
+        System.out.println("Saved " + (ALL.size() + 1) + " battle screens to " + outDir.getAbsolutePath());
     }
 }

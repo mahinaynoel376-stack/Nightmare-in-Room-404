@@ -3,6 +3,10 @@ package nightmare404.map;
 import static nightmare404.tile.TileMap.*;
 import static nightmare404.tile.TileSet.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 import nightmare404.tile.MapBuilder;
 import nightmare404.tile.TileMap;
 import nightmare404.tile.TileSet;
@@ -24,6 +28,10 @@ import nightmare404.tile.TileSet;
 //
 //   |.DD..W..W..W..DD.|     | = half of the pillar between two rooms (cols 0 and 16)
 //    0 2     8     13 16    doors at cols 2-3 and 13-14, windows (or a plaque) in between
+//
+// Every room-front screen has some clutter scattered along its corridor (see scatter), in the
+// style of its floor: broken chairs and desks by the classrooms, books by the library, glass and
+// slime by the labs.
 public class Hallway {
     static final int CAP_ROW = 3;
     static final int WINDOW_ROW = 5;
@@ -44,6 +52,17 @@ public class Hallway {
     // The first door of one list matches the first of the other, and so on (see Player.goThroughDoor).
     public static final int[] ROOM_DOOR_COLS = {5, 18};
     public static final int[] HALL_DOOR_COLS = {2, 13};
+
+    // What's scattered along each floor's corridor (see scatter): things on the floor you can walk
+    // over, then bigger things that block (left against the walls)
+    private static final int[] CLASSROOM_LITTER = {CRACK, BLOOD_SPLAT, BROKEN_GLASS, SCATTERED_BOOKS};
+    private static final int[] CLASSROOM_JUNK = {CHAIR_FALLEN, CHAIR_BROKEN_1, CHAIR_BROKEN_2, DESK_BROKEN_1, DESK_BROKEN_2};
+    private static final int[] LIBRARY_LITTER = {SCATTERED_BOOKS, OPEN_BOOK, CRACK};
+    private static final int[] LIBRARY_JUNK = {BOOK_STACK, CHAIR_FALLEN};
+    private static final int[] LAB_LITTER = {BROKEN_GLASS, SLIME, CRACK};
+    private static final int[] LAB_JUNK = {RUBBLE, CHAIR_FALLEN, DESK_BROKEN_2};
+    private static final int[] OFFICE_LITTER = {CRACK, BROKEN_GLASS, BLOOD_SPLAT};
+    private static final int[] OFFICE_JUNK = {CHAIR_FALLEN, CHAIR_BROKEN_2, RUBBLE};
 
     // Where a screen sits in its floor's row of three room fronts (between the two stairwells).
     // It decides where the pillars go: ONE pillar between two rooms, standing right on the seam
@@ -66,6 +85,7 @@ public class Hallway {
         seamPillars(b, pos);
         copyDoors(b, tiles, classroom);
         windows(b, windowCols, curtainCols, false);
+        scatter(b, 400 + pos.ordinal(), CLASSROOM_LITTER, CLASSROOM_JUNK);
         return b.build(tiles, ts);
     }
 
@@ -97,6 +117,7 @@ public class Hallway {
                 b.set(LAYER_OBJECTS, 10, 10, CRACK);
             }
         }
+        scatter(b, 100 + part.ordinal(), OFFICE_LITTER, OFFICE_JUNK);
         return b.build(tiles, ts);
     }
 
@@ -142,6 +163,7 @@ public class Hallway {
                 }
             }
         }
+        scatter(b, 200 + part.ordinal(), LAB_LITTER, LAB_JUNK);
         return b.build(tiles, ts);
     }
 
@@ -188,7 +210,52 @@ public class Hallway {
                 b.set(LAYER_OBJECTS, 6, 8, BLOOD_DRIPS);
             }
         }
+        scatter(b, 300 + part.ordinal(), LIBRARY_LITTER, LIBRARY_JUNK);
         return b.build(tiles, ts);
+    }
+
+    // Clutter left behind when everyone fled, scattered along the corridor: 3 things lying on the
+    // floor that you can walk over (litter), and 2 bigger ones that block (junk), pushed against the
+    // walls: on the corridor's top row (7) or its bottom row (11). The middle rows (8-10) stay clear,
+    // so the way along is never blocked, and neither are the monsters' patrols (on rows 9-10).
+    // Nothing lands on a cell that already has something, next to another piece, in front of a door
+    // or just above the main entrance. The places are random but always the same for the same seed.
+    private static void scatter(MapBuilder b, long seed, int[] litter, int[] junk) {
+        Random random = new Random(seed);
+        List<int[]> placed = new ArrayList<>();
+        place(b, random, placed, litter, 3, false);
+        place(b, random, placed, junk, 2, true);
+    }
+
+    private static void place(MapBuilder b, Random random, List<int[]> placed, int[] choices, int count, boolean blocks) {
+        for (int tries = 0; count > 0 && tries < 500; tries++) {
+            int col = 1 + random.nextInt(WIDTH - 2);
+            int row = blocks ? (random.nextBoolean() ? CORRIDOR_TOP : CORRIDOR_BOTTOM)
+                             : CORRIDOR_TOP + random.nextInt(CORRIDOR_BOTTOM - CORRIDOR_TOP + 1);
+            if (b.get(LAYER_OBJECTS, col, row) != EMPTY || nextTo(placed, col, row)) continue;
+            if (blocks && (col < 2 || col > LAST - 2 || inFrontOfOpening(b, col, row))) continue;
+            b.set(LAYER_OBJECTS, col, row, choices[random.nextInt(choices.length)]);
+            placed.add(new int[] {col, row});
+            count--;
+        }
+    }
+
+    // True if (col, row) touches (or is) a cell already used
+    private static boolean nextTo(List<int[]> placed, int col, int row) {
+        for (int[] p : placed) {
+            if (Math.abs(p[0] - col) <= 1 && Math.abs(p[1] - row) <= 1) return true;
+        }
+        return false;
+    }
+
+    // True if something stands in the wall right beside (col, row): a door (on the top row) or the
+    // main entrance and its pillars (on the bottom row). Junk there would be in the way.
+    private static boolean inFrontOfOpening(MapBuilder b, int col, int row) {
+        int wallRow = row == CORRIDOR_TOP ? BASE_ROW : RAIL_ROW;
+        for (int c = col - 1; c <= col + 1; c++) {
+            if (b.get(LAYER_OBJECTS, c, wallRow) != EMPTY) return true;
+        }
+        return false;
     }
 
     // Everything every hallway screen has: the front wall, the corridor, the low wall, and what's

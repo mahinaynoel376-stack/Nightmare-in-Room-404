@@ -264,6 +264,45 @@ public class TileMap {
         cache = null;
     }
 
+    // True if a strike can't fly through this cell: something on it that isn't shoot-through (walls,
+    // the bus, trees; not fences, benches or bushes: see TileSet.isShootThrough). Off the map counts too.
+    public boolean stopsShots(int col, int row) {
+        if (row < 0 || row >= rows || col < 0 || col >= cols) return true;
+        for (int[][] layer : layers) {
+            int id = layer[row][col];
+            if (id != EMPTY && !tiles.isShootThrough(id)) return true;
+        }
+        return false;
+    }
+
+    // Changes one tile during the game (a quadrangle tree tearing itself out of the ground, see
+    // TreeMonster). The cell's solidity is worked out again, and only that cell of the cached
+    // picture is redrawn, so a big map like the quadrangle doesn't have to be drawn all over again.
+    public void setTile(int layer, int col, int row, int id) {
+        layers[layer][row][col] = id;
+        boolean blocks = false;
+        for (int[][] l : layers) {
+            int tile = l[row][col];
+            if (tile != EMPTY && tiles.isSolid(tile)) blocks = true;
+        }
+        for (View view : views) {
+            if (view.contains(col, row)) blocks = true;
+        }
+        solid[row][col] = blocks;
+        if (cache != null) {
+            Graphics2D g = cache.createGraphics();
+            for (int[][] l : layers) {
+                if (l[row][col] != EMPTY) g.drawImage(tiles.image(l[row][col]), col * ts, row * ts, null);
+            }
+            Rectangle cell = new Rectangle(col * ts, row * ts, ts, ts);
+            g.setColor(SHADE);
+            for (Rectangle area : shade) {
+                if (area.intersects(cell)) g.fill(area.intersection(cell));
+            }
+            g.dispose();
+        }
+    }
+
     // Draws every layer and the shading into one new image, tile by tile (the old per-frame work)
     private BufferedImage render() {
         BufferedImage image = newScreenImage(cols * ts, rows * ts);

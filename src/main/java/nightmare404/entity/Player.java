@@ -34,14 +34,21 @@ public class Player {
     // The keys the bosses drop (see Encounters): each opens one floor's way down, or out
     public final Set<String> keys = new LinkedHashSet<>();
 
+    // The ids of the clues found (see story.Quests). Like the keys, giving up puts back the ones found
+    // on this floor since arriving, so the clue (and its supplies) can't be kept after a lost battle.
+    public final Set<String> clues = new LinkedHashSet<>();
+
     // Giving up after losing a battle takes the player back to how they came onto the current floor:
-    // the same spot (Room 404 at the start, then the foot of the stairs they arrived by), the same
-    // health, kits, items and keys, and the monsters they've beaten on this floor since are back.
+    // the same spot (Room 404 at the start, then the foot of the stairs they arrived by, or just outside
+    // the main entrance), the same health, kits, items, keys and clues, and the monsters they've beaten
+    // on this floor since are back. Out in the quadrangle, every monster beaten saves progress
+    // (saveProgress) without moving that spot, so going down out there doesn't undo the whole fight.
     public Room checkpointRoom;
     public int checkpointX, checkpointY;
     private int savedHealth, savedKits;
     private int[] savedItems;
     private Set<String> savedKeys;
+    private Set<String> savedClues;
     private Set<Monster> beatenBefore;  // Monsters on this floor already beaten when the player arrived
     public Rectangle solidArea;
 
@@ -101,15 +108,22 @@ public class Player {
         setCheckpoint();
     }
 
-    // Remembers how things are now, as the player comes onto a floor (see respawn)
+    // Remembers where the player is and how things are now, as they come onto a floor (see respawn)
     public void setCheckpoint() {
         checkpointRoom = gp.currentRoom;
         checkpointX = x;
         checkpointY = y;
+        saveProgress();
+    }
+
+    // Remembers how things are now (health, supplies, keys, clues, the monsters beaten), but keeps the
+    // spot giving up takes the player back to
+    public void saveProgress() {
         savedHealth = health;
         savedKits = kits;
         savedItems = new int[] {items.textbooks, items.redPens, items.hallPasses};
         savedKeys = new LinkedHashSet<>(keys);
+        savedClues = new LinkedHashSet<>(clues);
         beatenBefore = new HashSet<>();
         for (Monster m : gp.world.monsters) {
             if (m.room.floor == checkpointRoom.floor && m.defeated) beatenBefore.add(m);
@@ -135,6 +149,8 @@ public class Player {
         items.hallPasses = savedItems[2];
         keys.clear();
         keys.addAll(savedKeys);
+        clues.clear();
+        clues.addAll(savedClues);
         gp.enterRoom(checkpointRoom);
         x = checkpointX;
         y = checkpointY;
@@ -146,6 +162,11 @@ public class Player {
     // Picks up what a boss dropped: its key and its supplies
     public void collect(Loot loot) {
         keys.add(loot.key());
+        addSupplies(loot);
+    }
+
+    // Adds the first aid kits and locker items in this loot (a boss's, or what's found with a clue)
+    public void addSupplies(Loot loot) {
         kits += loot.kits();
         items.textbooks += loot.textbooks();
         items.redPens += loot.redPens();
@@ -261,6 +282,7 @@ public class Player {
         Room next = here.doorLeadsTo(number);
         Rectangle door = next.map.door(here.doorArrivesAt(number));
         gp.enterRoom(next);
+        boolean goingOutside = next.outdoors && !here.outdoors;
 
         x = door.x + door.width / 2 - size / 2;            // Centred on the door
         if (next.map.isFloorAbove(door)) {
@@ -268,6 +290,13 @@ public class Player {
         } else {
             y = door.y + door.height - solidOffsetY + 2;   // Hallway: hitbox starts 2 px below the door
         }
+        syncHitbox();
+        if (goingOutside) setCheckpoint();   // Going down out there brings you back to the main entrance
+    }
+
+    // Shoves the player (dx, dy) pixels, stopping at walls: knocked back by a monster outside
+    public void push(int dx, int dy) {
+        moveWithCollision(dx, dy);
         syncHitbox();
     }
 

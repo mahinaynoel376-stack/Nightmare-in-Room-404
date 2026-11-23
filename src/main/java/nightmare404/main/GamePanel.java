@@ -2,15 +2,29 @@ package nightmare404.main;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import javax.swing.*;
 
 import nightmare404.battle.BattleScreen;
 import nightmare404.battle.BattleScreen.BattleResult;
+import nightmare404.battle.LastStand;
+import nightmare404.battle.TypingBattle;
+import nightmare404.entity.Clue;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
+import nightmare404.entity.TreeMonster;
+import nightmare404.story.Director;
+import nightmare404.story.Story;
 import nightmare404.tile.TileSet;
 import nightmare404.ui.BottomUI;
+import nightmare404.ui.DialogueBox;
+import nightmare404.ui.EndingScreen;
+import nightmare404.ui.Journal;
+import nightmare404.ui.Lighting;
+import nightmare404.ui.QuestTracker;
 import nightmare404.world.Room;
 import nightmare404.world.World;
 
@@ -33,9 +47,35 @@ public class GamePanel extends JPanel implements Runnable {
     public boolean upPressed, downPressed, leftPressed, rightPressed;
     public boolean sprintPressed; // Shift held down
 
+    // The other keys. Swing hears them on its own thread, so each one is just noted here (volatile) and
+    // the game loop acts on it in its next frame (update):
+    //   E, Enter, Space  read on in the dialogue box, read a page in the journal, play again at the end.
+    //                    Holding one down makes Windows repeat it, which would race through the lines,
+    //                    so a press only counts again after the key's been let go (advanceHeld).
+    //   Space            outside: focus (see LastStand). Letters typed while focusing go to `typed`.
+    //   J, Esc           open and close the journal (Esc also stops focusing). Backspace drops a word.
+    //   1-4              outside: use a First Aid Kit, an Old Textbook, a Red Pen, a Hall Pass.
+    private volatile boolean advanceHeld, spaceHeld, advanceQueued, spaceQueued, journalQueued, backQueued, unlockQueued;
+    private volatile int itemQueued;
+    private final ConcurrentLinkedQueue<Character> typed = new ConcurrentLinkedQueue<>();
+    private boolean wasUp, wasDown;   // W and S a frame ago, so the journal moves once per press
+
     // Entities (public: the UI and the checks in other packages read the player)
     public Player flor;
     BottomUI bottomUI;
+
+    // The story: the dialogue box, the Director that decides when the story happens, the journal (J),
+    // the quest tracker (top right), the fight outside, and once Subject Zero is beaten, the ending
+    public final DialogueBox dialogue = new DialogueBox();
+    public Director director;
+    public Journal journal;
+    public LastStand lastStand;
+    QuestTracker tracker;
+    EndingScreen endingScreen;
+    public volatile boolean ended;          // The game is over: the ending screen is showing
+    public boolean endedRemembered;         // ...and it's the good ending (every clue found)
+    private long endedTicks;
+    private boolean talking;                // The dialogue box was open last frame
 
     // The world is a linked list of rooms; currentRoom points at the node the player is in.
     // Moving to another room just means following one of its links (left, right or door).
@@ -67,6 +107,11 @@ public class GamePanel extends JPanel implements Runnable {
         currentRoom = world.start;
         flor = new Player(this);
         bottomUI = new BottomUI(this);
+        director = new Director(this);
+        journal = new Journal(this);
+        lastStand = new LastStand(this);
+        tracker = new QuestTracker(this);
+        endingScreen = new EndingScreen(this);
         setupKeyBindings();
         lastRoom = currentRoom;
         // Read the battle's 170,000-word dictionary now, in the background, so the first battle opens at once
@@ -132,7 +177,45 @@ public class GamePanel extends JPanel implements Runnable {
             // releasing it reports it as up, so binding both versions covers either case.
             im.put(KeyStroke.getKeyStroke(mod + "pressed SHIFT"), "sprintPress");
             im.put(KeyStroke.getKeyStroke(mod + "released SHIFT"), "sprintRelease");
+
+            im.put(KeyStroke.getKeyStroke(mod + "pressed E"), "advancePress");
+            im.put(KeyStroke.getKeyStroke(mod + "released E"), "advanceRelease");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed ENTER"), "advancePress");
+            im.put(KeyStroke.getKeyStroke(mod + "released ENTER"), "advanceRelease");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed SPACE"), "spacePress");
+            im.put(KeyStroke.getKeyStroke(mod + "released SPACE"), "spaceRelease");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed J"), "journal");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed ESCAPE"), "back");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed BACK_SPACE"), "unlock");
+            for (int n = 1; n <= 4; n++) {
+                im.put(KeyStroke.getKeyStroke(mod + "pressed " + n), "item" + n);
+                im.put(KeyStroke.getKeyStroke(mod + "pressed NUMPAD" + n), "item" + n);
+            }
         }
+        // Letters as they're typed (a separate kind of key event from the presses above, so W A S D
+        // still walk): they only matter outside, while focusing
+        for (char c = 'a'; c <= 'z'; c++) {
+            im.put(KeyStroke.getKeyStroke(c), "typed");
+            im.put(KeyStroke.getKeyStroke(Character.toUpperCase(c)), "typed");
+        }
+        am.put("advancePress", action(() -> { if (!advanceHeld) advanceQueued = true; advanceHeld = true; }));
+        am.put("advanceRelease", action(() -> advanceHeld = false));
+        am.put("spacePress", action(() -> { if (!spaceHeld) spaceQueued = true; spaceHeld = true; }));
+        am.put("spaceRelease", action(() -> spaceHeld = false));
+        am.put("journal", action(() -> journalQueued = true));
+        am.put("back", action(() -> backQueued = true));
+        am.put("unlock", action(() -> unlockQueued = true));
+        for (int n = 1; n <= 4; n++) {
+            int item = n;
+            am.put("item" + n, action(() -> itemQueued = item));
+        }
+        am.put("typed", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String c = e.getActionCommand();
+                if (c != null && c.length() == 1) typed.add(c.charAt(0));
+            }
+        });
 
         // Map Actions to toggle booleans
         am.put("upPress", new MoveAction("up", true));
@@ -146,6 +229,16 @@ public class GamePanel extends JPanel implements Runnable {
         am.put("leftRelease", new MoveAction("left", false));
         am.put("rightRelease", new MoveAction("right", false));
         am.put("sprintRelease", new MoveAction("sprint", false));
+    }
+
+    // A key action that just runs this
+    private static AbstractAction action(Runnable run) {
+        return new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                run.run();
+            }
+        };
     }
 
     private class MoveAction extends AbstractAction {
@@ -205,22 +298,85 @@ public class GamePanel extends JPanel implements Runnable {
 
     public void update() {
         if (inBattle) return;            // The world waits while a battle is on
+        boolean advance = advanceQueued, space = spaceQueued, toJournal = journalQueued, back = backQueued,
+                unlock = unlockQueued;
+        int item = itemQueued;
+        advanceQueued = spaceQueued = journalQueued = backQueued = unlockQueued = false;
+        itemQueued = 0;
+        List<Character> letters = new ArrayList<>();
+        for (Character c; (c = typed.poll()) != null; ) letters.add(c);
+
+        if (ended) {                     // The ending screen: Enter plays again
+            endedTicks++;
+            if ((advance || space) && endedTicks > 150) restart();
+            return;
+        }
+        if (dialogue.isOpen()) {         // The world waits while someone's talking
+            upPressed = downPressed = leftPressed = rightPressed = false;
+            dialogue.update(advance || space);
+            talking = true;
+            return;
+        }
+        if (talking) {                   // Just finished reading: the monsters give you a moment
+            talking = false;
+            calm = Math.max(calm, 30);
+        }
+        boolean outside = currentRoom.outdoors;
+        if (journal.isOpen()) {
+            updateJournal(advance || space, toJournal || back);
+            return;
+        }
+        if (toJournal && !(outside && lastStand.focused())) {   // (While focusing, J is just a letter)
+            journal.open();
+            releaseKeys();
+            return;
+        }
+        director.update();               // The opening scene, or somewhere new for the first time
+        if (dialogue.isOpen()) return;
+        if (outside) {                   // The fight outside: focus, type, use items
+            if (space || back && lastStand.focused()) lastStand.toggleFocus();
+            if (unlock) lastStand.dropTarget();
+            if (item > 0) lastStand.useItem(item);
+            for (char c : letters) lastStand.type(c);
+            if (lastStand.focused()) upPressed = downPressed = leftPressed = rightPressed = false;
+        }
+
         ticks++;
         if (noticeTicks > 0) noticeTicks--;
         flor.update();
         if (currentRoom != lastRoom) {   // Just walked into a room: the monsters give you a moment
+            for (Monster m : lastRoom.monsters) m.chasing = false;   // The ones left behind stop chasing
+            if (lastRoom.outdoors || currentRoom.outdoors) lastStand.reset();   // Going out, or back in
             lastRoom = currentRoom;
             calm = Math.max(calm, 30);
+            for (Monster m : currentRoom.monsters) m.playerArrived(flor);   // (The quadrangle's trees start to stir)
+        }
+        for (Clue clue : currentRoom.clues) {   // Walking over a clue picks it up
+            if (!flor.clues.contains(clue.id) && clue.area().intersects(flor.solidArea)) {
+                director.clueFound(clue);
+                return;
+            }
         }
         if (calm > 0) {
             calm--;
             return;
         }
+        if (currentRoom.outdoors) {      // Outside, the monsters are fought on the map
+            lastStand.update();
+            return;
+        }
+        // The neighbouring screens are in view (the hallway screens are narrower than the view), so
+        // their monsters carry on walking their rounds; only the ones on this screen can see the player
+        for (Room side : new Room[] {currentRoom.left, currentRoom.right}) {
+            if (side == null) continue;
+            for (Monster m : side.monsters) m.update(null);
+        }
         for (Monster m : currentRoom.monsters) {
             if (m.lootUnder(flor)) {     // Walking over what a boss dropped picks it up
                 m.lootTaken = true;
                 flor.collect(m.loot);
-                showNotice(m.loot.found() + "\n" + m.loot.supplies(), 330);
+                director.lootTaken(m);
+                return;
             }
             if (m.defeated) continue;
             m.update(flor);
@@ -231,23 +387,85 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
-    // The player touched a monster: pause the world and open its battle
+    // The player touched a monster: a floor's boss has its say first (see Director), then the world
+    // pauses and its battle opens
     private void startBattle(Monster m) {
-        inBattle = true;
         releaseKeys();                   // Keys let go during the battle would otherwise stay "held"
-        battleStarter.accept(m);
+        director.beforeBattle(m, () -> {
+            inBattle = true;
+            battleStarter.accept(m);
+        });
     }
 
-    // Shows the battle in this window instead of the school, and puts the school back when it's over
+    // The journal is open: W and S choose a clue, E reads it again, J or Esc closes it
+    private void updateJournal(boolean advance, boolean close) {
+        if (upPressed && !wasUp) journal.move(-1);
+        if (downPressed && !wasDown) journal.move(1);
+        wasUp = upPressed;
+        wasDown = downPressed;
+        if (close) {
+            journal.close();
+            releaseKeys();
+        } else if (advance && journal.chosen() != null) {
+            journal.close();
+            director.reread(journal.chosen(), journal::open);   // Back to the journal after reading
+        }
+    }
+
+    // Outside, the player's health ran out (see LastStand): back to the main entrance with the monsters
+    // beaten so far still beaten, and at least half health. The trees still standing start over.
+    public void loseOutside() {
+        flor.respawn();
+        flor.health = Math.max(flor.health, LastStand.RESPAWN_HP);
+        lastStand.reset();
+        for (Monster m : currentRoom.monsters) m.playerArrived(flor);
+        lastRoom = currentRoom;
+        calm = 60;
+        releaseKeys();
+        showNotice(currentRoom.outdoors ? Story.WAKE_OUTSIDE : Story.WAKE_INSIDE);
+    }
+
+    // Subject Zero is beaten and the last words are said: show the ending screen
+    public void end(boolean remembered) {
+        endedRemembered = remembered;
+        endedTicks = 0;
+        ended = true;
+    }
+
+    // Starts a new game in the same window (from the ending screen)
+    private void restart() {
+        isRunning = false;               // This game's loop stops after this frame
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            if (frame == null) return;   // No window (the checks)
+            GamePanel fresh = new GamePanel();
+            frame.setContentPane(fresh);
+            frame.revalidate();
+            frame.repaint();
+            fresh.requestFocusInWindow();
+            fresh.startGameThread();
+        });
+    }
+
+    // Shows the battle in this window instead of the school, and puts the school back when it's over.
+    // (The quadrangle's monsters are fought out on the map instead: see LastStand. The typing race is
+    // kept for any tree that does start a battle.) A floor's boss may start weakened (see Director).
     private void openBattle(Monster m) {
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
-        BattleScreen.fight(frame, m.enemy, flor.health, flor.kits, flor.items, result -> {
+        Consumer<BattleResult> back = result -> {
             frame.setContentPane(this);
             frame.revalidate();
             frame.repaint();
             requestFocusInWindow();
             endBattle(m, result);
-        });
+        };
+        if (typingFight(m)) TypingBattle.fight(frame, m.enemy, flor.health, flor.kits, flor.items, back);
+        else BattleScreen.fight(frame, m.enemy, director.foeStartHp(m), flor.health, flor.kits, flor.items, back);
+    }
+
+    // True if this monster's fight is a typing race (TypingBattle) instead of the word battle
+    public static boolean typingFight(Monster m) {
+        return m instanceof TreeMonster;
     }
 
     // After a battle. Won: the monster is gone for good (a boss leaves its loot where it stood), and
@@ -258,10 +476,10 @@ public class GamePanel extends JPanel implements Runnable {
             m.defeated = true;
             flor.health = Math.max(1, result.heroHp());
             flor.kits = result.kitsLeft();
-            if (m.boss) showNotice("The " + m.enemy.name() + " falls. Something glints where it stood...");
+            director.afterWin(m);        // A boss leaves its loot where it stood
         } else {
             flor.respawn();
-            showNotice("You wake up with a gasp, back where you came onto this floor...");
+            showNotice(currentRoom.outdoors ? Story.WAKE_OUTSIDE : Story.WAKE_INSIDE);
         }
         lastRoom = currentRoom;
         calm = 60;
@@ -295,9 +513,17 @@ public class GamePanel extends JPanel implements Runnable {
             drawNeighbour(view, r, rightEdge);
             rightEdge += r.map.widthPx();
         }
-        flor.draw(view);
+        for (Clue clue : currentRoom.clues) {
+            if (!flor.clues.contains(clue.id)) clue.draw(view, ticks);
+        }
+        if (!(currentRoom.outdoors && lastStand.hidePlayer(ticks))) flor.draw(view);   // (Blinks just after a hit)
         drawMonsters(view, currentRoom, false);
+        if (currentRoom.outdoors) lastStand.drawWorld(view, camX, camY, ticks);
         view.dispose();
+
+        // The light: flickering in the hallways, dimmer in the rooms (over the world, under the text and UI)
+        Lighting.draw(g2d, currentRoom, flor.x + tileSize / 2 - camX, flor.y + tileSize / 4 - camY, ticks,
+                screenWidth, screenHeight - tileSize);
 
         // The room's name stays fixed on screen (drawn after the camera shift is undone)
         g2d.setColor(Color.WHITE);
@@ -305,10 +531,15 @@ public class GamePanel extends JPanel implements Runnable {
         String where = currentRoom.outdoors ? "Outside" : "Floor " + currentRoom.floor.number;
         g2d.drawString(currentRoom.name + "  |  " + where, 20, 40);
 
-        if (noticeTicks > 0) drawNotice(g2d);
+        if (currentRoom.outdoors && !ended) lastStand.drawHud(g2d);
+        tracker.draw(g2d);
+        if (noticeTicks > 0 && !dialogue.isOpen()) drawNotice(g2d);
+        dialogue.draw(g2d, screenWidth, screenHeight - tileSize);
 
-        // UI in the bottom row (fixed on screen, drawn last so nothing covers it)
+        // UI in the bottom row (fixed on screen, drawn after the world so nothing covers it)
         bottomUI.draw(g2d);
+        journal.draw(g2d);
+        if (ended) endingScreen.draw(g2d, endedRemembered, endedTicks, director.cluesFound(), director.cluesInAll());
 
         // Flushes graphic pipeline (prevents stutter on non-Windows OS)
         Toolkit.getDefaultToolkit().sync();

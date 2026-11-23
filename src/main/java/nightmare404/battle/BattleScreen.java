@@ -46,6 +46,21 @@ public class BattleScreen {
     static final int HALL_PASS_PER_USE = 50;      // Hall Pass: 50% chance to dodge the next enemy attack
     static final int HALL_PASS_MAX = 100;         //   ...stacking up to 100% (a sure dodge)
 
+    // ---- The turn timer ----
+    // The player has a limited time to make their move. When it runs out, the word they were spelling
+    // is dropped and the monster takes its turn. Weak monsters give plenty of time, strong ones very
+    // little: it goes by the monster's health, TURN_MOST seconds for 80 HP or less (the 4th floor's),
+    // 5 seconds less for every 5 HP more, and never less than TURN_LEAST (the Principal, at 120 HP).
+    // The clock only runs on the player's turn (not while the monster attacks, nor with the menu open);
+    // Shuffle and the items are free, so they don't stop it.
+    static final boolean TURN_TIMER = true;      // false turns it off
+    static final int TURN_MOST = 45, TURN_LEAST = 15;
+    static final int TICKS_PER_SECOND = 62;      // The battle's clock ticks every 16 ms
+
+    public static int turnSeconds(EnemyDef enemy) {
+        return Math.max(TURN_LEAST, Math.min(TURN_MOST, TURN_MOST - (enemy.maxHp() - 80)));
+    }
+
     // ---- Atmosphere ----
     static final boolean LIGHT_FLICKER = true;   // the ceiling light flickers now and then; false turns it off
 
@@ -100,6 +115,15 @@ public class BattleScreen {
        // One fight, in the game's window: shows the battle in place of whatever the window shows now,
     // and calls whenDone with the result when the player wins, or loses and gives up.
     // (The battle keeps its own copy of hp and kits; items are used up in place.)
+    // The same, with the monster starting the fight already hurt: foeHp out of its maxHp. A floor's boss
+    // starts weaker for every clue found on that floor (see nightmare404.story.Quest). Try Again keeps it.
+    public static void fight(JFrame frame, EnemyDef enemy, int foeHp, int hp, int kits, Items items, Consumer<BattleResult> whenDone) {
+        BattlePanel battle = new BattlePanel(enemy, foeHp, hp, kits, items, whenDone);
+        frame.setContentPane(battle);
+        frame.revalidate();
+        battle.start();
+    }
+
     public static void fight(JFrame frame, EnemyDef enemy, int hp, int kits, Items items, Consumer<BattleResult> whenDone) {
         fightInOrder(frame, List.of(enemy), 0, hp, kits, items, whenDone);
     }
@@ -115,6 +139,14 @@ public class BattleScreen {
         battle.paint(g);
         g.dispose();
         return image;
+    }
+
+    // For the checks: a fight where the player does nothing for `seconds` seconds. Returns how many
+    // turns the monster took meanwhile (it gets one every time the player's time runs out).
+    public static int enemyTurnsWhileIdle(EnemyDef enemy, double seconds) {
+        BattlePanel battle = new BattlePanel(enemy, HERO_MAX_HP, START_KITS, new Items(), null);
+        for (int i = 0; i < seconds * TICKS_PER_SECOND; i++) battle.tick();
+        return battle.enemyTurns;
     }
 
     static void fightInOrder(JFrame frame, List<EnemyDef> monsters, int index, int hp, int kits, Items items,
@@ -262,6 +294,7 @@ public class BattleScreen {
 
         final EnemyDef enemy;
         final int startHp, startKits;
+        final int startFoeHp;   // The monster's health when the fight begins (less than its max for a weakened boss)
         final Consumer<BattleResult> onFinish;
         final Set<String> dict = dictionary();
         final Random rng = new Random(), fx = new Random();
@@ -280,6 +313,9 @@ public class BattleScreen {
         final List<FlyTile> flying = new ArrayList<>();
         double flyT = -1;
         boolean menuOpen, lost, won, finished;
+        final int turnTicks;           // How long the player's turn lasts (see turnSeconds)...
+        int turnLeft;                  // ...and how much of it is left
+        int enemyTurns;                // How many turns the monster has taken (for the checks)
         Point mouse = new Point(-1, -1);
         long ticks;
         javax.swing.Timer timer;
@@ -291,7 +327,13 @@ public class BattleScreen {
         BattlePanel(EnemyDef enemy) { this(enemy, HERO_MAX_HP, START_KITS, new Items(1, 1, 1), null); }
 
         BattlePanel(EnemyDef enemy, int heroHp, int kits, Items items, Consumer<BattleResult> onFinish) {
+            this(enemy, enemy.maxHp(), heroHp, kits, items, onFinish);
+        }
+
+        BattlePanel(EnemyDef enemy, int foeHp, int heroHp, int kits, Items items, Consumer<BattleResult> onFinish) {
             this.enemy = enemy;
+            this.startFoeHp = Math.max(1, Math.min(enemy.maxHp(), foeHp));
+            this.turnTicks = turnSeconds(enemy) * TICKS_PER_SECOND;
             this.startHp = Math.max(1, Math.min(HERO_MAX_HP, heroHp));
             this.startKits = Math.max(0, kits);
             this.onFinish = onFinish;
@@ -317,10 +359,11 @@ public class BattleScreen {
             script.clear(); step = null; flying.clear(); flyT = -1; floats.clear(); bannerLife = 0;
             menuOpen = lost = won = false;
             hero.max = HERO_MAX_HP; hero.reset(startHp);
-            foe.max = enemy.maxHp(); foe.reset(foe.max);
+            foe.max = enemy.maxHp(); foe.reset(startFoeHp);
             kits = startKits;
             if (startItems != null) { items.textbooks = startItems[0]; items.redPens = startItems[1]; items.hallPasses = startItems[2]; }
             booksActive = pensActive = passesActive = 0;
+            turnLeft = turnTicks;
             word.clear();
             for (int i = 0; i < 16; i++) newTile(i);
             fixVowels(allIndices());
@@ -366,6 +409,7 @@ public class BattleScreen {
                 if (step.start() != null) step.start().run();
                 if (stepTimer <= 0) step = null;
             }
+            if (TURN_TIMER && canAct() && --turnLeft <= 0) timeUp();   // The player's clock runs on their turn
             for (Fighter f : new Fighter[] { hero, foe }) {
                 if (f.shake > 0) f.shake--;
                 if (f.lunge > 0) f.lunge--;
@@ -538,6 +582,14 @@ public class BattleScreen {
             enemyTurn();
         }
 
+        // The player's time ran out: the word they were spelling is dropped, and the monster attacks
+        void timeUp() {
+            clearWord();
+            showBanner("Too slow! The " + enemy.name() + " doesn't wait.", 60);
+            addFloat(HERO_X - 45, 120, "Time's up!", new Color(235, 170, 60));
+            enemyTurn();
+        }
+
         void useKit() {
             if (!canAct()) return;
             if (kits == 0) { showBanner("No first aid kits left.", 70); return; }
@@ -556,6 +608,7 @@ public class BattleScreen {
         }
 
         void enemyTurn() {
+            enemyTurns++;
             Attack a = pickAttack();
             then(28, null);
             then(18, () -> {
@@ -565,7 +618,7 @@ public class BattleScreen {
                 foe.attackPose = 40;
             });
             then(40, () -> enemyHits(a));
-            then(0, () -> { if (hero.hp <= 0) heroDefeated(); });
+            then(0, () -> { if (hero.hp <= 0) heroDefeated(); else turnLeft = turnTicks; });   // The player's turn again: a fresh clock
         }
 
         int enemyDamage(Attack a) { return a.damage() <= 0 ? 0 : Math.max(1, (int) Math.round(a.damage() * (1 - blockNow()))); }
@@ -669,6 +722,7 @@ public class BattleScreen {
             drawFighter(g, hero, true);
             drawFighter(g, foe, false);
             drawAtmosphere(g);
+            drawTurnTimer(g);
             drawTopBar(g);
             drawWord(g);
             drawBanner(g);
@@ -736,6 +790,42 @@ public class BattleScreen {
                 g.fillRect(0, TOP_H, W, STAGE_BOTTOM - TOP_H);
             }
             g.setClip(oldClip);
+        }
+
+        /** The turn timer, on the floor between the fighters just above the letters: a fuse that burns
+         *  down, green, then amber, then red and flashing for the last 5 seconds. Only on the player's turn. */
+        void drawTurnTimer(Graphics2D g) {
+            if (!TURN_TIMER || won || lost || busy()) return;
+            double left = Math.max(0, (double) turnLeft / turnTicks);
+            int secs = (turnLeft + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND;
+            boolean hurry = secs <= 5;
+            int bw = 250, bx = 400 - bw / 2 + 10, by = STAGE_BOTTOM - 22, bh = 10;
+            g.setColor(new Color(0, 0, 0, 175));
+            g.fillRoundRect(bx - 34, by - 9, bw + 86, 28, 12, 12);
+            // A little clock face
+            double cx = bx - 18, cy = by + 5;
+            g.setColor(hurry ? new Color(220, 60, 50) : PALE);
+            g.setStroke(new BasicStroke(2f));
+            g.draw(el(cx - 8, cy - 8, 16, 16));
+            double a = -Math.PI / 2 + 2 * Math.PI * (1 - left);
+            g.draw(new Line2D.Double(cx, cy, cx + Math.cos(a) * 6, cy + Math.sin(a) * 6));
+            g.setStroke(new BasicStroke(1f));
+            // The fuse
+            g.setColor(new Color(40, 34, 30));
+            g.fillRect(bx, by, bw, bh);
+            Color c = left > 0.5 ? new Color(110, 190, 90) : left > 0.25 ? new Color(226, 170, 60) : new Color(216, 52, 42);
+            if (hurry && (ticks / 8) % 2 == 0) c = new Color(255, 120, 100);
+            int w = (int) Math.round(bw * left);
+            g.setColor(c);
+            g.fillRect(bx, by, w, bh);
+            g.setColor(new Color(255, 255, 255, 45));
+            g.fillRect(bx, by, w, bh / 3);
+            if (w > 0) {                                     // The spark at the burning end
+                g.setColor(new Color(255, 230, 150, 120 + (int) (100 * Math.abs(Math.sin(ticks / 4.0)))));
+                g.fill(el(bx + w - 4, by - 2, 8, bh + 4));
+            }
+            g.setFont(new Font(MONO, Font.BOLD, hurry ? 17 : 15));
+            shadowText(g, secs + "s", bx + bw + 10, by + 10, hurry ? new Color(255, 110, 90) : PALE);
         }
 
         void drawFighter(Graphics2D g, Fighter f, boolean isHero) {

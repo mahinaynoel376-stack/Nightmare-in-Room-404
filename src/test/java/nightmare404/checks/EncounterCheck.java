@@ -4,21 +4,34 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import nightmare404.battle.BattleScreen;
+import nightmare404.battle.BattleScreen.Attack;
 import nightmare404.battle.BattleScreen.BattleResult;
 import nightmare404.battle.BattleScreen.EnemyDef;
+import nightmare404.battle.BattleScreen.Items;
+import nightmare404.battle.FourthFloorEnemies;
+import nightmare404.battle.LobbyEnemies;
+import nightmare404.battle.QuadrangleEnemies;
+import nightmare404.battle.TypingBattle;
+import nightmare404.battle.TypingBattle.Duel;
 import nightmare404.debug.BattleScreensDebug;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
+import nightmare404.entity.TreeMonster;
 import nightmare404.main.GamePanel;
+import nightmare404.map.Quadrangle;
+import nightmare404.tile.TileMap;
+import nightmare404.tile.TileSet;
 import nightmare404.world.Floor;
 import nightmare404.world.Room;
 
 // The monsters and their battles: where they are, how they move, what touching one does, winning
 // and losing (giving up puts the floor back as the player found it), the bosses (the Brute on the
-// stairs), the keys they drop and the locked ways out, and that every battle's pictures and words load.
+// stairs), the keys they drop and the locked ways out, the quadrangle's trees and their typing race,
+// and that every battle's pictures and words load.
 // No window opens: starting a battle is swapped for "remember which monster it was".
 public class EncounterCheck {
     static GamePanel gp; static Player p; static int fails = 0;
@@ -50,15 +63,32 @@ public class EncounterCheck {
         for (Floor f = gp.world.top; f != null; f = f.below) {
             check("Floor " + f.number + " has a boss: " + (f.boss == null ? "none" : f.boss.enemy.name() + " in " + f.boss.room.name), f.boss != null && f.boss.boss);
         }
+        int hallwayMonsters = 0;
         for (Room r : rooms) {
             long regular = r.monsters.stream().filter(m -> !m.boss).count();
-            if (regular > 0) check(r.name + ": " + regular + " monsters (2 or 3)", regular >= 2 && regular <= 3);
+            if (r.floor.indexOf(r) >= 0) {           // The hallway list: hallway screens and stairwells
+                hallwayMonsters += regular;
+                if (regular > 0) check(r.name + " (Floor " + r.floor.number + "): one monster patrolling", regular == 1
+                        && r.name.startsWith("Hallway"));
+            } else if (regular > 0 && !r.outdoors) {     // (The quadrangle's trees: see section 8)
+                check(r.name + ": " + regular + " monsters (2 or 3)", regular >= 2 && regular <= 3);
+            }
         }
-        check("no hallway screen has a regular monster", rooms.stream().filter(r -> r.name.startsWith("Hallway")).allMatch(r -> r.monsters.isEmpty()));
+        check(hallwayMonsters + " hallway screens have a monster (2 a floor)", hallwayMonsters == 8);
+        check("the hallway outside Room 404 is safe", gp.world.floor4.find("Hallway (Room 404)").monsters.isEmpty());
+        check("so are the library's entrance and the main entrance", gp.world.floor3.find("Hallway (Library Entrance)").monsters.isEmpty()
+                && gp.world.floor1.find("Hallway (Principal's Office)").monsters.isEmpty());
+        for (Monster m : gp.world.monsters) {
+            if (m.room.floor.indexOf(m.room) >= 0 && !m.boss) {
+                check(m.enemy.name() + " in " + m.room.name + ": its battle's sign says " + m.enemy.room(),
+                        m.enemy.room().equals(m.room.floor.number + "F HALLWAY"));
+            }
+        }
         check(gp.world.monsters.size() + " monsters in all", gp.world.monsters.size() >= 20);
 
         System.out.println("2. Every monster stands somewhere it can walk, away from the doors, and walks its whole route");
         for (Monster m : gp.world.monsters) {
+            if (m instanceof TreeMonster) continue;      // Asleep inside a tree: see section 8
             String who = m.enemy.name() + " (" + m.room.name + ")";
             check(who + " starts on a walkable tile", !m.room.map.collides(m.solidArea));
             double nearestDoor = Double.MAX_VALUE;
@@ -137,7 +167,7 @@ public class EncounterCheck {
         started = null; ticks(70);
         check("standing on it picks it up: the West Stairwell Key", p.keys.contains("West Stairwell Key") && f4.boss.lootTaken);
         check("...and supplies: +1 kit (4), +1 Red Pen (" + p.items.redPens + ")", p.kits == 4 && p.items.redPens == pens + 1);
-        check("...and the player reads what they found", gp.notice().contains("janitor's key"));
+        check("...and the player reads what they found", gp.dialogue.said("janitor's key"));
         check("with the key, the way down is open", !f4.locked(p.keys));
         hold("U", 40);                           // Long enough to climb the flight, not to come back up
         check("the stairs take the player down to Floor 3", gp.currentRoom.floor == f3);
@@ -195,7 +225,123 @@ public class EncounterCheck {
         put(hall, 7, 10); hold("D", 120);
         check("Floor 1: with it, it leads outside", gp.currentRoom == gp.world.quadrangle);
 
-        System.out.println("8. The battles themselves");
+        System.out.println("8. The quadrangle's trees wake when you come outside, and come after you");
+        Room quad = gp.world.quadrangle;
+        List<TreeMonster> trees = new ArrayList<>();
+        for (Monster m : quad.monsters) if (m instanceof TreeMonster t) trees.add(t);
+        check(trees.size() + " trees in the quadrangle (fewer than before: 13), and every one is a monster",
+                trees.size() == 6 && trees.size() == Quadrangle.trees().size()
+                && quad.monsters.size() == trees.size() + 1 && quad.monsters.contains(gp.world.finalBoss));
+        check("each one stands where a tree is drawn on the map", trees.stream().allMatch(EncounterCheck::treeOnMap));
+        put(hall, 7, 10); gp.update();               // Back inside, then out again through the main entrance
+        put(quad, 24, 5); started = null; ticks(1);
+        check("just outside, they're all still asleep: just trees",
+                trees.stream().allMatch(t -> t.asleep() && treeOnMap(t) && !t.touches(p)));
+        ticks(80);
+        check("a moment later, they still are", trees.stream().allMatch(TreeMonster::asleep));
+        TreeMonster nearest = trees.get(0);
+        for (TreeMonster t : trees) if (dist(t) < dist(nearest)) nearest = t;
+        int waited = 81;
+        while (nearest.asleep() && waited < 1000) { gp.update(); waited++; }
+        check("then the nearest wakes (" + waited + " frames after coming out) and pops out", nearest.popping());
+        check("  its tree leaves the map, and the ground where its trunk stood is torn up", !treeOnMap(nearest)
+                && quad.map.tileAt(TileMap.LAYER_OBJECTS, nearest.treeCol(), nearest.treeRow() + 1) == TileSet.CRACK
+                && !quad.map.isSolid(nearest.treeCol(), nearest.treeRow() + 1));
+        check("  the ones further off are still asleep: they wake one after another", trees.stream().anyMatch(TreeMonster::asleep));
+        check("  while it's popping out it can't grab anyone", !nearest.hunting());
+        for (int i = 0; i < TreeMonster.POP_TICKS; i++) gp.update();
+        check("after popping out it hunts the player", nearest.hunting() && nearest.chasing);
+        double before = dist(nearest);
+        for (int i = 0; i < 20; i++) gp.update();
+        check("  it comes closer (" + (int) before + " -> " + (int) dist(nearest) + " px)", dist(nearest) < before);
+        int hpBefore = p.health;
+        started = null;
+        gp.lastStand.lastHitBy = null;
+        for (int i = 0; i < 1500 && gp.lastStand.lastHitBy == null; i++) gp.update();
+        check("a tree reaches the player and hits them, out on the map (" + hpBefore + " -> " + p.health + " HP)",
+                gp.lastStand.lastHitBy instanceof TreeMonster && p.health < hpBefore);
+        check("  no battle screen opens: the quadrangle is fought on the map (see QuestCheck)", started == null && !gp.inBattle);
+        check("  (a tree that did start a battle would get the typing race; everyone else gets the word battle)",
+                GamePanel.typingFight(nearest) && !GamePanel.typingFight(f4.boss) && !GamePanel.typingFight(mimic));
+        TreeMonster caught = (TreeMonster) gp.lastStand.lastHitBy;
+        check("  it reels for a moment after hitting", caught.stunned > 0);
+        gp.lastStand.fell(caught);
+        check("felled: it's beaten, and doesn't hunt any more", caught.defeated && !caught.hunting());
+        put(hall, 7, 10); gp.update();               // Inside, then back out
+        put(quad, 24, 5); started = null; ticks(1);
+        check("coming back, every tree still standing is back in its place, asleep",
+                trees.stream().filter(t -> !t.defeated).allMatch(t -> t.asleep() && treeOnMap(t)));
+        check("  and the beaten one stays gone", caught.defeated && !treeOnMap(caught));
+        gp.lastStand.lastHitBy = null;
+        for (int i = 0; i < 3000 && gp.lastStand.lastHitBy == null; i++) gp.update();
+        check("the others wake again, and one reaches the player", gp.lastStand.lastHitBy instanceof TreeMonster
+                && gp.lastStand.lastHitBy != caught);
+        p.health = 0;
+        gp.loseOutside();
+        check("going down out there: back at the main entrance, where the player came out",
+                gp.currentRoom == quad && p.checkpointRoom == quad && p.x == p.checkpointX && p.y == p.checkpointY);
+        check("  with at least half health (" + p.health + ")", p.health >= 50);
+        check("  the felled tree stays felled (every one felled outside is kept)", caught.defeated && !treeOnMap(caught));
+        check("  the others are back in their places, asleep", trees.stream().filter(t -> !t.defeated)
+                .allMatch(t -> t.asleep() && treeOnMap(t)));
+
+        System.out.println("9. The typing race");
+        EnemyDef testOak = new EnemyDef("Test Oak", "treant", 60, "QUADRANGLE", "",
+                List.of(new Attack("Swipe", 10, 0, 0, 1, "It swipes.")), QuadrangleEnemies.HOLLOW_OAK.backdrop());
+        Items items = new Items(1, 1, 1);
+        Duel d = new Duel(testOak, 80, 2, items, 42);
+        check("it starts with a countdown", d.state == Duel.State.READY && d.word.isEmpty());
+        toTyping(d);
+        check("then a word to type: \"" + d.word + "\" (3-6 letters while the tree is unhurt)", d.word.length() >= 3 && d.word.length() <= 6);
+        int foe = d.foeHp, len = d.word.length();
+        typeWord(d);
+        check("typing it hits the tree: " + len + " letters x 2.5, x1.5 for being quick = " + (foe - d.foeHp),
+                foe - d.foeHp == (int) Math.round(len * 2.5 * 1.5) && d.streak == 1);
+        toTyping(d);
+        int time = d.timeLeft;
+        char wrong = d.word.charAt(0) == 'z' ? 'q' : 'z';
+        d.type(wrong);
+        check("a wrong key: no progress, the streak is broken, and it costs a quarter of a second",
+                d.typed == 0 && d.streak == 0 && time - d.timeLeft == 15);
+        d.type('7');
+        check("  (keys that aren't letters don't count)", d.typed == 0 && time - d.timeLeft == 15);
+        int hp = d.heroHp;
+        while (d.state == Duel.State.TYPING) d.tick();
+        check("time runs out: the tree hits back (10)", hp - d.heroHp == 10);
+        toTyping(d);
+        check("an Old Textbook halves the next hit", d.useTextbook() && items.textbooks == 0);
+        hp = d.heroHp;
+        while (d.state == Duel.State.TYPING) d.tick();
+        check("  (5 instead of 10)", hp - d.heroHp == 5 && !d.textbookReady);
+        toTyping(d);
+        hp = d.heroHp;
+        check("a First Aid Kit heals 30 (no more than full)", d.useKit() && d.heroHp == Math.min(100, hp + 30) && d.kits == 1);
+        String skipped = d.word;
+        hp = d.heroHp;
+        check("a Hall Pass skips the word without being hit", d.useHallPass() && !d.word.equals(skipped)
+                && d.state == Duel.State.TYPING && d.heroHp == hp && items.hallPasses == 0);
+        check("a Red Pen...", d.useRedPen() && items.redPens == 0);
+        foe = d.foeHp; len = d.word.length();
+        typeWord(d);
+        check("  ...doubles the next word (" + (foe - d.foeHp) + ")", foe - d.foeHp == Math.min(foe, (int) Math.round(len * 2.5 * 1.5 * 2)));
+        int typedWords = 2;
+        while (d.state != Duel.State.WON && typedWords < 40) { toTyping(d); if (d.state == Duel.State.TYPING) { typeWord(d); typedWords++; } }
+        for (int i = 0; i < 30; i++) d.tick();
+        check("type fast enough and the tree falls (" + typedWords + " words)", d.state == Duel.State.WON && d.result().won()
+                && d.result().heroHp() == d.heroHp && d.result().kitsLeft() == 1);
+        Items few = new Items(0, 0, 0);
+        Duel slow = new Duel(testOak, 15, 0, few, 7);
+        for (int i = 0; i < 5000 && slow.state != Duel.State.LOST; i++) slow.tick();
+        check("type nothing and the tree wins", slow.state == Duel.State.LOST && !slow.result().won() && slow.result().heroHp() == 0);
+        slow.restart();
+        check("  Try Again starts the fight over", slow.state == Duel.State.READY && slow.heroHp == 15 && slow.foeHp == 60);
+        check("the word list is loaded (" + TypingBattle.words().size() + " words)", TypingBattle.words().size() > 100);
+        boolean treeSprites = BattleScreen.Sprites.get("treant", true) != null && BattleScreen.Sprites.get("treant_attack", false) != null
+                && BattleScreen.Sprites.get("treant_hurt", false) != null;
+        check("the Hollow Oak's 3 sprites load and its typing screen draws",
+                treeSprites && TypingBattle.preview(QuadrangleEnemies.HOLLOW_OAK, 200).getWidth() == 800);
+
+        System.out.println("10. The word battles");
         int words = BattleScreen.dictionary().size();
         check("the word list is loaded (" + words + " words)", words > 100_000);
         for (EnemyDef e : BattleScreensDebug.ALL) {
@@ -205,6 +351,30 @@ public class EncounterCheck {
             BufferedImage shot = BattleScreen.preview(e, 60);
             check(e.name() + ": its 3 sprites load and its battle screen draws", sprites && shot.getWidth() == 800);
         }
+
+        System.out.println("11. The word battles' turn timer: lenient for weak monsters, harsh for strong ones");
+        List<EnemyDef> byHp = new ArrayList<>(BattleScreensDebug.ALL);
+        byHp.sort(Comparator.comparingInt(EnemyDef::maxHp));
+        boolean ordered = true;
+        int previous = Integer.MAX_VALUE;
+        StringBuilder table = new StringBuilder();
+        for (EnemyDef e : byHp) {
+            int secs = BattleScreen.turnSeconds(e);
+            if (secs > previous) ordered = false;
+            previous = secs;
+            table.append(table.length() == 0 ? "" : ", ").append(e.name()).append(" ").append(secs).append("s");
+        }
+        System.out.println("       " + table);
+        check("a stronger monster never gives more time than a weaker one", ordered);
+        check("the 4th floor's monsters give 40-45 seconds a turn", List.of(FourthFloorEnemies.DESK_MIMIC, FourthFloorEnemies.CHALK_WRAITH,
+                FourthFloorEnemies.CRAWLER, FourthFloorEnemies.HALL_MONITOR).stream().allMatch(e -> BattleScreen.turnSeconds(e) >= 40));
+        check("the Principal gives only 15", BattleScreen.turnSeconds(LobbyEnemies.PRINCIPAL) == 15);
+        check("doing nothing: the Desk Mimic waits out its 45 seconds...", BattleScreen.enemyTurnsWhileIdle(FourthFloorEnemies.DESK_MIMIC, 44) == 0);
+        check("  ...then takes its turn", BattleScreen.enemyTurnsWhileIdle(FourthFloorEnemies.DESK_MIMIC, 47) == 1);
+        check("the Principal attacks after 15 seconds, and again 15 seconds after that",
+                BattleScreen.enemyTurnsWhileIdle(LobbyEnemies.PRINCIPAL, 14) == 0
+                        && BattleScreen.enemyTurnsWhileIdle(LobbyEnemies.PRINCIPAL, 17) == 1
+                        && BattleScreen.enemyTurnsWhileIdle(LobbyEnemies.PRINCIPAL, 34) == 2);
 
         System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
         System.exit(fails == 0 ? 0 : 1);
@@ -221,6 +391,25 @@ public class EncounterCheck {
     }
 
     static void putPx(Room room, int x, int y) { gp.currentRoom = room; p.x = x; p.y = y; p.update(); }
+
+    // True if the tree's own tiles are on the map where it stands
+    static boolean treeOnMap(TreeMonster t) {
+        return t.room.map.tileAt(TileMap.LAYER_OBJECTS, t.treeCol(), t.treeRow()) == TileSet.TREE_FIRST
+                && t.room.map.isSolid(t.treeCol(), t.treeRow() + 1);
+    }
+
+    static double dist(Monster m) {
+        return Point.distance(m.x, m.y, p.x, p.y);
+    }
+
+    // Typing race helpers: wait for the next word; type the whole word
+    static void toTyping(Duel d) {
+        for (int i = 0; i < 400 && d.state != Duel.State.TYPING && d.state != Duel.State.WON && d.state != Duel.State.LOST; i++) d.tick();
+    }
+
+    static void typeWord(Duel d) {
+        for (char c : d.word.toCharArray()) d.type(c);
+    }
 
     // A stand-in player far off the map, so a monster patrols without noticing anyone
     static Player farAway() {

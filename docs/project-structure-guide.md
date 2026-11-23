@@ -139,8 +139,10 @@ The strictest convention starts from a web address you own, written backwards: `
 | Package | Classes | Its job |
 |---|---|---|
 | `nightmare404.main` | `Main`, `GamePanel` | starts the game; the window, the game loop, the camera, the keys |
-| `nightmare404.entity` | `Player` | things that move around the world (enemies will go here too) |
-| `nightmare404.ui` | `BottomUI` | what's drawn on top of the world |
+| `nightmare404.entity` | `Player`, `Monster`, `Hunter` (`TreeMonster`, `SubjectZero`, `Sapling`), `Loot`, `Clue` | the things in the rooms: the player, the monsters, what the bosses drop, the clues |
+| `nightmare404.ui` | `BottomUI`, `DialogueBox`, `QuestTracker`, `Journal`, `EndingScreen`, `Lighting` | what's drawn on top of the world |
+| `nightmare404.story` | `Story`, `Director`, `Line`, `Quest`, `Quests` | **the story**: every line of text (`Story`), when it's shown (`Director`), and the clues (`Quests`) |
+| `nightmare404.battle` | `BattleScreen`, `TypingBattle`, `LastStand`, the `*Enemies` and `*Backdrop` classes | the fights: the word battles, the typing race, and the fight on the map outside |
 | `nightmare404.tile` | `TileSet`, `TileMap`, `MapBuilder`, `Staircase` | **the tile engine**: loading tiles, building maps, drawing them, collision |
 | `nightmare404.map` | `Classroom`, `Hallway`, `Stairs`, `Library`, `Lab`, `Office`, `Ground`, `Quadrangle`, `SingleRoom` | **the map designs**: what each place looks like |
 | `nightmare404.world` | `World`, `Floor`, `Room` | the linked lists: how the places connect |
@@ -438,6 +440,10 @@ Your old run configuration still points at `Nightmareon404.Main`, so using it gi
 | change how the player moves | `src/main/java/nightmare404/entity/Player.java` |
 | change the camera | `cameraX()` / `cameraY()` in `src/main/java/nightmare404/main/GamePanel.java` |
 | connect a new room | `src/main/java/nightmare404/world/World.java` |
+| change what someone says, or a clue's text | `src/main/java/nightmare404/story/Story.java` |
+| move a clue, or change what it gives | `src/main/java/nightmare404/story/Quests.java` |
+| change when a scene plays | `src/main/java/nightmare404/story/Director.java` |
+| tune the fight outside (focus, damage, roots) | the numbers at the top of `src/main/java/nightmare404/battle/LastStand.java` |
 | add a check | a new class with a `main` method in `src/test/java/nightmare404/checks/` that exits with `1` on failure |
 | see every map without playing | run `MapPreviewDebug` |
 | build the game for players | double-click `build-exe.bat` (no Java needed to play) or `build-jar.bat` (needs Java 21) |

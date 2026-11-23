@@ -1,10 +1,13 @@
 # Nightmare in Room 404
 
-A top-down 2D horror game made with Java Swing. You start in Room 404, on the top floor of a school that's gone very wrong. From there you work your way down through the library and the labs, past the ground floor's offices, and out to the quadrangle, where the last stand will happen.
+A top-down 2D horror game made with Java Swing. You start in Room 404, on the top floor of a school that's gone very wrong. From there you work your way down through the library and the labs, past the ground floor's offices, and out to the quadrangle, where the trees tear themselves out of the ground and something sleeps by the south gate.
+
+Each floor's boss holds the key to the way down. Clues hidden in the side rooms tell you who the bosses used to be, and every one you find before a fight makes that boss weaker. Find all 8 for the good ending. Outside, there's no battle screen: you fight on the map, typing the words over the monsters' heads.
 
 ![The quadrangle](docs/images/quadrangle/quad_ingame_bus.png)
 
-**Controls:** `W` `A` `S` `D` to walk. Walk into a door or onto the stairs to use them.
+**Controls:** `W` `A` `S` `D` to walk, `Shift` to run. Walk into a door or onto the stairs to use them. `E`, `Space` or `Enter` to read on; `J` for the journal (`Esc` closes it).
+Outside: `Space` to focus (time slows), then type a monster's word to strike it; `Space` again to move. `1`-`4` use a First Aid Kit, Old Textbook, Red Pen or Hall Pass; `Backspace` drops a word.
 
 ## Running the game
 
@@ -30,18 +33,20 @@ Keep the `.exe` inside its folder: it needs the `app` and `runtime` folders next
 
 ## Checking nothing broke
 
-Double-click `run-checks.bat`. It plays through every floor without opening a window and prints `ok` or `FAIL` for each test, 198 in all. Run it after changing the code or a map.
+Double-click `run-checks.bat`. It plays through every floor without opening a window and prints `ok` or `FAIL` for each test: 11 checks, 542 tests in all. Run it after changing the code or a map.
 
 ## What's where
 
 ```
 src/main/java/nightmare404/   the game's code
     main/     Main, GamePanel: the window, the game loop, the camera, the keys
-    entity/   Player
-    ui/       BottomUI
+    entity/   Player, Monster, Loot, Clue, and the hunters outside: TreeMonster, SubjectZero, Sapling
+    ui/       BottomUI, DialogueBox, QuestTracker, Journal, EndingScreen, Lighting
+    story/    Story (every line of text), Director (when it's shown), Quest and Quests (the clues)
+    battle/   the word battles, the typing race, and LastStand (the fight on the map outside)
     tile/     the tile engine: TileSet, TileMap, MapBuilder, Staircase
     map/      the map designs: Classroom, Hallway, Stairs, Library, Lab, Office, Ground, Quadrangle
-    world/    World, Floor, Room: how the places link together
+    world/    World, Floor, Room: how the places link together; Encounters: where the monsters are
 src/main/resources/           the sprites and tiles
 src/test/java/nightmare404/   checks/ (run by run-checks.bat) and debug/ (tools that save pictures)
 docs/                         the devlog and the step-by-step guides

@@ -5,6 +5,7 @@ import static nightmare404.tile.TileSet.*;
 
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +22,11 @@ import nightmare404.tile.TileSet;
 //   2. The Book Barricade   - a wall of library books and desks facing the south gate, with two narrow gaps.
 //   3. The Cage             - the fenced basketball court: one way in, and the fence stops attackers
 //                             but not bullets (see TileSet.isShootThrough).
-// None of the fighting exists yet; STRONGHOLDS and SPAWN_GATES are here for the gameplay to use.
+// Its six trees aren't trees. A moment after the player comes outside they tear themselves out of the
+// ground and come after them (see trees(), and TreeMonster), and when they're all down, Subject Zero
+// wakes by the south gate (ZERO_COL, ZERO_ROW). They're fought on the map (see battle.LastStand): the
+// strongholds matter, because strikes fly over the cover right beside you but walls and the bus stop them.
+// STRONGHOLDS and SPAWN_GATES describe the places; Subject Zero's saplings come in through the gates.
 //
 // Written as TWO character maps of the same size: GROUND (what's underfoot) and THINGS (what stands
 // on it). The bus, the court's fence and the doorways are placed in code, because they're more than
@@ -30,6 +35,7 @@ public class Quadrangle {
     public static final int WIDTH = 50, HEIGHT = 36;
 
     public static final int DOOR_COL = 23, DOOR_ROW = 3;       // The main entrance (4 wide), in the middle
+    public static final int ZERO_COL = 23, ZERO_ROW = 34;      // Where Subject Zero sleeps: by the south gate
     public static final int WALKWAY_ROW = 4;                    // The walkway along the building, just outside
     private static final int BUS_COL = 8, BUS_ROW = 27;         // Top-left of the bus
     private static final int CAGE_LEFT = 31, CAGE_TOP = 21, CAGE_RIGHT = 46, CAGE_BOTTOM = 33;
@@ -102,9 +108,9 @@ public class Quadrangle {
         "..W...W...W.....W................W.....W...W...W..",
         "..................................................",
         "|................................................|",
-        "|.h+...h+............h+....h+.T+.........h+..h+..|",
-        "|........T+......T+...........++.....T+.....f....|",
-        "|...Q..Q.++......++..................++...Q..Q...|",
+        "|.h+...h+............h+....h+............h+..h+..|",
+        "|....................................T+.....f....|",
+        "|...Q..Q.............................++...Q..Q...|",
         "|...q..q.................K.c.....k........q..q...|",
         "|........................D...*.b.K.........f.....|",
         "|........................Kk.KDk.Kk...............g",
@@ -112,16 +118,16 @@ public class Quadrangle {
         "|.++..............Q...............q..f...........|",
         "|...........o+....q..............................|",
         "|.............................f...s..............|",
-        "|..................nB.~......Bn.........T+....T+.|",
-        "|..................+....A..f..+.........++....++.|",
+        "|..................nB.~......Bn...............T+.|",
+        "|..................+....A..f..+...............++.|",
         "g.......................a.........o+.............|",
         "g.....~.....................................o+...|",
         "|.............*.....B....f...B.....n.............|",
         "|..................................+.............|",
-        "|T+.....o+........Q..............................|",
-        "|++...............q.....s.....Q..................|",
-        "|....................h+...h+..q................T+|",
-        "|...........................................~..++|",
+        "|.......o+........Q..............................|",
+        "|.................q.....s.....Q..................|",
+        "|....................h+...h+..q..................|",
+        "|...........................................~....|",
         "|....................Q...f.......................|",
         "|...x............xx..q......T+...................|",
         "|T+...................n.....++..........*........|",
@@ -129,8 +135,8 @@ public class Quadrangle {
         "|................................................|",
         "|...............~................................|",
         "|...../../*./../../......f.......................|",
-        "|...t./../../../../t.T+.....T+...................|",
-        "|...../../../../../..++.....++...................|",
+        "|...t./../../../../t.T+..........................|",
+        "|...../../../../../..++..........................|",
         "|.......................s........................|",
         "|-----------------------GG-----------------------|",
     };
@@ -165,6 +171,18 @@ public class Quadrangle {
             'h', new Prop(BUSH_FIRST, 2, 1),
             'o', new Prop(ROCKS_FIRST, 2, 1),
             'n', new Prop(TRASH_CAN_FIRST, 1, 2));
+
+    // Where the trees are (the top-left of each 2 x 2 tree), in reading order. Every one of them is a
+    // monster waiting to wake up (see Encounters and TreeMonster).
+    public static List<Point> trees() {
+        List<Point> trees = new ArrayList<>();
+        for (int row = 0; row < HEIGHT; row++) {
+            for (int col = 0; col < WIDTH; col++) {
+                if (THINGS[row].charAt(col) == 'T') trees.add(new Point(col, row));
+            }
+        }
+        return trees;
+    }
 
     public static TileMap build(TileSet tiles, int ts) {
         MapBuilder b = new MapBuilder(WIDTH, HEIGHT);
