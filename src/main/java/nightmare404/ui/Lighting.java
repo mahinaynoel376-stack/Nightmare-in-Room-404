@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.MultipleGradientPaint.CycleMethod;
 import java.awt.RadialGradientPaint;
 
+import nightmare404.main.Settings;
 import nightmare404.world.Room;
 
 // How light it is, drawn as a layer of darkness over the world (the map, the monsters and the
@@ -49,6 +50,7 @@ public final class Lighting {
     // at a random moment and 0.2-0.7 seconds long, where every few frames the lights are off or on
     // at random. The rest of the time they're steady. (The same frame always gives the same answer.)
     public static float hallwayDarkness(long ticks) {
+        if (!Settings.flicker) return HALLWAY_LIGHTS_ON;   // Turned off on the main menu's Options
         long stretch = mix(ticks / STRETCH);
         boolean burstHere = (stretch & 1) == 0;
         int start = (int) Math.floorMod(stretch >> 8, (long) STRETCH - 45);

@@ -11,6 +11,9 @@ import java.util.*;
 import java.util.List;
 import java.util.function.Consumer;
 
+import nightmare404.main.Settings;
+import nightmare404.ui.HealthBar;
+
     
 // The word battle: spell words from a 4 x 4 grid of letters to hurt the monster, while it hurts you back.
 // This is the battle engine from the Battle_Screens folder. The 12 original screens were the same code
@@ -53,7 +56,7 @@ public class BattleScreen {
     // 5 seconds less for every 5 HP more, and never less than TURN_LEAST (the Principal, at 120 HP).
     // The clock only runs on the player's turn (not while the monster attacks, nor with the menu open);
     // Shuffle and the items are free, so they don't stop it.
-    static final boolean TURN_TIMER = true;      // false turns it off
+    // (It can be turned off on the main menu's Options: Settings.turnTimer.)
     static final int TURN_MOST = 45, TURN_LEAST = 15;
     static final int TICKS_PER_SECOND = 62;      // The battle's clock ticks every 16 ms
 
@@ -62,7 +65,7 @@ public class BattleScreen {
     }
 
     // ---- Atmosphere ----
-    static final boolean LIGHT_FLICKER = true;   // the ceiling light flickers now and then; false turns it off
+    // The ceiling light flickers now and then (turned off with Settings.flicker, on the main menu's Options)
 
     
 
@@ -249,12 +252,12 @@ public class BattleScreen {
 
     static class Fighter {
         int hp, max;
-        double shown, trail; int trailHold;          // health bar animation
+        double shown;                                // health bar animation: slides down to hp
         int shake, lunge, flash, attackPose;         // attackPose = frames left showing the attack sprite
         double enter, fade; boolean dying;
 
         void reset(int hp) {
-            this.hp = hp; shown = trail = hp; trailHold = 0;
+            this.hp = hp; shown = hp;
             shake = lunge = flash = attackPose = 0;
             enter = 1; fade = 0; dying = false;
         }
@@ -389,7 +392,7 @@ public class BattleScreen {
 
         void hurt(Fighter f, int dmg) {
             f.hp = Math.max(0, f.hp - dmg);
-            f.shake = 26; f.flash = 14; f.trailHold = 30;
+            f.shake = 26; f.flash = 14;
         }
 
         void heal(Fighter f, int amount, double x, double y) {
@@ -409,7 +412,7 @@ public class BattleScreen {
                 if (step.start() != null) step.start().run();
                 if (stepTimer <= 0) step = null;
             }
-            if (TURN_TIMER && canAct() && --turnLeft <= 0) timeUp();   // The player's clock runs on their turn
+            if (Settings.turnTimer && canAct() && --turnLeft <= 0) timeUp();   // The player's clock runs on their turn
             for (Fighter f : new Fighter[] { hero, foe }) {
                 if (f.shake > 0) f.shake--;
                 if (f.lunge > 0) f.lunge--;
@@ -419,9 +422,6 @@ public class BattleScreen {
                 if (f.dying) f.fade = Math.min(1, f.fade + 1 / 50.0);
                 double rate = Math.max(0.3, f.max / 110.0);
                 f.shown = f.shown > f.hp ? Math.max(f.hp, f.shown - rate * 2) : Math.min(f.hp, f.shown + rate);
-                if (f.trail < f.shown) f.trail = f.shown;
-                else if (f.trailHold > 0) f.trailHold--;
-                else f.trail = Math.max(f.shown, f.trail - rate * 0.7);
             }
             for (Tile t : grid) { t.drop = Math.max(0, t.drop - 0.07); if (t.sparkle > 0) t.sparkle--; }
             if (flyT >= 0 && flyT < 1) flyT = Math.min(1, flyT + 1 / 30.0);
@@ -432,7 +432,7 @@ public class BattleScreen {
                 if (--f.life <= 0) it.remove();
             }
             // ceiling light flicker: dims gently every few frames, then comes back
-            if (!LIGHT_FLICKER) light = 1;
+            if (!Settings.flicker) light = 1;
             else if (flickerTicks > 0) {
                 flickerTicks--;
                 if (flickerTicks % 5 == 0) light = fx.nextBoolean() ? 0.45 + fx.nextDouble() * 0.3 : 1;
@@ -795,7 +795,7 @@ public class BattleScreen {
         /** The turn timer, on the floor between the fighters just above the letters: a fuse that burns
          *  down, green, then amber, then red and flashing for the last 5 seconds. Only on the player's turn. */
         void drawTurnTimer(Graphics2D g) {
-            if (!TURN_TIMER || won || lost || busy()) return;
+            if (!Settings.turnTimer || won || lost || busy()) return;
             double left = Math.max(0, (double) turnLeft / turnTicks);
             int secs = (turnLeft + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND;
             boolean hurry = secs <= 5;
@@ -865,16 +865,16 @@ public class BattleScreen {
             g.setColor(new Color(70, 18, 18));
             g.fillRect(0, TOP_H - 2, W, 2);
             g.setColor(new Color(70, 68, 64));
-            for (int x : new int[] { 6, 246, 554, 790 }) { g.fill(el(x, 8, 5, 5)); g.fill(el(x, 44, 5, 5)); }
+            for (int x : new int[] { 6, 284, 511, 790 }) { g.fill(el(x, 8, 5, 5)); g.fill(el(x, 44, 5, 5)); }
 
             g.setFont(new Font(MONO, Font.BOLD, 16));
-            shadowText(g, HERO_NAME.toUpperCase(), 18, 22, PALE);
-            healthBar(g, 18, 30, 222, 18, hero, true);
+            shadowText(g, HERO_NAME.toUpperCase(), 18, 20, PALE);
+            healthBar(g, 18, 24, hero, true);
 
             String name = enemy.name().toUpperCase();
             g.setFont(new Font(MONO, Font.BOLD, 16));
-            shadowText(g, name, 782 - g.getFontMetrics().stringWidth(name), 22, PALE);
-            healthBar(g, 560, 30, 222, 18, foe, false);
+            shadowText(g, name, 782 - g.getFontMetrics().stringWidth(name), 20, PALE);
+            healthBar(g, 782 - HealthBar.width(HealthBar.Style.ENEMY, BAR_SCALE), 24, foe, false);
 
             // the door sign of the room the fight is in
             if (!enemy.room().isBlank()) {
@@ -900,36 +900,24 @@ public class BattleScreen {
             }
         }
 
-        /** Health bar: the red part drops quickly, the pale "trail" behind it shows the damage just taken. */
-        void healthBar(Graphics2D g, int x, int y, int w, int h, Fighter f, boolean isHero) {
-            boolean low = isHero && f.hp > 0 && f.hp <= f.max * 0.3;
-            g.setColor(new Color(6, 4, 4));
-            g.fillRect(x - 3, y - 3, w + 6, h + 6);
-            double beat = low ? Math.pow(Math.max(0, Math.sin(ticks / 9.0)), 4) : 0;
-            g.setColor(low ? new Color(110 + (int) (120 * beat), 20, 20) : new Color(84, 80, 74));
-            g.setStroke(new BasicStroke(2));
-            g.drawRect(x - 3, y - 3, w + 6, h + 6);
-            g.setColor(new Color(30, 10, 12));
-            g.fillRect(x, y, w, h);
-            int tw = (int) Math.round(w * Math.max(0, f.trail) / f.max), sw = (int) Math.round(w * Math.max(0, f.shown) / f.max);
-            g.setColor(new Color(214, 184, 150));
-            g.fillRect(x, y, tw, h);
-            Color top = isHero ? new Color(214, 40, 38) : new Color(150, 36, 110);
-            Color bottom = isHero ? new Color(112, 8, 12) : new Color(66, 8, 52);
-            g.setPaint(new GradientPaint(0, y, top, 0, y + h, bottom));
-            g.fillRect(x, y, sw, h);
-            g.setColor(new Color(255, 255, 255, 40));
-            g.fillRect(x, y + 1, sw, 3);
-            g.setColor(new Color(0, 0, 0, 70)); // scratches
-            g.setStroke(new BasicStroke(1));
-            for (int i = 0; i < 6; i++) { int sx = x + 18 + i * 37 + (i * 13) % 11; g.drawLine(sx, y, sx - 6, y + h); }
-            g.setFont(new Font(MONO, Font.BOLD, 12));
-            String s = (int) Math.ceil(f.shown) + " / " + f.max;
-            int tx = x + w / 2 - g.getFontMetrics().stringWidth(s) / 2, ty = y + h - 4;
-            g.setColor(new Color(0, 0, 0, 220)); // dark outline so the number reads over any colour
-            for (int ox = -1; ox <= 1; ox++) for (int oy = -1; oy <= 1; oy++) if (ox != 0 || oy != 0) g.drawString(s, tx + ox, ty + oy);
-            g.setColor(Color.WHITE);
-            g.drawString(s, tx, ty);
+        static final int BAR_SCALE = 3;   // The health bars' pixel art, drawn 3 times its size
+
+        /** A fighter's health bar (see HealthBar), with the numbers beside it. It empties a segment at a
+         *  time as `shown` slides down to the new health. Nearly dead, the player's bar throbs red. */
+        void healthBar(Graphics2D g, int x, int y, Fighter f, boolean isHero) {
+            HealthBar.Style style = isHero ? HealthBar.Style.LEAD : HealthBar.Style.ENEMY;
+            if (isHero && f.hp > 0 && f.hp <= f.max * 0.3) lowHealthGlow(g, x, y, style, ticks);
+            HealthBar.drawWithNumbers(g, style, f.shown, (int) Math.ceil(f.shown), f.max, x, y, BAR_SCALE, !isHero);
+        }
+
+        /** A red glow behind a bar that beats like a heart (also used by the typing race). */
+        static void lowHealthGlow(Graphics2D g, int x, int y, HealthBar.Style style, long ticks) {
+            double beat = Math.pow(Math.max(0, Math.sin(ticks / 9.0)), 4);
+            int w = HealthBar.width(style, BAR_SCALE), h = HealthBar.height(style, BAR_SCALE);
+            for (int i = 3; i >= 1; i--) {
+                g.setColor(new Color(220, 24, 24, (int) ((14 + 46 * beat) / i)));
+                g.fillRoundRect(x - 2 - 3 * i, y - 1 - 3 * i, w + 4 + 6 * i, h + 2 + 6 * i, 8 + 4 * i, 8 + 4 * i);
+            }
         }
 
         void drawWord(Graphics2D g) {

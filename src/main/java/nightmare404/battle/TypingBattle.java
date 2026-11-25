@@ -16,6 +16,7 @@ import nightmare404.battle.BattleScreen.BattleResult;
 import nightmare404.battle.BattleScreen.EnemyDef;
 import nightmare404.battle.BattleScreen.Items;
 import nightmare404.battle.BattleScreen.Sprites;
+import nightmare404.ui.HealthBar;
 
 // The quadrangle's fights (its trees, see nightmare404.entity.TreeMonster): a typing race instead
 // of the word grid.
@@ -403,6 +404,8 @@ public class TypingBattle {
             if (duel.state == Duel.State.WON && foeFade < 40) foeFade++;
             heroShown += (duel.heroHp - heroShown) * 0.15;
             foeShown += (duel.foeHp - foeShown) * 0.15;
+            if (Math.abs(duel.heroHp - heroShown) < 0.05) heroShown = duel.heroHp;   // Close enough: land on it, so
+            if (Math.abs(duel.foeHp - foeShown) < 0.05) foeShown = duel.foeHp;       // the bar shows the right segment
             if (heroShake > 0) heroShake--;
             if (foeShake > 0) foeShake--;
             if (heroLunge > 0) heroLunge--;
@@ -548,13 +551,18 @@ public class TypingBattle {
             g.setColor(new Color(70, 20, 20));
             g.fillRect(0, TOP_H - 2, W, 2);
             g.setFont(new Font(MONO, Font.BOLD, 16));
-            shadow(g, BattleScreen.HERO_NAME, 18, 22, PALE);
-            bar(g, 18, 30, 222, 16, heroShown / BattleScreen.HERO_MAX_HP, new Color(70, 170, 70),
-                    duel.heroHp + " / " + BattleScreen.HERO_MAX_HP);
+            shadow(g, BattleScreen.HERO_NAME, 18, 20, PALE);
+            // The health bars (see HealthBar), the same as the word battle's
+            int scale = BattleScreen.BattlePanel.BAR_SCALE;
+            if (duel.heroHp > 0 && duel.heroHp <= BattleScreen.HERO_MAX_HP * 0.3) {
+                BattleScreen.BattlePanel.lowHealthGlow(g, 18, 24, HealthBar.Style.LEAD, ticks);
+            }
+            HealthBar.drawWithNumbers(g, HealthBar.Style.LEAD, heroShown, duel.heroHp, BattleScreen.HERO_MAX_HP, 18, 24,
+                    scale, false);
             String name = duel.enemy.name();
-            shadow(g, name, W - 18 - g.getFontMetrics().stringWidth(name), 22, PALE);
-            bar(g, W - 240, 30, 222, 16, foeShown / duel.enemy.maxHp(), new Color(176, 40, 30),
-                    duel.foeHp + " / " + duel.enemy.maxHp());
+            shadow(g, name, W - 18 - g.getFontMetrics().stringWidth(name), 20, PALE);
+            HealthBar.drawWithNumbers(g, HealthBar.Style.ENEMY, foeShown, duel.foeHp, duel.enemy.maxHp(),
+                    W - 18 - HealthBar.width(HealthBar.Style.ENEMY, scale), 24, scale, true);
             // The place, on a sign, like the word battle's door signs
             g.setPaint(new GradientPaint(0, 9, new Color(150, 128, 82), 0, 49, new Color(92, 76, 44)));
             g.fillRoundRect(306, 9, 188, 40, 6, 6);
@@ -564,21 +572,6 @@ public class TypingBattle {
             String room = duel.enemy.room();
             g.setColor(new Color(34, 26, 14));
             g.drawString(room, 400 - g.getFontMetrics().stringWidth(room) / 2, 36);
-        }
-
-        void bar(Graphics2D g, int x, int y, int w, int h, double fraction, Color fill, String label) {
-            fraction = Math.max(0, Math.min(1, fraction));
-            g.setColor(new Color(0, 0, 0, 200));
-            g.fillRect(x - 2, y - 2, w + 4, h + 4);
-            g.setColor(new Color(40, 34, 30));
-            g.fillRect(x, y, w, h);
-            g.setColor(fill);
-            g.fillRect(x, y, (int) Math.round(w * fraction), h);
-            g.setColor(new Color(255, 255, 255, 40));
-            g.fillRect(x, y, (int) Math.round(w * fraction), h / 3);
-            g.setFont(new Font(MONO, Font.BOLD, 12));
-            g.setColor(Color.WHITE);
-            g.drawString(label, x + w / 2 - g.getFontMetrics().stringWidth(label) / 2, y + h - 3);
         }
 
         // The word to type (typed letters green, the next one white and underlined), its timer, and

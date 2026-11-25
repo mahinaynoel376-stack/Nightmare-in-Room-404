@@ -49,13 +49,15 @@ public class GamePanel extends JPanel implements Runnable {
 
     // The other keys. Swing hears them on its own thread, so each one is just noted here (volatile) and
     // the game loop acts on it in its next frame (update):
-    //   E, Enter, Space  read on in the dialogue box, read a page in the journal, play again at the end.
+    //   E, Enter, Space  read on in the dialogue box, read a page in the journal, back to the menu at the end.
     //                    Holding one down makes Windows repeat it, which would race through the lines,
     //                    so a press only counts again after the key's been let go (advanceHeld).
     //   Space            outside: focus (see LastStand). Letters typed while focusing go to `typed`.
     //   J, Esc           open and close the journal (Esc also stops focusing). Backspace drops a word.
+    //   Esc              otherwise: the main menu, with the game paused until Continue.
     //   1-4              outside: use a First Aid Kit, an Old Textbook, a Red Pen, a Hall Pass.
-    private volatile boolean advanceHeld, spaceHeld, advanceQueued, spaceQueued, journalQueued, backQueued, unlockQueued;
+    private volatile boolean advanceHeld, spaceHeld, backHeld, advanceQueued, spaceQueued, journalQueued, backQueued,
+            unlockQueued;
     private volatile int itemQueued;
     private final ConcurrentLinkedQueue<Character> typed = new ConcurrentLinkedQueue<>();
     private boolean wasUp, wasDown;   // W and S a frame ago, so the journal moves once per press
@@ -76,6 +78,12 @@ public class GamePanel extends JPanel implements Runnable {
     public boolean endedRemembered;         // ...and it's the good ending (every clue found)
     private long endedTicks;
     private boolean talking;                // The dialogue box was open last frame
+
+    // The main menu (see Main and MainMenu). Esc, or Enter after the ending, runs onMenu (null in the
+    // checks, which have no menu), and the game waits, paused, until Continue calls resume().
+    public Runnable onMenu;
+    private volatile boolean paused;
+    private boolean journalFromMenu;        // The journal was opened from the menu: closing it goes back there
 
     // The world is a linked list of rooms; currentRoom points at the node the player is in.
     // Moving to another room just means following one of its links (left, right or door).
@@ -186,6 +194,7 @@ public class GamePanel extends JPanel implements Runnable {
             im.put(KeyStroke.getKeyStroke(mod + "released SPACE"), "spaceRelease");
             im.put(KeyStroke.getKeyStroke(mod + "pressed J"), "journal");
             im.put(KeyStroke.getKeyStroke(mod + "pressed ESCAPE"), "back");
+            im.put(KeyStroke.getKeyStroke(mod + "released ESCAPE"), "backRelease");
             im.put(KeyStroke.getKeyStroke(mod + "pressed BACK_SPACE"), "unlock");
             for (int n = 1; n <= 4; n++) {
                 im.put(KeyStroke.getKeyStroke(mod + "pressed " + n), "item" + n);
@@ -203,7 +212,8 @@ public class GamePanel extends JPanel implements Runnable {
         am.put("spacePress", action(() -> { if (!spaceHeld) spaceQueued = true; spaceHeld = true; }));
         am.put("spaceRelease", action(() -> spaceHeld = false));
         am.put("journal", action(() -> journalQueued = true));
-        am.put("back", action(() -> backQueued = true));
+        am.put("back", action(() -> { if (!backHeld) backQueued = true; backHeld = true; }));
+        am.put("backRelease", action(() -> backHeld = false));
         am.put("unlock", action(() -> unlockQueued = true));
         for (int n = 1; n <= 4; n++) {
             int item = n;
@@ -281,8 +291,10 @@ public class GamePanel extends JPanel implements Runnable {
             lastTime = currentTime;
 
             if (delta >= 1) {
-                update();
-                repaint();
+                if (!paused) {           // (While the menu's showing, the game waits)
+                    update();
+                    repaint();
+                }
                 delta--;
             }
 
@@ -306,9 +318,9 @@ public class GamePanel extends JPanel implements Runnable {
         List<Character> letters = new ArrayList<>();
         for (Character c; (c = typed.poll()) != null; ) letters.add(c);
 
-        if (ended) {                     // The ending screen: Enter plays again
+        if (ended) {                     // The ending screen: Enter goes back to the main menu
             endedTicks++;
-            if ((advance || space) && endedTicks > 150) restart();
+            if ((advance || space) && endedTicks > 150) leaveForMenu();
             return;
         }
         if (dialogue.isOpen()) {         // The world waits while someone's talking
@@ -329,6 +341,12 @@ public class GamePanel extends JPanel implements Runnable {
         if (toJournal && !(outside && lastStand.focused())) {   // (While focusing, J is just a letter)
             journal.open();
             releaseKeys();
+            return;
+        }
+        if (back && !(outside && lastStand.focused()) && onMenu != null) {   // (While focusing, Esc stops it)
+            paused = true;
+            releaseKeys();
+            SwingUtilities.invokeLater(onMenu);
             return;
         }
         director.update();               // The opening scene, or somewhere new for the first time
@@ -406,6 +424,11 @@ public class GamePanel extends JPanel implements Runnable {
         if (close) {
             journal.close();
             releaseKeys();
+            if (journalFromMenu && onMenu != null) {   // Opened from the menu: back there
+                journalFromMenu = false;
+                paused = true;
+                SwingUtilities.invokeLater(onMenu);
+            }
         } else if (advance && journal.chosen() != null) {
             journal.close();
             director.reread(journal.chosen(), journal::open);   // Back to the journal after reading
@@ -432,19 +455,32 @@ public class GamePanel extends JPanel implements Runnable {
         ended = true;
     }
 
-    // Starts a new game in the same window (from the ending screen)
-    private void restart() {
+    // After the ending: this game is over, so its loop stops, and the main menu takes its place
+    private void leaveForMenu() {
         isRunning = false;               // This game's loop stops after this frame
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
-            if (frame == null) return;   // No window (the checks)
-            GamePanel fresh = new GamePanel();
-            frame.setContentPane(fresh);
-            frame.revalidate();
-            frame.repaint();
-            fresh.requestFocusInWindow();
-            fresh.startGameThread();
-        });
+        if (onMenu != null) SwingUtilities.invokeLater(onMenu);
+    }
+
+    // Stops this game for good (a new game was started from the menu)
+    public void stop() {
+        isRunning = false;
+    }
+
+    // Back from the menu (Continue): the game carries on. Keys pressed or let go while the menu was
+    // showing never reached the game, so it starts again with none held down.
+    public void resume() {
+        releaseKeys();
+        advanceHeld = spaceHeld = backHeld = false;
+        advanceQueued = spaceQueued = journalQueued = backQueued = unlockQueued = false;
+        itemQueued = 0;
+        typed.clear();
+        paused = false;
+    }
+
+    // The menu's Journal: the journal opens, and closing it goes back to the menu (call resume() after)
+    public void openJournalFromMenu() {
+        journal.open();
+        journalFromMenu = true;
     }
 
     // Shows the battle in this window instead of the school, and puts the school back when it's over.
