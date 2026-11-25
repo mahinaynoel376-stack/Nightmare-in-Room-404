@@ -5,6 +5,7 @@ import static nightmare404.tile.TileSet.*;
 
 import java.util.Map;
 
+import nightmare404.tile.MapBuilder;
 import nightmare404.tile.TileMap;
 import nightmare404.tile.TileSet;
 
@@ -12,7 +13,8 @@ import nightmare404.tile.TileSet;
 // the classroom shape (see SingleRoom), drawn from a character map in the ground floor's stone palette.
 // Besides the ground sheet's own furniture they use the building's standard chairs and teacher's desk,
 // which have see-through backgrounds and so fit on any floor.
-public class Office {
+// An Office object is the floor under the furniture (see tileAt): MapBuilder asks it for each tile.
+public class Office implements MapBuilder.Underlay {
     public enum Part { FACULTY, PRINCIPAL, RECORDS }
 
     // LEGEND
@@ -106,27 +108,25 @@ public class Office {
             Map.entry('e', GLOWING_EYES), Map.entry('*', BLOOD_SPLAT), Map.entry('~', CRACK));
 
     public static TileMap build(TileSet tiles, int ts, Part part) {
-        String[] map = switch (part) {
-            case FACULTY -> FACULTY;
-            case PRINCIPAL -> PRINCIPAL;
-            case RECORDS -> RECORDS;
-        };
-        return SingleRoom.build(tiles, ts, map, LEGEND, Office::underlay);
+        String[] map = RECORDS;
+        if (part == Part.FACULTY) map = FACULTY;
+        if (part == Part.PRINCIPAL) map = PRINCIPAL;
+        return SingleRoom.build(tiles, ts, map, LEGEND, new Office());
     }
 
     // The name plaque for the hallway wall in front of each room (3 tiles: this ID and the next two)
     public static int sign(Part part) {
-        return switch (part) {
-            case FACULTY -> SIGN_FACULTY;
-            case PRINCIPAL -> SIGN_PRINCIPAL;
-            case RECORDS -> SIGN_RECORDS;
-        };
+        if (part == Part.FACULTY) return SIGN_FACULTY;
+        if (part == Part.PRINCIPAL) return SIGN_PRINCIPAL;
+        return SIGN_RECORDS;
     }
 
     // Brick wall on rows 3-4, the wall base on row 5, stone floor below (two tiles mixed)
-    private static int underlay(int col, int row) {
+    @Override
+    public int tileAt(int col, int row) {
         if (row <= 4) return G_WALL;
         if (row == 5) return G_WALL_BASE;
-        return (col * 7 + row * 3) % 5 == 0 ? G_FLOOR_2 : G_FLOOR_1;
+        if ((col * 7 + row * 3) % 5 == 0) return G_FLOOR_2;
+        return G_FLOOR_1;
     }
 }

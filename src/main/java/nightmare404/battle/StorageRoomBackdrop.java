@@ -30,7 +30,11 @@ public class StorageRoomBackdrop implements Backdrop {
         }
         for (int i = 0; i < 26; i++) { // chipped and darker blocks
             int row = r.nextInt(12), x = r.nextInt(23) * 36 + (row % 2) * 18;
-            g.setColor(r.nextBoolean() ? new Color(20, 20, 18, 90) : new Color(110, 106, 96, 40));
+            if (r.nextBoolean()) {
+                g.setColor(new Color(20, 20, 18, 90));
+            } else {
+                g.setColor(new Color(110, 106, 96, 40));
+            }
             g.fillRect(x + 1, TOP_H + 5 + row * 15, 35, 14);
         }
         for (int i = 0; i < 6; i++) { // damp stains
@@ -76,7 +80,11 @@ public class StorageRoomBackdrop implements Backdrop {
                 g.setColor(new Color(196, 174, 120, 160)); g.fillRect(x + w / 2 - 1, sy - h, 3, h);   // tape
                 g.setColor(new Color(214, 208, 190)); g.fillRect(x + 3, sy - h + 5, w - 6, 7);      // label
                 g.setFont(new Font(MONO, Font.BOLD, 5));
-                g.setColor(labels[li % labels.length].equals("KEEP OUT") ? new Color(170, 20, 20) : new Color(40, 34, 28));
+                if (labels[li % labels.length].equals("KEEP OUT")) {
+                    g.setColor(new Color(170, 20, 20));
+                } else {
+                    g.setColor(new Color(40, 34, 28));
+                }
                 g.drawString(labels[li % labels.length], x + 4, sy - h + 11);
                 li++;
                 x += w + 3;
@@ -193,10 +201,20 @@ public class StorageRoomBackdrop implements Backdrop {
         g.setColor(new Color(70, 50, 28)); g.setStroke(new BasicStroke(1.5f));
         g.drawPolygon(new int[] { 214, 252, 258, 220 }, new int[] { 262, 256, 278, 286 }, 4);
         for (int i = 0; i < 9; i++) {                                                // its contents and loose papers
-            double sx = i < 4 ? 262 + i * 12 : 20 + r.nextInt(W - 40), sy = FLOOR_TOP + 12 + r.nextInt(34);
+            double sx;                                   // The first 4 in the box, the rest anywhere
+            if (i < 4) {
+                sx = 262 + i * 12;
+            } else {
+                sx = 20 + r.nextInt(W - 40);
+            }
+            double sy = FLOOR_TOP + 12 + r.nextInt(34);
             Shape paper = AffineTransform.getRotateInstance(r.nextDouble() * 2 - 1, sx, sy)
                     .createTransformedShape(new Rectangle2D.Double(sx - 8, sy - 5, 16, 10));
-            g.setColor(i < 4 ? new Color(196, 186, 156, 200) : new Color(150, 146, 128, 170));
+            if (i < 4) {
+                g.setColor(new Color(196, 186, 156, 200));
+            } else {
+                g.setColor(new Color(150, 146, 128, 170));
+            }
             g.fill(paper);
         }
         g.setClip(oldClip);

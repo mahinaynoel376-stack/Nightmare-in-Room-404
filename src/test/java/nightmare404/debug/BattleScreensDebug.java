@@ -32,7 +32,9 @@ public class BattleScreensDebug {
             LobbyEnemies.PRINCIPAL);
 
     public static void main(String[] args) throws IOException {
-        File outDir = new File(args.length > 0 ? args[0] : "battle_screens");
+        String folder = "battle_screens";        // Or the folder given on the command line
+        if (args.length > 0) folder = args[0];
+        File outDir = new File(folder);
         outDir.mkdirs();
         int n = 1;
         for (EnemyDef enemy : ALL) {

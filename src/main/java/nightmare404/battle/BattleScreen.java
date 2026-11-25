@@ -9,8 +9,8 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
-import java.util.function.Consumer;
 
+import nightmare404.main.GamePanel;
 import nightmare404.main.Settings;
 import nightmare404.ui.HealthBar;
 
@@ -73,17 +73,74 @@ public class BattleScreen {
     //  ENEMIES  
     // =====================================================================================
 
-  
-    public record Attack(String name, int damage, int scratch, int heal, int weight, String desc) {}
+    // One of a monster's attacks: its name, the damage it does, how many of the player's letters it
+    // scratches out (for 2 turns), how much health it gives the monster back, how often it's picked
+    // compared with the monster's other attacks (weight), and what the incident report says about it.
+    public static class Attack {
+        private final String name, desc;
+        private final int damage, scratch, heal, weight;
 
-  
-    public record EnemyDef(String name, String sprite, int maxHp, String room, String notes, List<Attack> attacks,
-                           Backdrop backdrop) {}
+        public Attack(String name, int damage, int scratch, int heal, int weight, String desc) {
+            this.name = name;
+            this.damage = damage;
+            this.scratch = scratch;
+            this.heal = heal;
+            this.weight = weight;
+            this.desc = desc;
+        }
+
+        public String name() { return name; }
+        public int damage() { return damage; }
+        public int scratch() { return scratch; }
+        public int heal() { return heal; }
+        public int weight() { return weight; }
+        public String desc() { return desc; }
+    }
 
     // A monster: what it's called, its sprite (name.png, plus name_attack.png and name_hurt.png),
     // its health, the sign shown at the top of the battle, a note for the incident report, its attacks,
     // and the background it's fought in. The monsters themselves are in the *Enemies files.
-    public record BattleResult(boolean won, int heroHp, int kitsLeft) {}
+    public static class EnemyDef {
+        private final String name, sprite, room, notes;
+        private final int maxHp;
+        private final List<Attack> attacks;
+        private final Backdrop backdrop;
+
+        public EnemyDef(String name, String sprite, int maxHp, String room, String notes, List<Attack> attacks,
+                        Backdrop backdrop) {
+            this.name = name;
+            this.sprite = sprite;
+            this.maxHp = maxHp;
+            this.room = room;
+            this.notes = notes;
+            this.attacks = attacks;
+            this.backdrop = backdrop;
+        }
+
+        public String name() { return name; }
+        public String sprite() { return sprite; }
+        public int maxHp() { return maxHp; }
+        public String room() { return room; }
+        public String notes() { return notes; }
+        public List<Attack> attacks() { return attacks; }
+        public Backdrop backdrop() { return backdrop; }
+    }
+
+    // How a battle ended: whether the player won, the health they have left, and their first aid kits left
+    public static class BattleResult {
+        private final boolean won;
+        private final int heroHp, kitsLeft;
+
+        public BattleResult(boolean won, int heroHp, int kitsLeft) {
+            this.won = won;
+            this.heroHp = heroHp;
+            this.kitsLeft = kitsLeft;
+        }
+
+        public boolean won() { return won; }
+        public int heroHp() { return heroHp; }
+        public int kitsLeft() { return kitsLeft; }
+    }
 
   
     public static class Items {
@@ -95,40 +152,30 @@ public class BattleScreen {
         }
     }
 
-   
+    // Run this class on its own to try a fight against the Desk Mimic, without the rest of the game
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Word Battle");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setResizable(false);
-            testFight(frame);
-            frame.pack();
-            frame.setLocationRelativeTo(null);
-            frame.setVisible(true);
-        });
+        JFrame frame = new JFrame("Word Battle");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
+        EnemyDef enemy = FourthFloorEnemies.DESK_MIMIC;
+        fight(null, frame, enemy, enemy.maxHp(), HERO_MAX_HP, START_KITS, new Items(1, 2, 0));
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+        frame.getContentPane().requestFocusInWindow();
     }
 
-    static void testFight(JFrame frame) {
-        fightInOrder(frame, List.of(FourthFloorEnemies.DESK_MIMIC, FourthFloorEnemies.CHALK_WRAITH), 0, HERO_MAX_HP, START_KITS, new Items(1, 2, 0), result -> {
-            System.out.println("All fights over: " + result);
-            testFight(frame);
-        });
-    }
-
-       // One fight, in the game's window: shows the battle in place of whatever the window shows now,
-    // and calls whenDone with the result when the player wins, or loses and gives up.
+    // One fight, in the game's window: shows the battle in place of whatever the window shows now.
+    // When the player wins, or loses and gives up, the battle hands the result to game.battleOver
+    // (game is null when the battle is tried on its own: see main).
+    // The monster can start the fight already hurt: foeHp out of its maxHp. A floor's boss starts
+    // weaker for every clue found on that floor (see nightmare404.story.Quest). Try Again keeps it.
     // (The battle keeps its own copy of hp and kits; items are used up in place.)
-    // The same, with the monster starting the fight already hurt: foeHp out of its maxHp. A floor's boss
-    // starts weaker for every clue found on that floor (see nightmare404.story.Quest). Try Again keeps it.
-    public static void fight(JFrame frame, EnemyDef enemy, int foeHp, int hp, int kits, Items items, Consumer<BattleResult> whenDone) {
-        BattlePanel battle = new BattlePanel(enemy, foeHp, hp, kits, items, whenDone);
+    public static void fight(GamePanel game, JFrame frame, EnemyDef enemy, int foeHp, int hp, int kits, Items items) {
+        BattlePanel battle = new BattlePanel(enemy, foeHp, hp, kits, items, game);
         frame.setContentPane(battle);
         frame.revalidate();
         battle.start();
-    }
-
-    public static void fight(JFrame frame, EnemyDef enemy, int hp, int kits, Items items, Consumer<BattleResult> whenDone) {
-        fightInOrder(frame, List.of(enemy), 0, hp, kits, items, whenDone);
     }
 
     // A picture of a fight against this enemy, frames frames in, without opening a window
@@ -152,19 +199,6 @@ public class BattleScreen {
         return battle.enemyTurns;
     }
 
-    static void fightInOrder(JFrame frame, List<EnemyDef> monsters, int index, int hp, int kits, Items items,
-                             Consumer<BattleResult> whenDone) {
-        BattlePanel battle = new BattlePanel(monsters.get(index), hp, kits, items, result -> {
-            if (result.won() && index + 1 < monsters.size()) {
-                fightInOrder(frame, monsters, index + 1, result.heroHp(), result.kitsLeft(), items, whenDone); // next monster
-            } else {
-                whenDone.accept(result); // lost, or beat the last monster
-            }
-        });
-        frame.setContentPane(battle);
-        frame.revalidate();
-        battle.start();
-    }
 
 
 
@@ -172,7 +206,8 @@ public class BattleScreen {
    
     // The battle's files are in src/main/resources/battle; a name starting with / is a full path.
     static java.io.InputStream resource(String name) {
-        return BattleScreen.class.getResourceAsStream(name.startsWith("/") ? name : "/battle/" + name);
+        if (name.startsWith("/")) return BattleScreen.class.getResourceAsStream(name);
+        return BattleScreen.class.getResourceAsStream("/battle/" + name);
     }
 
     // =====================================================================================
@@ -182,9 +217,9 @@ public class BattleScreen {
     static Set<String> dictionary;
     static boolean usingFallbackWords;
 
-    public static synchronized Set<String> dictionary() {
-        if (dictionary != null) return dictionary;
-        Set<String> words = new HashSet<>(250_000);
+    public static Set<String> dictionary() {
+        if (dictionary != null) return dictionary;   // Already read
+        Set<String> words = new HashSet<>();
         InputStream in = resource("words.txt");
         if (in == null) System.err.println("Could not find /battle/words.txt");
         else {
@@ -192,16 +227,27 @@ public class BattleScreen {
                 String line;
                 while ((line = r.readLine()) != null) {
                     String w = line.trim().toLowerCase();
-                    if (w.length() >= 3 && w.chars().allMatch(c -> c >= 'a' && c <= 'z')) words.add(w);
+                    if (w.length() >= 3 && onlyLetters(w)) words.add(w);
                 }
             } catch (IOException e) {
                 System.err.println("Could not read words.txt: " + e.getMessage());
             }
         }
         usingFallbackWords = words.size() < 1000;
-        if (usingFallbackWords) words.addAll(Arrays.asList(FALLBACK_WORDS.split(" ")));
+        if (usingFallbackWords) {
+            for (String w : FALLBACK_WORDS.split(" ")) words.add(w);
+        }
         dictionary = words;
         return words;
+    }
+
+    // True if the word is only the letters a to z (no capitals, dashes or apostrophes)
+    static boolean onlyLetters(String w) {
+        for (int i = 0; i < w.length(); i++) {
+            char c = w.charAt(i);
+            if (c < 'a' || c > 'z') return false;
+        }
+        return true;
     }
 
     /**Backup if textfile is missing. */
@@ -219,16 +265,24 @@ public class BattleScreen {
     /** Letter bag weighted roughly by English frequency ('q' becomes a "Qu" tile). */
     static final String LETTER_BAG = "eeeeeeeeeeeeaaaaaaaaaiiiiiiiioooooooonnnnnnrrrrrrttttttllllssssssuuuuddddgggbbccmmppffhhvvwwyykjxqz";
 
+    // How much a letter is worth: the rarer it is in English, the more
     static double letterValue(char c) {
-        return switch (c) {
-            case 'd', 'g' -> 1.25;
-            case 'b', 'c', 'm', 'p' -> 1.5;
-            case 'f', 'h', 'v', 'w', 'y' -> 1.75;
-            case 'k' -> 2.0;
-            case 'j', 'x' -> 2.75;
-            case 'q', 'z' -> 3.0;
-            default -> 1.0;
-        };
+        switch (c) {
+            case 'd': case 'g':
+                return 1.25;
+            case 'b': case 'c': case 'm': case 'p':
+                return 1.5;
+            case 'f': case 'h': case 'v': case 'w': case 'y':
+                return 1.75;
+            case 'k':
+                return 2.0;
+            case 'j': case 'x':
+                return 2.75;
+            case 'q': case 'z':
+                return 3.0;
+            default:
+                return 1.0;
+        }
     }
 
     static boolean isVowel(char c) { return "aeiou".indexOf(c) >= 0; }
@@ -244,8 +298,17 @@ public class BattleScreen {
         char ch; Kind kind = Kind.NORMAL; int scratched; boolean selected;
         double drop = 1; int sparkle; final int seed;
         Tile(char ch, int seed) { this.ch = ch; this.seed = seed; }
-        String label() { return ch == 'q' ? "Qu" : String.valueOf(Character.toUpperCase(ch)); }
-        String letters() { return ch == 'q' ? "qu" : String.valueOf(ch); }
+        // What's printed on it: a capital letter ("Qu" for q, since q is nearly always followed by u)
+        String label() {
+            if (ch == 'q') return "Qu";
+            return String.valueOf(Character.toUpperCase(ch));
+        }
+
+        // The letters it adds to a word
+        String letters() {
+            if (ch == 'q') return "qu";
+            return String.valueOf(ch);
+        }
     }
 
     static final String[] ITEM_NAMES = { "Old Textbook", "Red Pen", "Hall Pass" };
@@ -258,13 +321,46 @@ public class BattleScreen {
 
         void reset(int hp) {
             this.hp = hp; shown = hp;
-            shake = lunge = flash = attackPose = 0;
+            shake = 0;
+            lunge = 0;
+            flash = 0;
+            attackPose = 0;
             enter = 1; fade = 0; dying = false;
         }
     }
 
-    record Step(int duration, Runnable start) {}
-    record FlyTile(String label, Kind kind, int seed, double x, double y, double size) {}
+    // One step of a battle's script (see BattlePanel.then): when its turn comes, its action happens
+    // (see BattlePanel.doStep), then the next step waits `duration` frames
+    static class Step {
+        int duration;
+        String action;      // What happens: "banner", "impact", "enemyAttacks"... or null to just wait
+        String text;        // A "banner" step's words...
+        int life;           // ...and how many frames they show for
+
+        Step(int duration, String action, String text, int life) {
+            this.duration = duration;
+            this.action = action;
+            this.text = text;
+            this.life = life;
+        }
+    }
+
+    // A letter tile flying from the word at the top to the monster, when the player attacks
+    static class FlyTile {
+        String label;
+        Kind kind;
+        int seed;
+        double x, y, size;  // Where it started, and how big
+
+        FlyTile(String label, Kind kind, int seed, double x, double y, double size) {
+            this.label = label;
+            this.kind = kind;
+            this.seed = seed;
+            this.x = x;
+            this.y = y;
+            this.size = size;
+        }
+    }
 
     static class FloatText {
         double x, y; final String text; final Color color; int life = 70;
@@ -275,7 +371,10 @@ public class BattleScreen {
     //  The battle screen
     // =====================================================================================
 
-    public static class BattlePanel extends JPanel {
+    // The battle listens for its own keys, mouse and timer: Swing calls keyPressed, mousePressed,
+    // mouseMoved, mouseExited and actionPerformed (the other listener methods it must have do nothing).
+    public static class BattlePanel extends JPanel implements ActionListener, KeyListener, MouseListener,
+            MouseMotionListener {
         static final int W = 800, H = 600, TOP_H = 58, STAGE_BOTTOM = 290, FLOOR_TOP = 244;
         static final int TILE = 50, GAP = 4, GRID_X = 296, GRID_Y = 306;
         static final int HERO_X = 150, ENEMY_X = 650, FLOOR_Y = 276;
@@ -298,7 +397,7 @@ public class BattleScreen {
         final EnemyDef enemy;
         final int startHp, startKits;
         final int startFoeHp;   // The monster's health when the fight begins (less than its max for a weakened boss)
-        final Consumer<BattleResult> onFinish;
+        final GamePanel game;   // The game to go back to when the battle is over (null when it's tried on its own)
         final Set<String> dict = dictionary();
         final Random rng = new Random(), fx = new Random();
         final Tile[] grid = new Tile[16];
@@ -309,8 +408,8 @@ public class BattleScreen {
         int[] startItems; // item counts when the fight began (Try Again puts them back)
         int booksActive, pensActive, passesActive; // items clicked this turn, waiting to take effect
 
-        final ArrayDeque<Step> script = new ArrayDeque<>();
-        Step step; int stepTimer;
+        final ArrayList<Step> script = new ArrayList<>();   // The steps waiting their turn, first one first
+        Step step; int stepTimer;                           // The step going on now, and its frames left
         String banner = ""; int bannerLife, bannerMax = 1;
         final List<FloatText> floats = new ArrayList<>();
         final List<FlyTile> flying = new ArrayList<>();
@@ -321,7 +420,12 @@ public class BattleScreen {
         int enemyTurns;                // How many turns the monster has taken (for the checks)
         Point mouse = new Point(-1, -1);
         long ticks;
-        javax.swing.Timer timer;
+        final javax.swing.Timer timer = new javax.swing.Timer(16, this);   // Calls actionPerformed every 16 ms
+
+        // What the script's next steps need (see attack and enemyTurn)
+        List<Integer> hitTiles = new ArrayList<>();   // The tiles of the word flying at the monster...
+        int hitLength, hitDamage, hitHeal;            // ...its length, its damage, and the health its green tiles give back
+        Attack nextAttack;                            // The attack the monster is about to make
 
         // atmosphere
         double light = 1; int flickerTicks;
@@ -329,62 +433,130 @@ public class BattleScreen {
 
         BattlePanel(EnemyDef enemy) { this(enemy, HERO_MAX_HP, START_KITS, new Items(1, 1, 1), null); }
 
-        BattlePanel(EnemyDef enemy, int heroHp, int kits, Items items, Consumer<BattleResult> onFinish) {
-            this(enemy, enemy.maxHp(), heroHp, kits, items, onFinish);
+        BattlePanel(EnemyDef enemy, int heroHp, int kits, Items items, GamePanel game) {
+            this(enemy, enemy.maxHp(), heroHp, kits, items, game);
         }
 
-        BattlePanel(EnemyDef enemy, int foeHp, int heroHp, int kits, Items items, Consumer<BattleResult> onFinish) {
+        BattlePanel(EnemyDef enemy, int foeHp, int heroHp, int kits, Items items, GamePanel game) {
             this.enemy = enemy;
             this.startFoeHp = Math.max(1, Math.min(enemy.maxHp(), foeHp));
             this.turnTicks = turnSeconds(enemy) * TICKS_PER_SECOND;
             this.startHp = Math.max(1, Math.min(HERO_MAX_HP, heroHp));
             this.startKits = Math.max(0, kits);
-            this.onFinish = onFinish;
-            this.items = items != null ? items : new Items();
+            this.game = game;
+            if (items == null) items = new Items();
+            this.items = items;
             startItems = new int[] { this.items.textbooks, this.items.redPens, this.items.hallPasses };
             setPreferredSize(new Dimension(W, H));
             setBackground(Color.BLACK);
             setFocusable(true);
             for (int i = 0; i < dust.length; i++)
                 dust[i] = new double[] { fx.nextInt(W), TOP_H + fx.nextInt(STAGE_BOTTOM - TOP_H), 1.5 + fx.nextDouble() * 2, 0.05 + fx.nextDouble() * 0.15, fx.nextDouble() * 6 };
-            installInput();
+            addKeyListener(this);
+            addMouseListener(this);
+            addMouseMotionListener(this);
             resetFight();
         }
 
         /** Starts the animation timer. Call once after adding the panel to a window. */
         void start() {
-            if (timer == null) timer = new javax.swing.Timer(16, e -> { tick(); repaint(); });
             timer.start();
-            SwingUtilities.invokeLater(this::requestFocusInWindow);
+            requestFocusInWindow();
+        }
+
+        // The timer: one frame of the battle
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            tick();
+            repaint();
         }
 
         void resetFight() {
             script.clear(); step = null; flying.clear(); flyT = -1; floats.clear(); bannerLife = 0;
-            menuOpen = lost = won = false;
+            menuOpen = false;
+            lost = false;
+            won = false;
             hero.max = HERO_MAX_HP; hero.reset(startHp);
             foe.max = enemy.maxHp(); foe.reset(startFoeHp);
             kits = startKits;
             if (startItems != null) { items.textbooks = startItems[0]; items.redPens = startItems[1]; items.hallPasses = startItems[2]; }
-            booksActive = pensActive = passesActive = 0;
+            booksActive = 0;
+            pensActive = 0;
+            passesActive = 0;
             turnLeft = turnTicks;
             word.clear();
             for (int i = 0; i < 16; i++) newTile(i);
             fixVowels(allIndices());
-            then(0, () -> showBanner("The " + enemy.name() + " won't let you leave.", 110));
-            if (usingFallbackWords) then(0, () -> showBanner("words.txt not found - using a small word list", 160));
+            thenBanner(0, "The " + enemy.name() + " won't let you leave.", 110);
+            if (usingFallbackWords) thenBanner(0, "words.txt not found - using a small word list", 160);
             then(50, null);
         }
 
+        // The player won, or lost and gave up: back to the game with the result
         void finish() {
             if (finished) return;
             finished = true;
-            if (timer != null) timer.stop();
-            if (onFinish != null) onFinish.accept(new BattleResult(won, won ? hero.hp : 0, kits));
+            timer.stop();
+            int hpLeft = 0;
+            if (won) hpLeft = hero.hp;
+            BattleResult result = new BattleResult(won, hpLeft, kits);
+            if (game != null) {
+                game.battleOver(result);
+            } else {
+                System.out.println("The battle is over. Won: " + won);   // (Tried on its own: see main)
+            }
         }
 
         // ---------------------------------------------------------------- script / timing
+        // A battle plays out as a script: a list of steps, one after another, each with an action
+        // (see doStep) and how many frames to wait after it. The player can only act when it's empty.
 
-        void then(int duration, Runnable start) { script.add(new Step(duration, start)); }
+        // Adds a step to the end of the script
+        void then(int duration, String action) { script.add(new Step(duration, action, null, 0)); }
+        // ...one that shows a banner
+        void thenBanner(int duration, String text, int life) { script.add(new Step(duration, "banner", text, life)); }
+
+        // What a step does when its turn comes
+        void doStep(Step s) {
+            if (s.action == null) return;              // Just a wait
+            switch (s.action) {
+                case "banner":
+                    showBanner(s.text, s.life);
+                    break;
+                case "impact":                         // The player's word hits the monster
+                    impact();
+                    break;
+                case "enemyAttacks":                   // The monster lunges, and says what it's doing
+                    for (Tile t : grid) {
+                        if (t.scratched > 0) t.scratched--;
+                    }
+                    showBanner("The " + enemy.name() + " uses " + nextAttack.name() + "!", 80);
+                    foe.lunge = 18;
+                    foe.attackPose = 40;
+                    break;
+                case "enemyHits":
+                    enemyHits(nextAttack);
+                    break;
+                case "playerTurn":                     // The player's turn again, with a fresh clock
+                    if (hero.hp <= 0) {
+                        heroDefeated();
+                    } else {
+                        turnLeft = turnTicks;
+                    }
+                    break;
+                case "foeDies":
+                    foe.dying = true;
+                    break;
+                case "won":
+                    won = true;
+                    break;
+                case "lost":
+                    lost = true;
+                    break;
+                default:
+                    break;
+            }
+        }
         boolean busy() { return step != null || !script.isEmpty(); }
         boolean canAct() { return !busy() && !menuOpen && !lost && !won; }
         void showBanner(String text, int life) { banner = text; bannerLife = life; bannerMax = life; }
@@ -405,14 +577,20 @@ public class BattleScreen {
         void tick() {
             ticks++;
             if (menuOpen) return;
-            if (step != null && --stepTimer <= 0) step = null;
-            while (step == null && !script.isEmpty()) {
-                step = script.poll();
-                stepTimer = step.duration();
-                if (step.start() != null) step.start().run();
+            if (step != null) {                        // The step going on now: is it over?
+                stepTimer--;
                 if (stepTimer <= 0) step = null;
             }
-            if (Settings.turnTimer && canAct() && --turnLeft <= 0) timeUp();   // The player's clock runs on their turn
+            while (step == null && !script.isEmpty()) {   // Start the next one (and any that take no time)
+                step = script.remove(0);
+                stepTimer = step.duration;
+                doStep(step);
+                if (stepTimer <= 0) step = null;
+            }
+            if (Settings.turnTimer && canAct()) {      // The player's clock runs on their turn
+                turnLeft--;
+                if (turnLeft <= 0) timeUp();
+            }
             for (Fighter f : new Fighter[] { hero, foe }) {
                 if (f.shake > 0) f.shake--;
                 if (f.lunge > 0) f.lunge--;
@@ -421,21 +599,32 @@ public class BattleScreen {
                 f.enter = Math.max(0, f.enter - 1 / 40.0);
                 if (f.dying) f.fade = Math.min(1, f.fade + 1 / 50.0);
                 double rate = Math.max(0.3, f.max / 110.0);
-                f.shown = f.shown > f.hp ? Math.max(f.hp, f.shown - rate * 2) : Math.min(f.hp, f.shown + rate);
+                if (f.shown > f.hp) {
+                    f.shown = Math.max(f.hp, f.shown - rate * 2);   // The bar goes down quickly...
+                } else {
+                    f.shown = Math.min(f.hp, f.shown + rate);       // ...and up (healing) more slowly
+                }
             }
             for (Tile t : grid) { t.drop = Math.max(0, t.drop - 0.07); if (t.sparkle > 0) t.sparkle--; }
             if (flyT >= 0 && flyT < 1) flyT = Math.min(1, flyT + 1 / 30.0);
             if (bannerLife > 0) bannerLife--;
-            for (Iterator<FloatText> it = floats.iterator(); it.hasNext(); ) {
-                FloatText f = it.next();
+            for (int i = floats.size() - 1; i >= 0; i--) {   // (Backwards, so removing one doesn't skip the next)
+                FloatText f = floats.get(i);
                 f.y -= 0.7;
-                if (--f.life <= 0) it.remove();
+                f.life--;
+                if (f.life <= 0) floats.remove(i);
             }
             // ceiling light flicker: dims gently every few frames, then comes back
             if (!Settings.flicker) light = 1;
             else if (flickerTicks > 0) {
                 flickerTicks--;
-                if (flickerTicks % 5 == 0) light = fx.nextBoolean() ? 0.45 + fx.nextDouble() * 0.3 : 1;
+                if (flickerTicks % 5 == 0) {
+                    if (fx.nextBoolean()) {
+                        light = 0.45 + fx.nextDouble() * 0.3;
+                    } else {
+                        light = 1;
+                    }
+                }
                 if (flickerTicks == 0) light = 1;
             } else if (fx.nextInt(480) == 0) flickerTicks = 20 + fx.nextInt(40);
             for (double[] d : dust) {
@@ -501,11 +690,17 @@ public class BattleScreen {
             double sum = 0; boolean gold = false, crystal = false;
             for (int i : word) {
                 sum += letterValue(grid[i].ch);
-                gold |= grid[i].kind == Kind.GOLD;
-                crystal |= grid[i].kind == Kind.CRYSTAL;
+                if (grid[i].kind == Kind.GOLD) gold = true;
+                if (grid[i].kind == Kind.CRYSTAL) crystal = true;
             }
             int len = currentWord().length();
-            double mult = len <= 3 ? 1.0 : len == 4 ? 1.25 : len == 5 ? 1.6 : len == 6 ? 2.0 : len == 7 ? 2.5 : len == 8 ? 3.0 : 3.5;
+            double mult = 3.5;                         // Longer words hit much harder
+            if (len <= 3) mult = 1.0;
+            else if (len == 4) mult = 1.25;
+            else if (len == 5) mult = 1.6;
+            else if (len == 6) mult = 2.0;
+            else if (len == 7) mult = 2.5;
+            else if (len == 8) mult = 3.0;
             double d = sum * mult * DAMAGE_PER_LETTER;
             if (crystal) d *= 2; else if (gold) d *= 1.5;
             d *= 1 + boostNow(); // Red Pens used this turn
@@ -527,26 +722,32 @@ public class BattleScreen {
                 Tile t = grid[word.get(p)];
                 flying.add(new FlyTile(t.label(), t.kind, t.seed, r.getX(), r.getY(), r.getWidth()));
             }
-            List<Integer> used = new ArrayList<>(word);
+            hitTiles = new ArrayList<>(word);          // Remembered for the impact, when the letters land
+            hitLength = len;
+            hitDamage = dmg;
+            hitHeal = greens * HEAL_TILE_HP;
             word.clear();
             hero.lunge = 18;
             hero.attackPose = 40;
             flyT = 0;
-            int healAmount = greens * HEAL_TILE_HP;
             then(32, null);
-            then(0, () -> impact(used, len, dmg, healAmount));
+            then(0, "impact");
         }
 
-        void impact(List<Integer> used, int len, int dmg, int healAmount) {
+        // The letters land: the monster's hurt, the tiles used are replaced, and a long word leaves a bonus tile
+        void impact() {
             flying.clear(); flyT = -1;
-            hurt(foe, dmg);
-            addFloat(ENEMY_X - 20, 150, "-" + dmg, new Color(235, 50, 40));
-            if (healAmount > 0) heal(hero, healAmount, HERO_X - 20, 140);
-            for (int i : used) newTile(i);
-            int bonus = used.get(rng.nextInt(used.size()));
-            Kind k = len >= 7 ? Kind.CRYSTAL : len == 6 ? Kind.GOLD : len == 5 ? Kind.GREEN : Kind.NORMAL;
+            hurt(foe, hitDamage);
+            addFloat(ENEMY_X - 20, 150, "-" + hitDamage, new Color(235, 50, 40));
+            if (hitHeal > 0) heal(hero, hitHeal, HERO_X - 20, 140);
+            for (int i : hitTiles) newTile(i);
+            int bonus = hitTiles.get(rng.nextInt(hitTiles.size()));
+            Kind k = Kind.NORMAL;
+            if (hitLength >= 7) k = Kind.CRYSTAL;
+            else if (hitLength == 6) k = Kind.GOLD;
+            else if (hitLength == 5) k = Kind.GREEN;
             if (k != Kind.NORMAL) { grid[bonus].kind = k; grid[bonus].sparkle = 60; }
-            fixVowels(used);
+            fixVowels(hitTiles);
             if (foe.hp <= 0) enemyDefeated(); else enemyTurn();
         }
 
@@ -602,32 +803,34 @@ public class BattleScreen {
         // ---------------------------------------------------------------- enemy
 
         Attack pickAttack() {
-            int total = enemy.attacks().stream().mapToInt(Attack::weight).sum(), roll = rng.nextInt(Math.max(1, total));
+            int total = 0;                             // Each attack's chance goes by its weight
+            for (Attack a : enemy.attacks()) total += a.weight();
+            int roll = rng.nextInt(Math.max(1, total));
             for (Attack a : enemy.attacks()) { roll -= a.weight(); if (roll < 0) return a; }
             return enemy.attacks().get(0);
         }
 
         void enemyTurn() {
             enemyTurns++;
-            Attack a = pickAttack();
+            nextAttack = pickAttack();
             then(28, null);
-            then(18, () -> {
-                for (Tile t : grid) if (t.scratched > 0) t.scratched--;
-                showBanner("The " + enemy.name() + " uses " + a.name() + "!", 80);
-                foe.lunge = 18;
-                foe.attackPose = 40;
-            });
-            then(40, () -> enemyHits(a));
-            then(0, () -> { if (hero.hp <= 0) heroDefeated(); else turnLeft = turnTicks; });   // The player's turn again: a fresh clock
+            then(18, "enemyAttacks");
+            then(40, "enemyHits");
+            then(0, "playerTurn");
         }
 
-        int enemyDamage(Attack a) { return a.damage() <= 0 ? 0 : Math.max(1, (int) Math.round(a.damage() * (1 - blockNow()))); }
+        int enemyDamage(Attack a) {
+            if (a.damage() <= 0) return 0;
+            return Math.max(1, (int) Math.round(a.damage() * (1 - blockNow())));
+        }
 
         void enemyHits(Attack a) {
             int dodge = dodgeNow();            // Hall Passes used this turn
             int dmg = enemyDamage(a);          // already reduced by Textbooks used this turn
-            int blocked = booksActive > 0 ? Math.max(0, a.damage() - dmg) : 0;
-            booksActive = passesActive = 0;    // they're spent on this attack
+            int blocked = 0;                   // how much the Textbooks took off
+            if (booksActive > 0) blocked = Math.max(0, a.damage() - dmg);
+            booksActive = 0;                   // they're spent on this attack
+            passesActive = 0;
             if (rng.nextInt(100) < dodge) {
                 addFloat(HERO_X - 50, 140, "Dodged!", PALE);
                 return;
@@ -647,67 +850,131 @@ public class BattleScreen {
         }
 
         void enemyDefeated() {
-            then(20, () -> foe.dying = true);
-            then(60, () -> showBanner("The " + enemy.name() + " collapses into the dark...", 120));
+            then(20, "foeDies");
+            thenBanner(60, "The " + enemy.name() + " collapses into the dark...", 120);
             then(60, null);
-            then(0, () -> won = true);
+            then(0, "won");
         }
 
         void heroDefeated() {
             hero.dying = true;
             showBanner("Everything goes dark...", 120);
             then(80, null);
-            then(0, () -> lost = true);
+            then(0, "lost");
         }
 
         // ---------------------------------------------------------------- input
 
-        void installInput() {
-            addKeyListener(new KeyAdapter() {
-                @Override public void keyPressed(KeyEvent e) {
-                    int code = e.getKeyCode();
-                    if (menuOpen) { if (code == KeyEvent.VK_ESCAPE) menuOpen = false; return; }
-                    if (won) { if (code == KeyEvent.VK_ENTER) finish(); return; }
-                    if (lost) { if (code == KeyEvent.VK_ENTER) resetFight(); return; }
-                    if (code == KeyEvent.VK_ESCAPE) { if (!word.isEmpty()) clearWord(); else menuOpen = true; return; }
-                    if (!canAct()) return;
-                    if (code == KeyEvent.VK_ENTER) attack();
-                    else if (code == KeyEvent.VK_SPACE) shuffle();   // Space bar = shuffle
-                    else if (code == KeyEvent.VK_BACK_SPACE) { if (!word.isEmpty()) unselect(word.size() - 1); }
-                    else {
-                        char c = Character.toLowerCase(e.getKeyChar());
-                        if (c < 'a' || c > 'z') return;
-                        if (c == 'u' && !word.isEmpty() && grid[word.get(word.size() - 1)].ch == 'q') return; // "Qu" already has the u
-                        for (int i = 0; i < 16; i++) if (grid[i].ch == c && !grid[i].selected && grid[i].scratched == 0) { select(i); return; }
-                    }
+        @Override
+        public void keyPressed(KeyEvent e) {
+            int code = e.getKeyCode();
+            if (menuOpen) {                            // Paused: Esc carries on
+                if (code == KeyEvent.VK_ESCAPE) menuOpen = false;
+                return;
+            }
+            if (won) {                                 // Won: Enter goes back to the game
+                if (code == KeyEvent.VK_ENTER) finish();
+                return;
+            }
+            if (lost) {                                // Lost: Enter tries again
+                if (code == KeyEvent.VK_ENTER) resetFight();
+                return;
+            }
+            if (code == KeyEvent.VK_ESCAPE) {          // Esc drops the word, or pauses if there isn't one
+                if (!word.isEmpty()) {
+                    clearWord();
+                } else {
+                    menuOpen = true;
                 }
-            });
-            addMouseMotionListener(new MouseMotionAdapter() {
-                @Override public void mouseMoved(MouseEvent e) { mouse = e.getPoint(); }
-            });
-            addMouseListener(new MouseAdapter() {
-                @Override public void mouseExited(MouseEvent e) { mouse = new Point(-1, -1); }
-                @Override public void mousePressed(MouseEvent e) {
-                    requestFocusInWindow();
-                    Point p = e.getPoint();
-                    if (won) { if (CONTINUE_BTN.contains(p)) finish(); return; }
-                    if (lost) { if (RETRY_BTN.contains(p)) resetFight(); else if (GIVEUP_BTN.contains(p)) finish(); return; }
-                    if (menuOpen) { if (RESUME_BTN.contains(p)) menuOpen = false; else if (RESTART_BTN.contains(p)) resetFight(); return; }
-                    if (MENU_BTN.contains(p)) { menuOpen = true; return; }
-                    if (!canAct()) return;
-                    for (int i = 0; i < 3; i++) if (itemRect(i).contains(p)) { useItem(i); return; }
-                    for (int i = 0; i < 16; i++) if (tileRect(i).contains(p)) {
-                        if (grid[i].selected) unselect(word.indexOf(i)); else select(i);
+                return;
+            }
+            if (!canAct()) return;
+            if (code == KeyEvent.VK_ENTER) {
+                attack();
+            } else if (code == KeyEvent.VK_SPACE) {    // Space bar = shuffle
+                shuffle();
+            } else if (code == KeyEvent.VK_BACK_SPACE) {
+                if (!word.isEmpty()) unselect(word.size() - 1);
+            } else {                                   // A letter: the first free tile with that letter
+                char c = Character.toLowerCase(e.getKeyChar());
+                if (c < 'a' || c > 'z') return;
+                if (c == 'u' && !word.isEmpty() && grid[word.get(word.size() - 1)].ch == 'q') return; // "Qu" already has the u
+                for (int i = 0; i < 16; i++) {
+                    if (grid[i].ch == c && !grid[i].selected && grid[i].scratched == 0) {
+                        select(i);
                         return;
                     }
-                    for (int pos = 0; pos < word.size(); pos++) if (wordTileRect(pos).contains(p)) { unselect(pos); return; }
-                    if (ATTACK_BTN.contains(p)) attack();
-                    else if (SCRAMBLE_BTN.contains(p)) scramble();
-                    else if (SHUFFLE_BTN.contains(p)) shuffle();
-                    else if (KIT_BOX.contains(p)) useKit();
                 }
-            });
+            }
         }
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            mouse = e.getPoint();
+        }
+
+        @Override
+        public void mouseExited(MouseEvent e) {
+            mouse = new Point(-1, -1);
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            requestFocusInWindow();
+            Point p = e.getPoint();
+            if (won) {
+                if (CONTINUE_BTN.contains(p)) finish();
+                return;
+            }
+            if (lost) {
+                if (RETRY_BTN.contains(p)) resetFight();
+                if (GIVEUP_BTN.contains(p)) finish();
+                return;
+            }
+            if (menuOpen) {
+                if (RESUME_BTN.contains(p)) menuOpen = false;
+                if (RESTART_BTN.contains(p)) resetFight();
+                return;
+            }
+            if (MENU_BTN.contains(p)) {
+                menuOpen = true;
+                return;
+            }
+            if (!canAct()) return;
+            for (int i = 0; i < 3; i++) {
+                if (itemRect(i).contains(p)) {
+                    useItem(i);
+                    return;
+                }
+            }
+            for (int i = 0; i < 16; i++) {             // A letter tile: into the word, or back out of it
+                if (tileRect(i).contains(p)) {
+                    if (grid[i].selected) {
+                        unselect(word.indexOf(i));
+                    } else {
+                        select(i);
+                    }
+                    return;
+                }
+            }
+            for (int pos = 0; pos < word.size(); pos++) {   // A tile in the word at the top: back out of it
+                if (wordTileRect(pos).contains(p)) {
+                    unselect(pos);
+                    return;
+                }
+            }
+            if (ATTACK_BTN.contains(p)) attack();
+            if (SCRAMBLE_BTN.contains(p)) scramble();
+            if (SHUFFLE_BTN.contains(p)) shuffle();
+            if (KIT_BOX.contains(p)) useKit();
+        }
+
+        @Override public void keyReleased(KeyEvent e) { }
+        @Override public void keyTyped(KeyEvent e) { }
+        @Override public void mouseClicked(MouseEvent e) { }
+        @Override public void mouseReleased(MouseEvent e) { }
+        @Override public void mouseEntered(MouseEvent e) { }
+        @Override public void mouseDragged(MouseEvent e) { }
 
         // ---------------------------------------------------------------- rendering
 
@@ -804,7 +1071,11 @@ public class BattleScreen {
             g.fillRoundRect(bx - 34, by - 9, bw + 86, 28, 12, 12);
             // A little clock face
             double cx = bx - 18, cy = by + 5;
-            g.setColor(hurry ? new Color(220, 60, 50) : PALE);
+            if (hurry) {
+                g.setColor(new Color(220, 60, 50));
+            } else {
+                g.setColor(PALE);
+            }
             g.setStroke(new BasicStroke(2f));
             g.draw(el(cx - 8, cy - 8, 16, 16));
             double a = -Math.PI / 2 + 2 * Math.PI * (1 - left);
@@ -813,7 +1084,9 @@ public class BattleScreen {
             // The fuse
             g.setColor(new Color(40, 34, 30));
             g.fillRect(bx, by, bw, bh);
-            Color c = left > 0.5 ? new Color(110, 190, 90) : left > 0.25 ? new Color(226, 170, 60) : new Color(216, 52, 42);
+            Color c = new Color(216, 52, 42);                          // Red...
+            if (left > 0.25) c = new Color(226, 170, 60);              // ...amber...
+            if (left > 0.5) c = new Color(110, 190, 90);               // ...green
             if (hurry && (ticks / 8) % 2 == 0) c = new Color(255, 120, 100);
             int w = (int) Math.round(bw * left);
             g.setColor(c);
@@ -824,17 +1097,49 @@ public class BattleScreen {
                 g.setColor(new Color(255, 230, 150, 120 + (int) (100 * Math.abs(Math.sin(ticks / 4.0)))));
                 g.fill(el(bx + w - 4, by - 2, 8, bh + 4));
             }
-            g.setFont(new Font(MONO, Font.BOLD, hurry ? 17 : 15));
-            shadowText(g, secs + "s", bx + bw + 10, by + 10, hurry ? new Color(255, 110, 90) : PALE);
+            if (hurry) {
+                g.setFont(new Font(MONO, Font.BOLD, 17));
+                shadowText(g, secs + "s", bx + bw + 10, by + 10, new Color(255, 110, 90));
+            } else {
+                g.setFont(new Font(MONO, Font.BOLD, 15));
+                shadowText(g, secs + "s", bx + bw + 10, by + 10, PALE);
+            }
         }
 
         void drawFighter(Graphics2D g, Fighter f, boolean isHero) {
             if (f.fade >= 1) return;
-            double x = isHero ? HERO_X : ENEMY_X, y = FLOOR_Y;
+            // The player stands on the left and walks in from the left; the monster from the right.
+            // (f.enter goes from 1 down to 0 as they walk in; e eases it, so they slow down as they arrive.)
             double e = f.enter * f.enter * (3 - 2 * f.enter);
-            double dx = isHero ? -e * 320 : e * 380;
-            if (f.lunge > 0) { double t = Math.sin(Math.PI * f.lunge / 18.0) * 40; dx += isHero ? t : -t; }
-            if (f.shake > 0) dx += (f.shake / 2) % 2 == 0 ? 6 : -6;
+            double x, dx, size;
+            String key;
+            if (isHero) {
+                x = HERO_X;
+                dx = -e * 320;
+                key = HERO_SPRITE;
+                size = 150;
+            } else {
+                x = ENEMY_X;
+                dx = e * 380;
+                key = enemy.sprite();
+                size = 170;
+            }
+            double y = FLOOR_Y;
+            if (f.lunge > 0) {                         // Lunging at the other one
+                double t = Math.sin(Math.PI * f.lunge / 18.0) * 40;
+                if (isHero) {
+                    dx += t;
+                } else {
+                    dx -= t;
+                }
+            }
+            if (f.shake > 0) {                         // Just hit: shaking, 6 px one way then the other
+                if ((f.shake / 2) % 2 == 0) {
+                    dx += 6;
+                } else {
+                    dx -= 6;
+                }
+            }
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setComposite(AlphaComposite.SrcOver.derive((float) (1 - f.fade)));
             g2.setColor(new Color(0, 0, 0, 120));
@@ -842,12 +1147,11 @@ public class BattleScreen {
             boolean blink = f.flash > 0 && (f.flash / 3) % 2 == 1;
             if (!blink) {
                 // Pick the pose: name_attack.png while attacking, name_hurt.png while hit, otherwise name.png.
-                String key = isHero ? HERO_SPRITE : enemy.sprite();
                 BufferedImage img = null;
                 if (f.attackPose > 0) img = Sprites.get(key + "_attack", false);
                 else if (f.shake > 0) img = Sprites.get(key + "_hurt", false);
                 if (img == null) img = Sprites.get(key, true);
-                if (img != null) Sprites.drawFit(g2, img, x + dx, y, isHero ? 150 : 170);
+                if (img != null) Sprites.drawFit(g2, img, x + dx, y, size);
                 else { // sprite missing: dark box with a "?"
                     g2.setColor(new Color(50, 50, 52));
                     g2.fillRect((int) (x + dx) - 50, (int) y - 120, 100, 120);
@@ -874,7 +1178,7 @@ public class BattleScreen {
             String name = enemy.name().toUpperCase();
             g.setFont(new Font(MONO, Font.BOLD, 16));
             shadowText(g, name, 782 - g.getFontMetrics().stringWidth(name), 20, PALE);
-            healthBar(g, 782 - HealthBar.width(HealthBar.Style.ENEMY, BAR_SCALE), 24, foe, false);
+            healthBar(g, 782 - HealthBar.MONSTER.width(BAR_SCALE), 24, foe, false);
 
             // the door sign of the room the fight is in
             if (!enemy.room().isBlank()) {
@@ -905,15 +1209,19 @@ public class BattleScreen {
         /** A fighter's health bar (see HealthBar), with the numbers beside it. It empties a segment at a
          *  time as `shown` slides down to the new health. Nearly dead, the player's bar throbs red. */
         void healthBar(Graphics2D g, int x, int y, Fighter f, boolean isHero) {
-            HealthBar.Style style = isHero ? HealthBar.Style.LEAD : HealthBar.Style.ENEMY;
-            if (isHero && f.hp > 0 && f.hp <= f.max * 0.3) lowHealthGlow(g, x, y, style, ticks);
-            HealthBar.drawWithNumbers(g, style, f.shown, (int) Math.ceil(f.shown), f.max, x, y, BAR_SCALE, !isHero);
+            int number = (int) Math.ceil(f.shown);
+            if (isHero) {
+                if (f.hp > 0 && f.hp <= f.max * 0.3) lowHealthGlow(g, x, y, HealthBar.PLAYER, ticks);
+                HealthBar.PLAYER.drawWithNumbers(g, f.shown, number, f.max, x, y, BAR_SCALE, false);
+            } else {
+                HealthBar.MONSTER.drawWithNumbers(g, f.shown, number, f.max, x, y, BAR_SCALE, true);
+            }
         }
 
         /** A red glow behind a bar that beats like a heart (also used by the typing race). */
-        static void lowHealthGlow(Graphics2D g, int x, int y, HealthBar.Style style, long ticks) {
+        static void lowHealthGlow(Graphics2D g, int x, int y, HealthBar bar, long ticks) {
             double beat = Math.pow(Math.max(0, Math.sin(ticks / 9.0)), 4);
-            int w = HealthBar.width(style, BAR_SCALE), h = HealthBar.height(style, BAR_SCALE);
+            int w = bar.width(BAR_SCALE), h = bar.height(BAR_SCALE);
             for (int i = 3; i >= 1; i--) {
                 g.setColor(new Color(220, 24, 24, (int) ((14 + 46 * beat) / i)));
                 g.fillRoundRect(x - 2 - 3 * i, y - 1 - 3 * i, w + 4 + 6 * i, h + 2 + 6 * i, 8 + 4 * i, 8 + 4 * i);
@@ -924,12 +1232,12 @@ public class BattleScreen {
             if (flyT >= 0) {
                 double t = flyT * flyT;
                 for (FlyTile f : flying) {
-                    double s = f.size() * (1 - 0.6 * t);
-                    double px = f.x() + (ENEMY_X - s / 2 - f.x()) * t;
-                    double py = f.y() + (150 - f.y()) * t - Math.sin(Math.PI * flyT) * 50;
+                    double s = f.size * (1 - 0.6 * t);
+                    double px = f.x + (ENEMY_X - s / 2 - f.x) * t;
+                    double py = f.y + (150 - f.y) * t - Math.sin(Math.PI * flyT) * 50;
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setComposite(AlphaComposite.SrcOver.derive((float) Math.max(0, 1 - Math.max(0, (flyT - 0.75) / 0.25))));
-                    drawTile(g2, px, py, s, f.label(), f.kind(), 0, false, 0, f.seed());
+                    drawTile(g2, px, py, s, f.label, f.kind, 0, false, 0, f.seed);
                     g2.dispose();
                 }
                 return;
@@ -950,8 +1258,13 @@ public class BattleScreen {
             }
             if (currentWord().length() < 3) return;
             g.setFont(new Font(MONO, Font.BOLD, 15));
-            String s = wordValid() ? "DAMAGE: " + damage() : "not a word";
-            shadowText(g, s, 400 - g.getFontMetrics().stringWidth(s) / 2, 160, wordValid() ? CHALK : new Color(200, 100, 90));
+            if (wordValid()) {
+                String s = "DAMAGE: " + damage();
+                shadowText(g, s, 400 - g.getFontMetrics().stringWidth(s) / 2, 160, CHALK);
+            } else {
+                String s = "not a word";
+                shadowText(g, s, 400 - g.getFontMetrics().stringWidth(s) / 2, 160, new Color(200, 100, 90));
+            }
         }
 
         void drawBanner(Graphics2D g) {
@@ -1001,7 +1314,11 @@ public class BattleScreen {
             // left: first aid kits + locker items
             metalPanel(g, 8, 296, 270, 232);
             boolean kitHover = KIT_BOX.contains(mouse) && canAct() && kits > 0;
-            g.setColor(kitHover ? new Color(110, 24, 24, 120) : new Color(0, 0, 0, 110));
+            if (kitHover) {
+                g.setColor(new Color(110, 24, 24, 120));
+            } else {
+                g.setColor(new Color(0, 0, 0, 110));
+            }
             g.fillRect(KIT_BOX.x, KIT_BOX.y, KIT_BOX.width, KIT_BOX.height);
             Art.firstAid(g, 50, 336, kits > 0);
             g.setFont(new Font(MONO, Font.BOLD, 20));
@@ -1015,12 +1332,17 @@ public class BattleScreen {
                 boolean hover = cub.contains(mouse);
                 g.setColor(new Color(10, 12, 12));
                 g.fillRect(cub.x, cub.y, cub.width, cub.height);
-                g.setColor(hover ? new Color(150, 30, 30) : new Color(70, 72, 70));
+                if (hover) {
+                    g.setColor(new Color(150, 30, 30));
+                } else {
+                    g.setColor(new Color(70, 72, 70));
+                }
                 g.setStroke(new BasicStroke(2));
                 g.drawRect(cub.x, cub.y, cub.width, cub.height);
-                String active = i == 0 && booksActive > 0 ? "-" + pct(blockNow()) + "%"
-                              : i == 1 && pensActive > 0 ? "+" + pct(boostNow()) + "%"
-                              : i == 2 && passesActive > 0 ? dodgeNow() + "%" : null;
+                String active = null;
+                if (i == 0 && booksActive > 0) active = "-" + pct(blockNow()) + "%";
+                if (i == 1 && pensActive > 0) active = "+" + pct(boostNow()) + "%";
+                if (i == 2 && passesActive > 0) active = dodgeNow() + "%";
                 if (active != null) { // used this turn: glowing outline and its current strength
                     g.setColor(new Color(230, 40, 40, (int) (150 + 100 * Math.sin(ticks / 6.0))));
                     g.setStroke(new BasicStroke(3));
@@ -1042,9 +1364,12 @@ public class BattleScreen {
                 }
                 g.setFont(new Font(MONO, Font.BOLD, 12));
                 String[] parts = ITEM_NAMES[i].split(" ");
-                for (int l = 0; l < parts.length; l++)
+                Color nameColor = new Color(96, 94, 90);   // Faded until the player has one
+                if (count > 0) nameColor = PALE;
+                for (int l = 0; l < parts.length; l++) {
                     shadowText(g, parts[l], cub.x + cub.width / 2 - g.getFontMetrics().stringWidth(parts[l]) / 2, cub.y + 108 + l * 14,
-                            count > 0 ? PALE : new Color(96, 94, 90));
+                            nameColor);
+                }
             }
 
             // centre: chalkboard frame for the letters
@@ -1090,7 +1415,11 @@ public class BattleScreen {
                 Rectangle ar = attackRect(i);
                 Art.attackIcon(g, 562, ar.y + 2, a);
                 g.setFont(new Font(MONO, Font.BOLD, 14));
-                g.setColor(ar.contains(mouse) ? BLOOD : INK);
+                if (ar.contains(mouse)) {
+                    g.setColor(BLOOD);
+                } else {
+                    g.setColor(INK);
+                }
                 g.drawString(a.name(), 592, ar.y + 18);
             }
             int fy = attackRect(enemy.attacks().size()).y + 8;
@@ -1105,7 +1434,12 @@ public class BattleScreen {
                 }
         }
 
-        int itemCount(int i) { return i == 0 ? items.textbooks : i == 1 ? items.redPens : items.hallPasses; }
+        // How many the player has: 0 = Old Textbooks, 1 = Red Pens, 2 = Hall Passes
+        int itemCount(int i) {
+            if (i == 0) return items.textbooks;
+            if (i == 1) return items.redPens;
+            return items.hallPasses;
+        }
 
         static long pct(double fraction) { return Math.round(fraction * 100); }
 
@@ -1117,23 +1451,42 @@ public class BattleScreen {
         /** Clicking a locker item uses one up. It takes effect on the next attack (yours for the pen, the enemy's for the others). */
         void useItem(int i) {
             if (itemCount(i) <= 0) { showBanner("You don't have a " + ITEM_NAMES[i] + ".", 70); return; }
-            boolean maxed = i == 0 ? blockNow() >= TEXTBOOK_MAX : i == 1 ? boostNow() >= RED_PEN_MAX : dodgeNow() >= HALL_PASS_MAX;
+            boolean maxed;
+            if (i == 0) maxed = blockNow() >= TEXTBOOK_MAX;
+            else if (i == 1) maxed = boostNow() >= RED_PEN_MAX;
+            else maxed = dodgeNow() >= HALL_PASS_MAX;
             if (maxed) { showBanner("Using another won't help any more this turn.", 70); return; }
-            switch (i) {
-                case 0 -> { items.textbooks--; booksActive++; showBanner("Textbook raised: the next hit does " + pct(blockNow()) + "% less damage.", 100); }
-                case 1 -> { items.redPens--; pensActive++; showBanner("Red Pen ready: your next attack does +" + pct(boostNow()) + "% damage.", 100); }
-                default -> { items.hallPasses--; passesActive++; showBanner("Hall Pass ready: " + dodgeNow() + "% chance to dodge the next attack.", 100); }
+            if (i == 0) {
+                items.textbooks--;
+                booksActive++;
+                showBanner("Textbook raised: the next hit does " + pct(blockNow()) + "% less damage.", 100);
+            } else if (i == 1) {
+                items.redPens--;
+                pensActive++;
+                showBanner("Red Pen ready: your next attack does +" + pct(boostNow()) + "% damage.", 100);
+            } else {
+                items.hallPasses--;
+                passesActive++;
+                showBanner("Hall Pass ready: " + dodgeNow() + "% chance to dodge the next attack.", 100);
             }
         }
 
         String itemTooltip(int i) {
-            String effect = i == 0 ? "Click to use one: the next enemy hit does " + pct(TEXTBOOK_PER_USE) + "% less damage (stacks up to " + pct(TEXTBOOK_MAX) + "%)."
-                          : i == 1 ? "Click to use one: your next attack does " + pct(RED_PEN_PER_USE) + "% more damage (stacks up to +" + pct(RED_PEN_MAX) + "%)."
-                          : "Click to use one: " + HALL_PASS_PER_USE + "% chance to dodge the next enemy attack (stacks up to " + HALL_PASS_MAX + "%).";
-            String active = i == 0 && booksActive > 0 ? " Active now: " + pct(blockNow()) + "% less."
-                          : i == 1 && pensActive > 0 ? " Active now: +" + pct(boostNow()) + "%."
-                          : i == 2 && passesActive > 0 ? " Active now: " + dodgeNow() + "% dodge." : "";
-            return (itemCount(i) == 0 ? "None left. " : "") + effect + active + " Doesn't cost your turn.";
+            String effect;
+            String active = "";
+            if (i == 0) {
+                effect = "Click to use one: the next enemy hit does " + pct(TEXTBOOK_PER_USE) + "% less damage (stacks up to " + pct(TEXTBOOK_MAX) + "%).";
+                if (booksActive > 0) active = " Active now: " + pct(blockNow()) + "% less.";
+            } else if (i == 1) {
+                effect = "Click to use one: your next attack does " + pct(RED_PEN_PER_USE) + "% more damage (stacks up to +" + pct(RED_PEN_MAX) + "%).";
+                if (pensActive > 0) active = " Active now: +" + pct(boostNow()) + "%.";
+            } else {
+                effect = "Click to use one: " + HALL_PASS_PER_USE + "% chance to dodge the next enemy attack (stacks up to " + HALL_PASS_MAX + "%).";
+                if (passesActive > 0) active = " Active now: " + dodgeNow() + "% dodge.";
+            }
+            String noneLeft = "";
+            if (itemCount(i) == 0) noneLeft = "None left. ";
+            return noneLeft + effect + active + " Doesn't cost your turn.";
         }
 
         Rectangle itemRect(int i) { return new Rectangle(20 + i * 84, 378, 78, 142); }
@@ -1146,7 +1499,13 @@ public class BattleScreen {
             g.fillRect(x + 6, y + 6, w - 12, h - 12);
             g.setColor(new Color(110, 60, 34, 120)); // rust
             Random r = new Random(x * 31 + y);
-            for (int i = 0; i < 6; i++) g.fill(el(x + r.nextInt(w - 10), (r.nextBoolean() ? y : y + h - 6) + r.nextInt(3), 8 + r.nextInt(14), 4));
+            for (int i = 0; i < 6; i++) {
+                int rustX = x + r.nextInt(w - 10);
+                int rustY = y + h - 6;                 // Along the bottom edge...
+                if (r.nextBoolean()) rustY = y;        // ...or the top
+                rustY += r.nextInt(3);
+                g.fill(el(rustX, rustY, 8 + r.nextInt(14), 4));
+            }
             g.setColor(new Color(110, 110, 106));
             for (int[] p : new int[][] { { x + 2, y + 2 }, { x + w - 6, y + 2 }, { x + 2, y + h - 6 }, { x + w - 6, y + h - 6 } }) g.fill(el(p[0], p[1], 4, 4));
             g.setColor(new Color(10, 10, 10));
@@ -1174,12 +1533,16 @@ public class BattleScreen {
         void drawTile(Graphics2D g, double x, double y, double s, String label, Kind kind, int scratched, boolean hover, int sparkle, int seed) {
             Rectangle2D r = new Rectangle2D.Double(x, y, s, s);
             Color top, bottom;
-            if (scratched > 0) { top = new Color(150, 140, 116); bottom = new Color(108, 98, 80); }
-            else switch (kind) {
-                case GREEN -> { top = new Color(190, 212, 166); bottom = new Color(124, 158, 106); }
-                case GOLD -> { top = new Color(232, 198, 118); bottom = new Color(184, 138, 56); }
-                case CRYSTAL -> { top = new Color(192, 210, 224); bottom = new Color(124, 150, 176); }
-                default -> { top = new Color(224, 214, 182); bottom = new Color(182, 166, 128); }
+            if (scratched > 0) {
+                top = new Color(150, 140, 116); bottom = new Color(108, 98, 80);
+            } else if (kind == Kind.GREEN) {
+                top = new Color(190, 212, 166); bottom = new Color(124, 158, 106);
+            } else if (kind == Kind.GOLD) {
+                top = new Color(232, 198, 118); bottom = new Color(184, 138, 56);
+            } else if (kind == Kind.CRYSTAL) {
+                top = new Color(192, 210, 224); bottom = new Color(124, 150, 176);
+            } else {
+                top = new Color(224, 214, 182); bottom = new Color(182, 166, 128);
             }
             if (sparkle > 0) {
                 double gr = s * 0.2 + (60 - sparkle) * 0.3;
@@ -1207,13 +1570,24 @@ public class BattleScreen {
                 gone.moveTo(x + s - c, y); gone.lineTo(x + s, y); gone.lineTo(x + s, y + c); gone.closePath();
                 g.fill(gone);
             }
-            g.setColor(hover ? new Color(200, 30, 30) : new Color(70, 56, 40));
-            g.setStroke(new BasicStroke(hover ? 3 : 1.5f));
+            if (hover) {                               // Under the mouse: a thick red edge
+                g.setColor(new Color(200, 30, 30));
+                g.setStroke(new BasicStroke(3));
+            } else {
+                g.setColor(new Color(70, 56, 40));
+                g.setStroke(new BasicStroke(1.5f));
+            }
             g.draw(r);
 
-            g.setFont(new Font(SERIF, Font.BOLD, (int) (s * (label.length() > 1 ? 0.5 : 0.64))));
+            double textSize = s * 0.64;
+            if (label.length() > 1) textSize = s * 0.5;   // "Qu": two letters, so smaller
+            g.setFont(new Font(SERIF, Font.BOLD, (int) textSize));
             FontMetrics fm = g.getFontMetrics();
-            g.setColor(scratched > 0 ? new Color(60, 54, 46) : INK);
+            if (scratched > 0) {
+                g.setColor(new Color(60, 54, 46));
+            } else {
+                g.setColor(INK);
+            }
             g.drawString(label, (float) (x + (s - fm.stringWidth(label)) / 2), (float) (y + s / 2 + fm.getAscent() * 0.36));
 
             if (scratched > 0) { // scribbled out in black, with a red turns-left counter
@@ -1221,7 +1595,11 @@ public class BattleScreen {
                 g.setStroke(new BasicStroke((float) (s * 0.06), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 Path2D scr = new Path2D.Double();
                 scr.moveTo(x + s * 0.15, y + s * 0.35);
-                for (int i = 0; i < 5; i++) scr.lineTo(x + s * (0.25 + i * 0.13), y + s * (i % 2 == 0 ? 0.68 : 0.3));
+                for (int i = 0; i < 5; i++) {          // A zigzag: down, up, down...
+                    double down = 0.3;
+                    if (i % 2 == 0) down = 0.68;
+                    scr.lineTo(x + s * (0.25 + i * 0.13), y + s * down);
+                }
                 g.draw(scr);
                 g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, (int) (s * 0.3)));
                 g.setColor(new Color(200, 20, 20));
@@ -1236,7 +1614,11 @@ public class BattleScreen {
                 } else {
                     Path2D d = new Path2D.Double();
                     d.moveTo(gx, gy - gs); d.lineTo(gx + gs, gy); d.lineTo(gx, gy + gs); d.lineTo(gx - gs, gy); d.closePath();
-                    g.setColor(kind == Kind.GOLD ? new Color(150, 90, 10) : new Color(40, 80, 150));
+                    if (kind == Kind.GOLD) {
+                        g.setColor(new Color(150, 90, 10));
+                    } else {
+                        g.setColor(new Color(40, 80, 150));
+                    }
                     g.fill(d);
                 }
             }
@@ -1247,7 +1629,11 @@ public class BattleScreen {
             Rectangle r = SHUFFLE_BTN;
             button(g, r, "", new Color(78, 80, 78), new Color(38, 40, 40), PALE, 20, act && r.contains(mouse), !act);
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setColor(act ? PALE : new Color(110, 106, 100));
+            if (act) {
+                g2.setColor(PALE);
+            } else {
+                g2.setColor(new Color(110, 106, 100));
+            }
             g2.setStroke(new BasicStroke(2.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             double x0 = r.x + 12, x1 = r.x + r.width - 16, y0 = r.y + 15, y1 = r.y + r.height - 15, mid = (x0 + x1) / 2;
             g2.draw(new CubicCurve2D.Double(x0, y0, mid, y0, mid, y1, x1, y1));
@@ -1269,8 +1655,13 @@ public class BattleScreen {
                 g.setColor(new Color(200, 20, 20, (int) (60 + 50 * Math.sin(ticks / 8.0))));
                 g.fill(new Rectangle2D.Double(ATTACK_BTN.x - 6, ATTACK_BTN.y - 6, ATTACK_BTN.width + 12, ATTACK_BTN.height + 12));
             }
-            button(g, ATTACK_BTN, "ATTACK", valid ? new Color(176, 26, 24) : new Color(58, 56, 54), valid ? new Color(92, 8, 10) : new Color(32, 30, 28),
-                    valid ? Color.WHITE : new Color(110, 106, 100), 26, valid && ATTACK_BTN.contains(mouse), false);
+            if (valid) {                               // A real word: a red ATTACK button
+                button(g, ATTACK_BTN, "ATTACK", new Color(176, 26, 24), new Color(92, 8, 10), Color.WHITE, 26,
+                        ATTACK_BTN.contains(mouse), false);
+            } else {
+                button(g, ATTACK_BTN, "ATTACK", new Color(58, 56, 54), new Color(32, 30, 28), new Color(110, 106, 100), 26,
+                        false, false);
+            }
             button(g, MENU_BTN, "MENU", metalTop, metalBottom, PALE, 20, MENU_BTN.contains(mouse), false);
             drawShuffleButton(g, act);
         }
@@ -1278,7 +1669,9 @@ public class BattleScreen {
         void button(Graphics2D g, Rectangle r, String text, Color top, Color bottom, Color textColor, int size, boolean hover, boolean dim) {
             g.setColor(new Color(0, 0, 0, 150));
             g.fillRect(r.x + 3, r.y + 4, r.width, r.height);
-            g.setPaint(new GradientPaint(0, r.y, hover ? top.brighter() : top, 0, r.y + r.height, bottom));
+            Color topColor = top;
+            if (hover) topColor = top.brighter();
+            g.setPaint(new GradientPaint(0, r.y, topColor, 0, r.y + r.height, bottom));
             g.fillRect(r.x, r.y, r.width, r.height);
             g.setColor(new Color(255, 255, 255, 30));
             g.fillRect(r.x + 2, r.y + 2, r.width - 4, 3);
@@ -1297,7 +1690,13 @@ public class BattleScreen {
         void drawTooltip(Graphics2D g) {
             if (menuOpen || lost || won) return;
             String title = null, body = null;
-            for (int i = 0; i < 3; i++) if (itemRect(i).contains(mouse)) { title = ITEM_NAMES[i] + (itemCount(i) > 0 ? " x" + itemCount(i) : ""); body = itemTooltip(i); }
+            for (int i = 0; i < 3; i++) {
+                if (itemRect(i).contains(mouse)) {
+                    title = ITEM_NAMES[i];
+                    if (itemCount(i) > 0) title += " x" + itemCount(i);
+                    body = itemTooltip(i);
+                }
+            }
             for (int i = 0; i < enemy.attacks().size(); i++) if (attackRect(i).contains(mouse)) {
                 Attack a = enemy.attacks().get(i);
                 title = a.name();
@@ -1354,8 +1753,11 @@ public class BattleScreen {
         }
 
         void darkButton(Graphics2D g, Rectangle r, String text, boolean red) {
-            button(g, r, text, red ? new Color(160, 24, 22) : new Color(78, 80, 78), red ? new Color(84, 8, 10) : new Color(38, 40, 40),
-                    red ? Color.WHITE : PALE, 19, r.contains(mouse), false);
+            if (red) {
+                button(g, r, text, new Color(160, 24, 22), new Color(84, 8, 10), Color.WHITE, 19, r.contains(mouse), false);
+            } else {
+                button(g, r, text, new Color(78, 80, 78), new Color(38, 40, 40), PALE, 19, r.contains(mouse), false);
+            }
         }
 
         void drawMenu(Graphics2D g) {
@@ -1388,7 +1790,8 @@ public class BattleScreen {
             List<String> out = new ArrayList<>();
             StringBuilder line = new StringBuilder();
             for (String w : text.split(" ")) {
-                String trial = line.length() == 0 ? w : line + " " + w;
+                String trial = w;
+                if (line.length() > 0) trial = line + " " + w;
                 if (fm.stringWidth(trial) > width && line.length() > 0) { out.add(line.toString()); line = new StringBuilder(w); }
                 else line = new StringBuilder(trial);
             }
@@ -1402,19 +1805,25 @@ public class BattleScreen {
     // =====================================================================================
 
     public static class Sprites {
-        static final Map<String, Optional<BufferedImage>> CACHE = new HashMap<>();
+        // Every sprite loaded so far, by name. One that couldn't be found is kept as null, so it isn't
+        // looked for again (containsKey tells "not looked for yet" from "looked for, not there").
+        static final Map<String, BufferedImage> CACHE = new HashMap<>();
 
         /** required = false for the optional poses, so a missing pose isn't reported as a problem. */
         public static BufferedImage get(String key, boolean required) {
-            return CACHE.computeIfAbsent(key, k -> {
-                try (InputStream in = resource(k + ".png")) {
-                    if (in != null) return Optional.ofNullable(javax.imageio.ImageIO.read(in));
-                    if (required) System.err.println("Could not find sprite " + k + ".png");
-                } catch (IOException e) {
-                    System.err.println("Could not load sprite " + k + ": " + e.getMessage());
+            if (CACHE.containsKey(key)) return CACHE.get(key);
+            BufferedImage img = null;
+            try (InputStream in = resource(key + ".png")) {
+                if (in != null) {
+                    img = javax.imageio.ImageIO.read(in);
+                } else if (required) {
+                    System.err.println("Could not find sprite " + key + ".png");
                 }
-                return Optional.empty();
-            }).orElse(null);
+            } catch (IOException e) {
+                System.err.println("Could not load sprite " + key + ": " + e.getMessage());
+            }
+            CACHE.put(key, img);
+            return img;
         }
 
         /** Draws the image bottom-centred on (x, feetY), fitted into a box maxH tall and 1.3x as wide. */
@@ -1422,8 +1831,11 @@ public class BattleScreen {
             double fit = Math.min(maxH / img.getHeight(), maxH * 1.3 / img.getWidth());
             double w = img.getWidth() * fit, h = img.getHeight() * fit;
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, img.getHeight() <= 128
-                    ? RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR : RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            if (img.getHeight() <= 128) {              // Small pixel art: pixel for pixel, sharp
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            } else {
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            }
             g2.drawImage(img, (int) Math.round(x - w / 2), (int) Math.round(feetY - h), (int) Math.round(w), (int) Math.round(h), null);
             g2.dispose();
         }
@@ -1449,9 +1861,14 @@ public class BattleScreen {
             Graphics2D g2 = at(g, cx, cy);
             g2.setColor(OUT);
             g2.draw(new Arc2D.Double(-9, -24, 18, 14, 0, 180, Arc2D.OPEN));
-            Color box = full ? new Color(206, 200, 184) : new Color(90, 88, 84);
+            Color box = new Color(90, 88, 84);         // Greyed out when there are none left
+            Color cross = new Color(70, 40, 40);
+            if (full) {
+                box = new Color(206, 200, 184);
+                cross = new Color(176, 20, 22);
+            }
             shape(g2, new RoundRectangle2D.Double(-22, -16, 44, 32, 6, 6), new GradientPaint(0, -16, box, 0, 16, box.darker()));
-            g2.setColor(full ? new Color(176, 20, 22) : new Color(70, 40, 40));
+            g2.setColor(cross);
             g2.fill(new Rectangle2D.Double(-4, -10, 8, 20));
             g2.fill(new Rectangle2D.Double(-10, -4, 20, 8));
             g2.setColor(new Color(110, 76, 40, 70));
@@ -1462,40 +1879,36 @@ public class BattleScreen {
         /** 0 = Old Textbook, 1 = Red Pen, 2 = Hall Pass */
         static void item(Graphics2D g, int which, double cx, double cy) {
             Graphics2D g2 = at(g, cx, cy);
-            switch (which) {
-                case 0 -> {
-                    g2.rotate(Math.toRadians(-8));
-                    shape(g2, new Rectangle2D.Double(-18, -24, 40, 50), new Color(214, 204, 172));
-                    shape(g2, new Rectangle2D.Double(-22, -26, 38, 50), new GradientPaint(-22, 0, new Color(40, 66, 48), 16, 0, new Color(26, 44, 32)));
-                    g2.setColor(new Color(16, 28, 20));
-                    g2.fill(new Rectangle2D.Double(-22, -26, 7, 50));
-                    g2.setColor(new Color(170, 150, 90));
-                    g2.fill(new Rectangle2D.Double(-10, -14, 20, 4));
-                    g2.fill(new Rectangle2D.Double(-8, -6, 16, 2));
-                    g2.setColor(new Color(110, 60, 30, 90));
-                    g2.fill(BattlePanel.el(0, 6, 12, 10));
-                }
-                case 1 -> {
-                    g2.rotate(Math.toRadians(-45));
-                    shape(g2, new RoundRectangle2D.Double(-24, -5, 40, 10, 4, 4), new Color(176, 22, 26));
-                    shape(g2, new RoundRectangle2D.Double(10, -6, 16, 12, 4, 4), new Color(120, 12, 16));
-                    shape(g2, new Rectangle2D.Double(12, -9, 12, 3), new Color(160, 160, 166));
-                    Path2D tip = new Path2D.Double();
-                    tip.moveTo(-24, -5); tip.lineTo(-34, 0); tip.lineTo(-24, 5); tip.closePath();
-                    shape(g2, tip, new Color(206, 196, 170));
-                    g2.setColor(new Color(176, 22, 26));
-                    g2.fill(BattlePanel.el(-36, -1.5, 3, 3));
-                }
-                default -> {
-                    g2.setColor(new Color(170, 160, 130));
-                    g2.draw(new QuadCurve2D.Double(-6, -16, 0, -34, 6, -16));
-                    shape(g2, new RoundRectangle2D.Double(-26, -16, 52, 30, 6, 6), new GradientPaint(0, -16, new Color(140, 102, 64), 0, 14, new Color(92, 64, 38)));
-                    g2.setColor(new Color(10, 8, 8));
-                    g2.fill(BattlePanel.el(-3, -13, 6, 6));
-                    g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 13));
-                    g2.setColor(new Color(36, 24, 14));
-                    g2.drawString("PASS", -16, 9);
-                }
+            if (which == 0) {
+                g2.rotate(Math.toRadians(-8));
+                shape(g2, new Rectangle2D.Double(-18, -24, 40, 50), new Color(214, 204, 172));
+                shape(g2, new Rectangle2D.Double(-22, -26, 38, 50), new GradientPaint(-22, 0, new Color(40, 66, 48), 16, 0, new Color(26, 44, 32)));
+                g2.setColor(new Color(16, 28, 20));
+                g2.fill(new Rectangle2D.Double(-22, -26, 7, 50));
+                g2.setColor(new Color(170, 150, 90));
+                g2.fill(new Rectangle2D.Double(-10, -14, 20, 4));
+                g2.fill(new Rectangle2D.Double(-8, -6, 16, 2));
+                g2.setColor(new Color(110, 60, 30, 90));
+                g2.fill(BattlePanel.el(0, 6, 12, 10));
+            } else if (which == 1) {
+                g2.rotate(Math.toRadians(-45));
+                shape(g2, new RoundRectangle2D.Double(-24, -5, 40, 10, 4, 4), new Color(176, 22, 26));
+                shape(g2, new RoundRectangle2D.Double(10, -6, 16, 12, 4, 4), new Color(120, 12, 16));
+                shape(g2, new Rectangle2D.Double(12, -9, 12, 3), new Color(160, 160, 166));
+                Path2D tip = new Path2D.Double();
+                tip.moveTo(-24, -5); tip.lineTo(-34, 0); tip.lineTo(-24, 5); tip.closePath();
+                shape(g2, tip, new Color(206, 196, 170));
+                g2.setColor(new Color(176, 22, 26));
+                g2.fill(BattlePanel.el(-36, -1.5, 3, 3));
+            } else {
+                g2.setColor(new Color(170, 160, 130));
+                g2.draw(new QuadCurve2D.Double(-6, -16, 0, -34, 6, -16));
+                shape(g2, new RoundRectangle2D.Double(-26, -16, 52, 30, 6, 6), new GradientPaint(0, -16, new Color(140, 102, 64), 0, 14, new Color(92, 64, 38)));
+                g2.setColor(new Color(10, 8, 8));
+                g2.fill(BattlePanel.el(-3, -13, 6, 6));
+                g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 13));
+                g2.setColor(new Color(36, 24, 14));
+                g2.drawString("PASS", -16, 9);
             }
             g2.dispose();
         }

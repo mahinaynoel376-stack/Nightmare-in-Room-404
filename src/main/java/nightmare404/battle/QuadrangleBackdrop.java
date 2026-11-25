@@ -52,11 +52,18 @@ public class QuadrangleBackdrop implements Backdrop {
             for (int wx = 18; wx < width - 20; wx += 46) {
                 int wy = roof + 10 + floor * 26;
                 int roll = r.nextInt(12);
-                Color c;
-                if (roll == 0) c = new Color(220, 190, 110, (ticks / 7 + wx) % 9 < 2 ? 40 : 170);   // Flickering
-                else if (roll == 1) c = new Color(150, 20, 24, 170);                                  // Red
-                else if (roll < 4) c = new Color(200, 176, 110, 110);                                 // Lit
-                else c = new Color(30, 30, 44);                                                        // Dark
+                Color c = new Color(30, 30, 44);                         // Dark...
+                if (roll == 0) {                                         // ...flickering...
+                    if ((ticks / 7 + wx) % 9 < 2) {
+                        c = new Color(220, 190, 110, 40);
+                    } else {
+                        c = new Color(220, 190, 110, 170);
+                    }
+                } else if (roll == 1) {                                  // ...red...
+                    c = new Color(150, 20, 24, 170);
+                } else if (roll < 4) {                                   // ...or lit
+                    c = new Color(200, 176, 110, 110);
+                }
                 g.setColor(c);
                 g.fillRect(wx, wy, 16, 14);
             }

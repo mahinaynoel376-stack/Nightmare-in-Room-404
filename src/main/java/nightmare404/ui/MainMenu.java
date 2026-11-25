@@ -5,13 +5,17 @@ import java.awt.event.*;
 import java.awt.geom.*;
 import javax.swing.*;
 
+import nightmare404.main.Main;
 import nightmare404.main.Settings;
 
 /** Landscape main menu: bloody 404 door wrapped in NO ENTRY tape. Pure Java2D, no image files.
  *  It's drawn on a 1280 x 720 stage, scaled to fit the window. In the game's 800 x 608 window the
  *  stage is wider than the window is tall, so the hallway carries on above and below it.
- *  Continue and Journal are greyed out until there's a game to go back to (see Main). */
-public class MainMenu extends JPanel {
+ *  Continue and Journal are greyed out until there's a game to go back to (see Main).
+ *
+ *  The menu listens for its own keys, mouse and timer: Swing calls keyPressed, mousePressed,
+ *  mouseMoved and actionPerformed (the other listener methods it must have do nothing). */
+public class MainMenu extends JPanel implements ActionListener, KeyListener, MouseListener, MouseMotionListener {
     private static final int STAGE_W = 1280, STAGE_H = 720;
     private static final Color BLOOD = new Color(156, 15, 23), TAPE = new Color(242, 194, 0);
     private static final Color INK = new Color(207, 216, 210), DIM = new Color(111, 127, 120),
@@ -21,50 +25,21 @@ public class MainMenu extends JPanel {
             "The clues you've found", "Turn timer, flickering lights", "Close the game"};
     private static final int START = 0, CONTINUE = 1, JOURNAL = 2, OPTIONS = 3, QUIT = 4;
 
-    private final Runnable start, cont, journal, quit;
     private boolean inProgress;            // There's a game to continue
     private boolean options;               // The Options list is showing instead of the main one
     private int hover = -1, sel = 0, flicker = 0;
     private float drip = 0f;               // 0..1, blood runs down once
     private final Rectangle[] hit = new Rectangle[ITEMS.length];   // Each line's box, on the stage
     private double scale = 1, offX, offY;  // How the stage was fitted into the window when last drawn
-    private final Timer timer;
+    private final Timer timer = new Timer(40, this);   // Calls actionPerformed 25 times a second
 
-    public MainMenu(Runnable start, Runnable cont, Runnable journal, Runnable quit) {
-        this.start = start;
-        this.cont = cont;
-        this.journal = journal;
-        this.quit = quit;
+    public MainMenu() {
         setPreferredSize(new Dimension(STAGE_W, STAGE_H));
         setBackground(Color.BLACK);
         setFocusable(true);
-        addMouseMotionListener(new MouseMotionAdapter() {
-            public void mouseMoved(MouseEvent e) {
-                hover = lineAt(e.getPoint());
-                if (hover >= 0 && enabled(hover)) sel = hover;
-            }
-        });
-        addMouseListener(new MouseAdapter() {
-            public void mousePressed(MouseEvent e) {
-                requestFocusInWindow();
-                int line = lineAt(e.getPoint());
-                if (line >= 0) choose(line);
-            }
-        });
-        addKeyListener(new KeyAdapter() {
-            public void keyPressed(KeyEvent e) {
-                int k = e.getKeyCode();
-                if (k == KeyEvent.VK_W || k == KeyEvent.VK_UP) move(-1);
-                if (k == KeyEvent.VK_S || k == KeyEvent.VK_DOWN) move(1);
-                if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE || k == KeyEvent.VK_E) choose(sel);
-                if (k == KeyEvent.VK_ESCAPE && options) showOptions(false);
-            }
-        });
-        timer = new Timer(40, e -> {
-            drip = Math.min(1f, drip + 0.004f);
-            flicker = (Settings.flicker && Math.random() < 0.015) ? 6 : Math.max(0, flicker - 1);
-            repaint();
-        });
+        addKeyListener(this);
+        addMouseListener(this);
+        addMouseMotionListener(this);
     }
 
     /** Whether there's a game in progress, so Continue and Journal can be chosen. Called each time
@@ -73,39 +48,95 @@ public class MainMenu extends JPanel {
         this.inProgress = inProgress;
         options = false;
         hover = -1;
-        sel = inProgress ? CONTINUE : START;
+        if (inProgress) {
+            sel = CONTINUE;
+        } else {
+            sel = START;
+        }
     }
 
     // The animation only runs while the menu is on screen
     @Override public void addNotify() { super.addNotify(); timer.start(); }
     @Override public void removeNotify() { timer.stop(); super.removeNotify(); }
 
+    // The timer: the blood drips a little further, and now and then the light flickers
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        drip = Math.min(1f, drip + 0.004f);
+        if (Settings.flicker && Math.random() < 0.015) {
+            flicker = 6;                       // Dark for 6 ticks
+        } else {
+            flicker = Math.max(0, flicker - 1);
+        }
+        repaint();
+    }
+
+    // ---------------------------------------------------------------- keys and mouse
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int k = e.getKeyCode();
+        if (k == KeyEvent.VK_W || k == KeyEvent.VK_UP) move(-1);
+        if (k == KeyEvent.VK_S || k == KeyEvent.VK_DOWN) move(1);
+        if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE || k == KeyEvent.VK_E) choose(sel);
+        if (k == KeyEvent.VK_ESCAPE && options) showOptions(false);
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        hover = lineAt(e.getPoint());
+        if (hover >= 0 && enabled(hover)) sel = hover;
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        requestFocusInWindow();
+        int line = lineAt(e.getPoint());
+        if (line >= 0) choose(line);
+    }
+
+    @Override public void keyReleased(KeyEvent e) { }
+    @Override public void keyTyped(KeyEvent e) { }
+    @Override public void mouseClicked(MouseEvent e) { }
+    @Override public void mouseReleased(MouseEvent e) { }
+    @Override public void mouseEntered(MouseEvent e) { }
+    @Override public void mouseExited(MouseEvent e) { }
+    @Override public void mouseDragged(MouseEvent e) { }
+
     // ---------------------------------------------------------------- choosing
 
     private String[] lines() {
         if (!options) return ITEMS;
-        return new String[] {"Turn timer: " + (Settings.turnTimer ? "On" : "Off"),
-                "Flicker: " + (Settings.flicker ? "On" : "Off"), "Back"};
+        return new String[] {"Turn timer: " + onOff(Settings.turnTimer), "Flicker: " + onOff(Settings.flicker), "Back"};
+    }
+
+    private static String onOff(boolean on) {
+        if (on) return "On";
+        return "Off";
     }
 
     private String hint(int i) {
-        if (!options) return !enabled(i) ? "Start a game first" : HINTS[i];
-        return switch (i) {
-            case 0 -> "A clock on each of your turns in the word battles";
-            case 1 -> "Flickering lights in the hallways and the battles";
-            default -> "Back to the menu";
-        };
+        if (!options) {
+            if (!enabled(i)) return "Start a game first";
+            return HINTS[i];
+        }
+        if (i == 0) return "A clock on each of your turns in the word battles";
+        if (i == 1) return "Flickering lights in the hallways and the battles";
+        return "Back to the menu";
     }
 
     private boolean enabled(int i) {
-        return options || inProgress || (i != CONTINUE && i != JOURNAL);
+        if (options || inProgress) return true;
+        return i != CONTINUE && i != JOURNAL;    // No game yet: these two are greyed out
     }
 
-    // W / S: the next line up or down, skipping any that are greyed out
+    // W / S: the next line up or down (round to the other end), skipping any that are greyed out
     private void move(int step) {
         int n = lines().length;
         for (int k = 0; k < n; k++) {
-            sel = Math.floorMod(sel + step, n);
+            sel = sel + step;
+            if (sel < 0) sel = n - 1;
+            if (sel >= n) sel = 0;
             if (enabled(sel)) return;
         }
     }
@@ -114,34 +145,39 @@ public class MainMenu extends JPanel {
         if (!enabled(i)) return;
         sel = i;
         if (options) {
-            switch (i) {
-                case 0 -> Settings.turnTimer = !Settings.turnTimer;
-                case 1 -> Settings.flicker = !Settings.flicker;
-                default -> showOptions(false);
+            if (i == 0) {
+                Settings.turnTimer = !Settings.turnTimer;
+            } else if (i == 1) {
+                Settings.flicker = !Settings.flicker;
+            } else {
+                showOptions(false);
             }
             return;
         }
-        switch (i) {
-            case START -> start.run();
-            case CONTINUE -> cont.run();
-            case JOURNAL -> journal.run();
-            case OPTIONS -> showOptions(true);
-            case QUIT -> quit.run();
-            default -> { }
-        }
+        if (i == START) Main.startGame();
+        if (i == CONTINUE) Main.continueGame();
+        if (i == JOURNAL) Main.openJournal();
+        if (i == OPTIONS) showOptions(true);
+        if (i == QUIT) Main.quit();
     }
 
     private void showOptions(boolean show) {
         options = show;
         hover = -1;
-        sel = show ? 0 : OPTIONS;
+        if (show) {
+            sel = 0;
+        } else {
+            sel = OPTIONS;
+        }
     }
 
     // Which line is under the mouse (-1 for none). The lines' boxes are on the stage, so the mouse's
     // place in the window is turned into a place on the stage first.
     private int lineAt(Point p) {
         double sx = (p.x - offX) / scale, sy = (p.y - offY) / scale;
-        for (int i = 0; i < lines().length; i++) if (hit[i] != null && hit[i].contains(sx, sy)) return i;
+        for (int i = 0; i < lines().length; i++) {
+            if (hit[i] != null && hit[i].contains(sx, sy)) return i;
+        }
         return -1;
     }
 
@@ -201,22 +237,28 @@ public class MainMenu extends JPanel {
 
     private void drawMenu(Graphics2D g) {
         String[] lines = lines();
-        java.util.Arrays.fill(hit, null);
+        for (int i = 0; i < hit.length; i++) hit[i] = null;   // (The Options list has fewer lines)
         if (options) {
             g.setFont(new Font("Monospaced", Font.BOLD, 20)); g.setColor(TAPE);
             g.drawString("OPTIONS", 80, 310);
         }
         for (int i = 0; i < lines.length; i++) {
             int y = 352 + i * 56;
-            boolean on = i == sel && enabled(i);
+            boolean on = i == sel && enabled(i);                // The chosen line: white, moved right, a red dash
             hit[i] = new Rectangle(50, y - 34, 470, 54);
-            if (on) { g.setColor(BLOOD); g.fillRect(56, y - 14, 26, 5); }
+            int x = 80;
+            g.setColor(INK);
+            if (!enabled(i)) g.setColor(GREYED);
+            if (on) {
+                x = 96;
+                g.setColor(Color.WHITE);
+            }
             g.setFont(new Font("Monospaced", Font.PLAIN, 32));
-            g.setColor(on ? Color.WHITE : enabled(i) ? INK : GREYED);
-            g.drawString(lines[i], on ? 96 : 80, y);
+            g.drawString(lines[i], x, y);
+            if (on) { g.setColor(BLOOD); g.fillRect(56, y - 14, 26, 5); }
             if (i == sel) {                                     // what the chosen line does, under it
                 g.setFont(new Font("Monospaced", Font.PLAIN, 17)); g.setColor(DIM);
-                g.drawString(hint(i), on ? 98 : 82, y + 22);
+                g.drawString(hint(i), x + 2, y + 22);
             }
         }
     }
@@ -296,18 +338,5 @@ public class MainMenu extends JPanel {
         g.setColor(new Color(22, 19, 10)); g.setFont(new Font("Monospaced", Font.BOLD, 14));
         g.drawString("NO ENTRY", x + 10, y + 106);
         g.setTransform(old);
-    }
-
-    /** Quick test: run this file on its own to preview the menu (in its own 1280 x 720 window). */
-    public static void main(String[] a) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame f = new JFrame("Nightmare in Room 404");
-            Runnable r = () -> System.out.println("clicked");
-            MainMenu menu = new MainMenu(r, r, r, () -> System.exit(0));
-            f.setContentPane(menu);
-            f.pack(); f.setLocationRelativeTo(null); f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            f.setVisible(true);
-            menu.requestFocusInWindow();
-        });
     }
 }

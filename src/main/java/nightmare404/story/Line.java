@@ -8,8 +8,36 @@ package nightmare404.story;
 //   TIP        how to play: in gold, so it's clear it isn't the story talking
 // portrait is a sprite name for BattleScreen.Sprites ("principal", or a full path like
 // "/characters/player/down_idle"), or null for none.
-public record Line(Style style, String speaker, String portrait, String text) {
+public class Line {
     public enum Style { SPEECH, THOUGHT, PAPER, NARRATION, TIP }
+
+    private final Style style;
+    private final String speaker;
+    private final String portrait;
+    private final String text;
+
+    public Line(Style style, String speaker, String portrait, String text) {
+        this.style = style;
+        this.speaker = speaker;
+        this.portrait = portrait;
+        this.text = text;
+    }
+
+    public Style style() {
+        return style;
+    }
+
+    public String speaker() {
+        return speaker;
+    }
+
+    public String portrait() {
+        return portrait;
+    }
+
+    public String text() {
+        return text;
+    }
 
     public static final String FLOR = "Flor";
     public static final String FLOR_FACE = "/characters/player/down_idle";

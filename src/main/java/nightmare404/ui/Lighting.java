@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.MultipleGradientPaint.CycleMethod;
 import java.awt.RadialGradientPaint;
+import java.util.Random;
 
 import nightmare404.main.Settings;
 import nightmare404.world.Room;
@@ -25,8 +26,13 @@ public final class Lighting {
     private static final float ROOM_FAR = 0.60f;             // ...and at the edges of the view
     private static final float ROOM_LIGHT_RADIUS = 460;      // How far the darkness takes to build up, in pixels
 
-    private static final int STRETCH = 150;      // A flicker can come once in every stretch of 150 frames (2.5 s)
     private static final int[] NIGHT = {6, 8, 18};   // The dark is a little blue
+
+    // The hallway lights' flicker (see hallwayDarkness)
+    private static final Random RANDOM = new Random();
+    private static int burstLeft;        // Frames left in the burst of flickering going on now (0 = none)
+    private static boolean lightsOff;    // During a burst: the lights are out right now
+    private static long lastTicks = -1;  // The frame the flicker was last worked out for
 
     private Lighting() { }
 
@@ -46,32 +52,26 @@ public final class Lighting {
         g.dispose();
     }
 
-    // How dark the hallway is at this frame. In about half the 2.5-second stretches there's a burst,
-    // at a random moment and 0.2-0.7 seconds long, where every few frames the lights are off or on
-    // at random. The rest of the time they're steady. (The same frame always gives the same answer.)
+    // How dark the hallway is at this frame. The lights are steady most of the time. About once every
+    // 5 seconds (a 1 in 300 chance each frame) a burst starts, 0.2-0.7 seconds long, where every 3
+    // frames the lights go off or come on at random. (Worked out once a frame, however often it's drawn.)
     public static float hallwayDarkness(long ticks) {
         if (!Settings.flicker) return HALLWAY_LIGHTS_ON;   // Turned off on the main menu's Options
-        long stretch = mix(ticks / STRETCH);
-        boolean burstHere = (stretch & 1) == 0;
-        int start = (int) Math.floorMod(stretch >> 8, (long) STRETCH - 45);
-        int length = 12 + (int) Math.floorMod(stretch >> 24, 31L);
-        int at = (int) Math.floorMod(ticks, (long) STRETCH);
-        boolean inBurst = burstHere && at >= start && at < start + length;
-        if (inBurst && (mix(ticks / 3) & 1) == 0) return HALLWAY_LIGHTS_OFF;   // Off, for 3 frames
+        if (ticks != lastTicks) {
+            lastTicks = ticks;
+            if (burstLeft > 0) {
+                burstLeft--;
+                if (ticks % 3 == 0) lightsOff = RANDOM.nextBoolean();
+            } else {
+                lightsOff = false;
+                if (RANDOM.nextInt(300) == 0) burstLeft = 12 + RANDOM.nextInt(31);
+            }
+        }
+        if (burstLeft > 0 && lightsOff) return HALLWAY_LIGHTS_OFF;
         return HALLWAY_LIGHTS_ON;
     }
 
     private static Color night(float darkness) {
         return new Color(NIGHT[0], NIGHT[1], NIGHT[2], Math.round(darkness * 255));
-    }
-
-    // Scrambles a number (so the flicker looks random but needs nothing stored)
-    private static long mix(long x) {
-        x ^= x >>> 33;
-        x *= 0xff51afd7ed558ccdL;
-        x ^= x >>> 33;
-        x *= 0xc4ceb9fe1a85ec53L;
-        x ^= x >>> 33;
-        return x;
     }
 }

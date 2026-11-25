@@ -2,10 +2,8 @@ package nightmare404.main;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.Consumer;
 import javax.swing.*;
 
 import nightmare404.battle.BattleScreen;
@@ -28,17 +26,18 @@ import nightmare404.ui.QuestTracker;
 import nightmare404.world.Room;
 import nightmare404.world.World;
 
-public class GamePanel extends JPanel implements Runnable {
+public class GamePanel extends JPanel implements ActionListener {
     // Screen size is derived from the tile grid so the map always fits exactly
     public final int tileSize = 32;
     public final int maxScreenCol = 25;
     public final int maxScreenRow = 19;
     public final int screenWidth = tileSize * maxScreenCol;  // 800
     public final int screenHeight = tileSize * maxScreenRow; // 608
-    
-    Thread gameThread;
-    volatile boolean isRunning = false;
-    final int FPS = 60;
+
+    // The game loop: a Swing timer that calls actionPerformed (below) every 16 ms, about 60 times a
+    // second. Swing runs it on the same thread that hears the keys and draws the screen, so a frame
+    // of the game, a key press and the drawing never happen at the same time.
+    private final Timer loop = new Timer(16, this);
     // Created once and reused: making a new Font every frame (60 times a second) is wasted work
     private static final Font ROOM_NAME_FONT = new Font("Arial", Font.BOLD, 24);
     private static final Font NOTICE_FONT = new Font("Arial", Font.BOLD, 16);
@@ -47,19 +46,19 @@ public class GamePanel extends JPanel implements Runnable {
     public boolean upPressed, downPressed, leftPressed, rightPressed;
     public boolean sprintPressed; // Shift held down
 
-    // The other keys. Swing hears them on its own thread, so each one is just noted here (volatile) and
-    // the game loop acts on it in its next frame (update):
+    // The other keys. A press is just noted here (see KeyAction), and the game acts on it in its next
+    // frame (update):
     //   E, Enter, Space  read on in the dialogue box, read a page in the journal, back to the menu at the end.
     //                    Holding one down makes Windows repeat it, which would race through the lines,
     //                    so a press only counts again after the key's been let go (advanceHeld).
     //   Space            outside: focus (see LastStand). Letters typed while focusing go to `typed`.
     //   J, Esc           open and close the journal (Esc also stops focusing). Backspace drops a word.
-    //   Esc              otherwise: the main menu, with the game paused until Continue.
+    //   Esc              otherwise: the main menu, with the game stopped until Continue.
     //   1-4              outside: use a First Aid Kit, an Old Textbook, a Red Pen, a Hall Pass.
-    private volatile boolean advanceHeld, spaceHeld, backHeld, advanceQueued, spaceQueued, journalQueued, backQueued,
-            unlockQueued;
-    private volatile int itemQueued;
-    private final ConcurrentLinkedQueue<Character> typed = new ConcurrentLinkedQueue<>();
+    private boolean advanceHeld, spaceHeld, backHeld;
+    private boolean advanceQueued, spaceQueued, journalQueued, backQueued, unlockQueued;
+    private int itemQueued;
+    private final ArrayList<Character> typed = new ArrayList<>();
     private boolean wasUp, wasDown;   // W and S a frame ago, so the journal moves once per press
 
     // Entities (public: the UI and the checks in other packages read the player)
@@ -74,16 +73,11 @@ public class GamePanel extends JPanel implements Runnable {
     public LastStand lastStand;
     QuestTracker tracker;
     EndingScreen endingScreen;
-    public volatile boolean ended;          // The game is over: the ending screen is showing
+    public boolean ended;                   // The game is over: the ending screen is showing
     public boolean endedRemembered;         // ...and it's the good ending (every clue found)
     private long endedTicks;
     private boolean talking;                // The dialogue box was open last frame
-
-    // The main menu (see Main and MainMenu). Esc, or Enter after the ending, runs onMenu (null in the
-    // checks, which have no menu), and the game waits, paused, until Continue calls resume().
-    public Runnable onMenu;
-    private volatile boolean paused;
-    private boolean journalFromMenu;        // The journal was opened from the menu: closing it goes back there
+    private boolean journalFromMenu;        // The journal was opened from the main menu: closing it goes back there
 
     // The world is a linked list of rooms; currentRoom points at the node the player is in.
     // Moving to another room just means following one of its links (left, right or door).
@@ -91,19 +85,19 @@ public class GamePanel extends JPanel implements Runnable {
     public World world;
     public Room currentRoom;
 
-    // Battles. Touching a monster opens its battle in this window (see openBattle); while it's on,
+    // Battles. Touching a monster opens its battle in this window (see startBattle); while it's on,
     // the world is paused. After a battle the monsters in the room wait a moment (calm), so another
     // one can't grab the player the instant they're back.
-    public volatile boolean inBattle;
+    public boolean inBattle;
+    public Monster battleMonster;           // The monster in the battle (the checks look at it)
+    private JFrame battleWindow;            // The window the battle is showing in
     private int calm;
     private Room lastRoom;
-    // What starting a battle does. The checks swap this for something that doesn't open a window.
-    public Consumer<Monster> battleStarter = m -> SwingUtilities.invokeLater(() -> openBattle(m));
     public long ticks;                      // Frames since the game began (the monsters bob with it)
 
     // A short message at the bottom of the screen ("The doors won't open...")
-    private volatile String notice = "";
-    private volatile int noticeTicks;
+    private String notice = "";
+    private int noticeTicks;
 
     public GamePanel() {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -122,10 +116,6 @@ public class GamePanel extends JPanel implements Runnable {
         endingScreen = new EndingScreen(this);
         setupKeyBindings();
         lastRoom = currentRoom;
-        // Read the battle's 170,000-word dictionary now, in the background, so the first battle opens at once
-        Thread words = new Thread(BattleScreen::dictionary);
-        words.setDaemon(true);
-        words.start();
     }
 
     // Every monster beaten and every floor's key in the player's pocket: for the checks that only test walking
@@ -150,11 +140,16 @@ public class GamePanel extends JPanel implements Runnable {
 
     // The notice on screen right now ("" if none)
     public String notice() {
-        return noticeTicks > 0 ? notice : "";
+        if (noticeTicks > 0) return notice;
+        return "";
     }
 
     private void releaseKeys() {
-        upPressed = downPressed = leftPressed = rightPressed = sprintPressed = false;
+        upPressed = false;
+        downPressed = false;
+        leftPressed = false;
+        rightPressed = false;
+        sprintPressed = false;
     }
 
     public void enterRoom(Room room) {
@@ -168,7 +163,8 @@ public class GamePanel extends JPanel implements Runnable {
         // A KeyStroke includes the modifiers held at the time, so "pressed W" doesn't fire while
         // Shift is held down (that's "shift pressed W"). Bind both versions so WASD keeps working
         // while sprinting, and so letting go of W mid-sprint still stops the player.
-        for (String mod : new String[] {"", "shift "}) {
+        String[] modifiers = {"", "shift "};
+        for (String mod : modifiers) {
             // Bind W, A, S, D Presses ("pressed" modifier is required)
             im.put(KeyStroke.getKeyStroke(mod + "pressed W"), "upPress");
             im.put(KeyStroke.getKeyStroke(mod + "pressed S"), "downPress");
@@ -193,7 +189,7 @@ public class GamePanel extends JPanel implements Runnable {
             im.put(KeyStroke.getKeyStroke(mod + "pressed SPACE"), "spacePress");
             im.put(KeyStroke.getKeyStroke(mod + "released SPACE"), "spaceRelease");
             im.put(KeyStroke.getKeyStroke(mod + "pressed J"), "journal");
-            im.put(KeyStroke.getKeyStroke(mod + "pressed ESCAPE"), "back");
+            im.put(KeyStroke.getKeyStroke(mod + "pressed ESCAPE"), "backPress");
             im.put(KeyStroke.getKeyStroke(mod + "released ESCAPE"), "backRelease");
             im.put(KeyStroke.getKeyStroke(mod + "pressed BACK_SPACE"), "unlock");
             for (int n = 1; n <= 4; n++) {
@@ -207,125 +203,128 @@ public class GamePanel extends JPanel implements Runnable {
             im.put(KeyStroke.getKeyStroke(c), "typed");
             im.put(KeyStroke.getKeyStroke(Character.toUpperCase(c)), "typed");
         }
-        am.put("advancePress", action(() -> { if (!advanceHeld) advanceQueued = true; advanceHeld = true; }));
-        am.put("advanceRelease", action(() -> advanceHeld = false));
-        am.put("spacePress", action(() -> { if (!spaceHeld) spaceQueued = true; spaceHeld = true; }));
-        am.put("spaceRelease", action(() -> spaceHeld = false));
-        am.put("journal", action(() -> journalQueued = true));
-        am.put("back", action(() -> { if (!backHeld) backQueued = true; backHeld = true; }));
-        am.put("backRelease", action(() -> backHeld = false));
-        am.put("unlock", action(() -> unlockQueued = true));
-        for (int n = 1; n <= 4; n++) {
-            int item = n;
-            am.put("item" + n, action(() -> itemQueued = item));
+
+        // Each name above gets a KeyAction that knows what to do with it
+        String[] names = {"upPress", "downPress", "leftPress", "rightPress", "sprintPress",
+                "upRelease", "downRelease", "leftRelease", "rightRelease", "sprintRelease",
+                "advancePress", "advanceRelease", "spacePress", "spaceRelease", "backPress", "backRelease",
+                "journal", "unlock", "item1", "item2", "item3", "item4", "typed"};
+        for (String name : names) {
+            am.put(name, new KeyAction(name));
         }
-        am.put("typed", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String c = e.getActionCommand();
-                if (c != null && c.length() == 1) typed.add(c.charAt(0));
-            }
-        });
-
-        // Map Actions to toggle booleans
-        am.put("upPress", new MoveAction("up", true));
-        am.put("downPress", new MoveAction("down", true));
-        am.put("leftPress", new MoveAction("left", true));
-        am.put("rightPress", new MoveAction("right", true));
-        am.put("sprintPress", new MoveAction("sprint", true));
-
-        am.put("upRelease", new MoveAction("up", false));
-        am.put("downRelease", new MoveAction("down", false));
-        am.put("leftRelease", new MoveAction("left", false));
-        am.put("rightRelease", new MoveAction("right", false));
-        am.put("sprintRelease", new MoveAction("sprint", false));
     }
 
-    // A key action that just runs this
-    private static AbstractAction action(Runnable run) {
-        return new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                run.run();
-            }
-        };
-    }
+    // What a key does. Swing calls actionPerformed when the key bound to `name` is pressed or let go.
+    private class KeyAction extends AbstractAction {
+        String name;
 
-    private class MoveAction extends AbstractAction {
-        String direction;
-        boolean pressed;
-
-        MoveAction(String dir, boolean pressed) {
-            this.direction = dir;
-            this.pressed = pressed;
+        KeyAction(String name) {
+            this.name = name;
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            switch (direction) {
-                case "up" -> upPressed = pressed;
-                case "down" -> downPressed = pressed;
-                case "left" -> leftPressed = pressed;
-                case "right" -> rightPressed = pressed;
-                case "sprint" -> sprintPressed = pressed;
+            switch (name) {
+                case "upPress": upPressed = true; break;
+                case "downPress": downPressed = true; break;
+                case "leftPress": leftPressed = true; break;
+                case "rightPress": rightPressed = true; break;
+                case "sprintPress": sprintPressed = true; break;
+                case "upRelease": upPressed = false; break;
+                case "downRelease": downPressed = false; break;
+                case "leftRelease": leftPressed = false; break;
+                case "rightRelease": rightPressed = false; break;
+                case "sprintRelease": sprintPressed = false; break;
+                case "advancePress":
+                    if (!advanceHeld) advanceQueued = true;
+                    advanceHeld = true;
+                    break;
+                case "advanceRelease": advanceHeld = false; break;
+                case "spacePress":
+                    if (!spaceHeld) spaceQueued = true;
+                    spaceHeld = true;
+                    break;
+                case "spaceRelease": spaceHeld = false; break;
+                case "backPress":
+                    if (!backHeld) backQueued = true;
+                    backHeld = true;
+                    break;
+                case "backRelease": backHeld = false; break;
+                case "journal": journalQueued = true; break;
+                case "unlock": unlockQueued = true; break;
+                case "item1": itemQueued = 1; break;
+                case "item2": itemQueued = 2; break;
+                case "item3": itemQueued = 3; break;
+                case "item4": itemQueued = 4; break;
+                case "typed":
+                    String letter = e.getActionCommand();
+                    if (letter != null && letter.length() == 1) typed.add(letter.charAt(0));
+                    break;
+                default:
+                    break;
             }
         }
     }
 
-    public void startGameThread() {
-        gameThread = new Thread(this);
-        isRunning = true;
-        gameThread.start();
+    // Starts the game loop, or starts it again after the main menu (Continue). Keys pressed or let go
+    // while the menu was showing never reached the game, so it starts again with none held down.
+    public void start() {
+        releaseKeys();
+        advanceHeld = false;
+        spaceHeld = false;
+        backHeld = false;
+        advanceQueued = false;
+        spaceQueued = false;
+        journalQueued = false;
+        backQueued = false;
+        unlockQueued = false;
+        itemQueued = 0;
+        typed.clear();
+        loop.start();
     }
 
+    // Stops the game loop: the game waits (while the menu is showing, or for good after a new game)
+    public void stop() {
+        loop.stop();
+    }
+
+    // One frame of the game loop (the timer calls this every 16 ms)
     @Override
-    public void run() {
-        double drawInterval = 1000000000.0 / FPS;
-        double delta = 0;
-        long lastTime = System.nanoTime();
-        long currentTime;
-
-        while (isRunning) {
-            currentTime = System.nanoTime();
-            delta += (currentTime - lastTime) / drawInterval;
-            lastTime = currentTime;
-
-            if (delta >= 1) {
-                if (!paused) {           // (While the menu's showing, the game waits)
-                    update();
-                    repaint();
-                }
-                delta--;
-            }
-
-            // Yield the CPU between frames instead of spinning at 100% on one core
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                isRunning = false;
-            }
-        }
+    public void actionPerformed(ActionEvent e) {
+        update();
+        repaint();
     }
 
     public void update() {
         if (inBattle) return;            // The world waits while a battle is on
-        boolean advance = advanceQueued, space = spaceQueued, toJournal = journalQueued, back = backQueued,
-                unlock = unlockQueued;
+        // The keys pressed since the last frame (and forget them, so each press counts once)
+        boolean advance = advanceQueued;
+        boolean space = spaceQueued;
+        boolean toJournal = journalQueued;
+        boolean back = backQueued;
+        boolean unlock = unlockQueued;
         int item = itemQueued;
-        advanceQueued = spaceQueued = journalQueued = backQueued = unlockQueued = false;
+        advanceQueued = false;
+        spaceQueued = false;
+        journalQueued = false;
+        backQueued = false;
+        unlockQueued = false;
         itemQueued = 0;
-        List<Character> letters = new ArrayList<>();
-        for (Character c; (c = typed.poll()) != null; ) letters.add(c);
+        ArrayList<Character> letters = new ArrayList<>(typed);
+        typed.clear();
 
         if (ended) {                     // The ending screen: Enter goes back to the main menu
             endedTicks++;
-            if ((advance || space) && endedTicks > 150) leaveForMenu();
+            if ((advance || space) && endedTicks > 150) goToMenu();
             return;
         }
         if (dialogue.isOpen()) {         // The world waits while someone's talking
-            upPressed = downPressed = leftPressed = rightPressed = false;
+            upPressed = false;
+            downPressed = false;
+            leftPressed = false;
+            rightPressed = false;
             dialogue.update(advance || space);
+            if (!dialogue.isOpen()) director.dialogueOver();   // It just closed: what was waiting for it happens now
             talking = true;
             return;
         }
@@ -343,10 +342,8 @@ public class GamePanel extends JPanel implements Runnable {
             releaseKeys();
             return;
         }
-        if (back && !(outside && lastStand.focused()) && onMenu != null) {   // (While focusing, Esc stops it)
-            paused = true;
-            releaseKeys();
-            SwingUtilities.invokeLater(onMenu);
+        if (back && !(outside && lastStand.focused())) {   // (While focusing, Esc stops it instead)
+            goToMenu();
             return;
         }
         director.update();               // The opening scene, or somewhere new for the first time
@@ -356,7 +353,7 @@ public class GamePanel extends JPanel implements Runnable {
             if (unlock) lastStand.dropTarget();
             if (item > 0) lastStand.useItem(item);
             for (char c : letters) lastStand.type(c);
-            if (lastStand.focused()) upPressed = downPressed = leftPressed = rightPressed = false;
+            if (lastStand.focused()) releaseKeys();   // Focusing: the player stands still
         }
 
         ticks++;
@@ -399,20 +396,21 @@ public class GamePanel extends JPanel implements Runnable {
             if (m.defeated) continue;
             m.update(flor);
             if (m.touches(flor)) {
-                startBattle(m);
+                releaseKeys();           // Keys let go during the battle would otherwise stay "held"
+                director.beforeBattle(m);   // A floor's boss has its say first, then startBattle
                 return;
             }
         }
     }
 
-    // The player touched a monster: a floor's boss has its say first (see Director), then the world
-    // pauses and its battle opens
-    private void startBattle(Monster m) {
-        releaseKeys();                   // Keys let go during the battle would otherwise stay "held"
-        director.beforeBattle(m, () -> {
-            inBattle = true;
-            battleStarter.accept(m);
-        });
+    // A battle starts (after a floor's boss has had its say: see Director.beforeBattle). The world
+    // waits while it's on, and the battle takes this window's place (see openBattle). The checks
+    // have no window: they look at inBattle and battleMonster, and call endBattle themselves.
+    public void startBattle(Monster m) {
+        inBattle = true;
+        battleMonster = m;
+        JFrame window = (JFrame) SwingUtilities.getWindowAncestor(this);
+        if (window != null) openBattle(window, m);
     }
 
     // The journal is open: W and S choose a clue, E reads it again, J or Esc closes it
@@ -424,14 +422,13 @@ public class GamePanel extends JPanel implements Runnable {
         if (close) {
             journal.close();
             releaseKeys();
-            if (journalFromMenu && onMenu != null) {   // Opened from the menu: back there
+            if (journalFromMenu) {       // Opened from the menu: back there
                 journalFromMenu = false;
-                paused = true;
-                SwingUtilities.invokeLater(onMenu);
+                goToMenu();
             }
         } else if (advance && journal.chosen() != null) {
             journal.close();
-            director.reread(journal.chosen(), journal::open);   // Back to the journal after reading
+            director.reread(journal.chosen());   // It opens the journal again after reading
         }
     }
 
@@ -445,7 +442,17 @@ public class GamePanel extends JPanel implements Runnable {
         lastRoom = currentRoom;
         calm = 60;
         releaseKeys();
-        showNotice(currentRoom.outdoors ? Story.WAKE_OUTSIDE : Story.WAKE_INSIDE);
+        showWakeUpNotice();
+    }
+
+    // "You wake up with a gasp...", after going down: by the main entrance outside, or where the player
+    // came onto the floor inside
+    private void showWakeUpNotice() {
+        if (currentRoom.outdoors) {
+            showNotice(Story.WAKE_OUTSIDE);
+        } else {
+            showNotice(Story.WAKE_INSIDE);
+        }
     }
 
     // Subject Zero is beaten and the last words are said: show the ending screen
@@ -455,48 +462,40 @@ public class GamePanel extends JPanel implements Runnable {
         ended = true;
     }
 
-    // After the ending: this game is over, so its loop stops, and the main menu takes its place
-    private void leaveForMenu() {
-        isRunning = false;               // This game's loop stops after this frame
-        if (onMenu != null) SwingUtilities.invokeLater(onMenu);
-    }
-
-    // Stops this game for good (a new game was started from the menu)
-    public void stop() {
-        isRunning = false;
-    }
-
-    // Back from the menu (Continue): the game carries on. Keys pressed or let go while the menu was
-    // showing never reached the game, so it starts again with none held down.
-    public void resume() {
+    // Esc, or Enter after the ending: the game loop stops and the main menu takes the window (see
+    // Main). The checks have no window, so for them nothing more happens.
+    private void goToMenu() {
+        stop();
         releaseKeys();
-        advanceHeld = spaceHeld = backHeld = false;
-        advanceQueued = spaceQueued = journalQueued = backQueued = unlockQueued = false;
-        itemQueued = 0;
-        typed.clear();
-        paused = false;
+        if (SwingUtilities.getWindowAncestor(this) != null) Main.showMenu();
     }
 
-    // The menu's Journal: the journal opens, and closing it goes back to the menu (call resume() after)
+    // The menu's Journal: the journal opens, and closing it goes back to the menu (then call start())
     public void openJournalFromMenu() {
         journal.open();
         journalFromMenu = true;
     }
 
-    // Shows the battle in this window instead of the school, and puts the school back when it's over.
-    // (The quadrangle's monsters are fought out on the map instead: see LastStand. The typing race is
-    // kept for any tree that does start a battle.) A floor's boss may start weakened (see Director).
-    private void openBattle(Monster m) {
-        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
-        Consumer<BattleResult> back = result -> {
-            frame.setContentPane(this);
-            frame.revalidate();
-            frame.repaint();
-            requestFocusInWindow();
-            endBattle(m, result);
-        };
-        if (typingFight(m)) TypingBattle.fight(frame, m.enemy, flor.health, flor.kits, flor.items, back);
-        else BattleScreen.fight(frame, m.enemy, director.foeStartHp(m), flor.health, flor.kits, flor.items, back);
+    // Shows the battle in this window instead of the school; when it's over, the battle calls
+    // battleOver. (The quadrangle's monsters are fought out on the map instead: see LastStand. The
+    // typing race is kept for any tree that does start a battle.) A floor's boss may start weakened
+    // (see Director.foeStartHp).
+    private void openBattle(JFrame window, Monster m) {
+        battleWindow = window;
+        if (typingFight(m)) {
+            TypingBattle.fight(this, window, m.enemy, flor.health, flor.kits, flor.items);
+        } else {
+            BattleScreen.fight(this, window, m.enemy, director.foeStartHp(m), flor.health, flor.kits, flor.items);
+        }
+    }
+
+    // The battle is over (BattleScreen and TypingBattle call this): the school takes the window back
+    public void battleOver(BattleResult result) {
+        battleWindow.setContentPane(this);
+        battleWindow.revalidate();
+        battleWindow.repaint();
+        requestFocusInWindow();
+        endBattle(battleMonster, result);
     }
 
     // True if this monster's fight is a typing race (TypingBattle) instead of the word battle
@@ -515,7 +514,7 @@ public class GamePanel extends JPanel implements Runnable {
             director.afterWin(m);        // A boss leaves its loot where it stood
         } else {
             flor.respawn();
-            showNotice(currentRoom.outdoors ? Story.WAKE_OUTSIDE : Story.WAKE_INSIDE);
+            showWakeUpNotice();
         }
         lastRoom = currentRoom;
         calm = 60;
@@ -564,7 +563,8 @@ public class GamePanel extends JPanel implements Runnable {
         // The room's name stays fixed on screen (drawn after the camera shift is undone)
         g2d.setColor(Color.WHITE);
         g2d.setFont(ROOM_NAME_FONT);
-        String where = currentRoom.outdoors ? "Outside" : "Floor " + currentRoom.floor.number;
+        String where = "Floor " + currentRoom.floor.number;
+        if (currentRoom.outdoors) where = "Outside";
         g2d.drawString(currentRoom.name + "  |  " + where, 20, 40);
 
         if (currentRoom.outdoors && !ended) lastStand.drawHud(g2d);
@@ -629,11 +629,12 @@ public class GamePanel extends JPanel implements Runnable {
         g.setComposite(AlphaComposite.SrcOver.derive(Math.min(1f, noticeTicks / 30f)));
         g.setFont(NOTICE_FONT);
         FontMetrics fm = g.getFontMetrics();
-        java.util.List<String> lines = new java.util.ArrayList<>();
+        ArrayList<String> lines = new ArrayList<>();
         for (String paragraph : notice.split("\n")) {   // "\n" starts a new line; long lines wrap
             StringBuilder line = new StringBuilder();
             for (String word : paragraph.split(" ")) {
-                String trial = line.length() == 0 ? word : line + " " + word;
+                String trial = word;
+                if (line.length() > 0) trial = line + " " + word;
                 if (fm.stringWidth(trial) > screenWidth - 120 && line.length() > 0) {
                     lines.add(line.toString());
                     line = new StringBuilder(word);

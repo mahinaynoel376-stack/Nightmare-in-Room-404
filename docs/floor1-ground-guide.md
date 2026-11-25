@@ -127,9 +127,9 @@ Now a lab and an office differ only in what they pass in:
 
 ```java
 // Lab.java
-return SingleRoom.build(tiles, ts, mapFor(part), LEGEND, Lab::underlay);
+return SingleRoom.build(tiles, ts, mapFor(part), LEGEND, new Lab());
 // Office.java
-return SingleRoom.build(tiles, ts, map, LEGEND, Office::underlay);
+return SingleRoom.build(tiles, ts, map, LEGEND, new Office());
 ```
 
 This is the third time a piece of code was pulled out to be shared:

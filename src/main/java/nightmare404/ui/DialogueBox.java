@@ -8,7 +8,6 @@ import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,13 +18,11 @@ import nightmare404.story.Line.Style;
 // The dialogue box: a box just above the bottom bar that shows a conversation one Line at a time.
 // While it's open the world waits (see GamePanel.update).
 //
-// A conversation is a QUEUE of lines: the box shows the line at the front, and pressing E, Space or
-// Enter takes it off (dequeues it) and shows the next. The text types itself out; pressing while it's
-// still typing shows the whole line at once. When the queue is empty the box closes and runs the
-// conversation's `then` (for example: a boss's last word, then its battle starts).
-//
-// The game loop (its own thread) calls update() and Swing calls draw(), so the methods that touch the
-// queue are synchronized: only one thread at a time can be inside them.
+// A conversation is a list of lines waiting their turn (first in, first out, like a queue): the box
+// shows the line at the front, and pressing E, Space or Enter takes it off and shows the next. The
+// text types itself out; pressing while it's still typing shows the whole line at once. When there
+// are no lines left the box closes. (What happens then, like a boss's battle starting, is up to
+// the Director: see Director.dialogueOver.)
 public class DialogueBox {
     private static final double CHARS_PER_TICK = 1.5;   // Typing speed: 90 letters a second
     private static final int PRESS_DELAY = 10;          // Ticks before a new conversation takes a key press
@@ -44,73 +41,65 @@ public class DialogueBox {
     private static final Font NAME = new Font(Font.SERIF, Font.BOLD, 15);
     private static final Font PROMPT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
 
-    private final ArrayDeque<Line> queue = new ArrayDeque<>();
+    private final ArrayList<Line> waiting = new ArrayList<>();   // The lines still to come, first one first
     private Line current;           // The line on show, or null when the box is closed
     private double shown;           // How many of its letters have been typed out so far
     private int wait;               // Ticks left before a key press counts
     private long ticks;             // For the blinking arrow
-    private Runnable then;          // What happens when the conversation ends
 
     // With no screen (the checks and debug tools run headless) nobody can press a key, so every
-    // conversation is skipped at once: its lines are still logged, and its `then` still runs.
+    // conversation is skipped at once: its lines are still logged.
     public boolean autoSkip = GraphicsEnvironment.isHeadless();
     private final List<Line> log = new ArrayList<>();   // Every line ever opened, oldest first (for the checks)
 
-    // Starts a conversation (or adds to the one on show). `then` runs when it's over; it may be null.
-    public void open(List<Line> lines, Runnable then) {
-        synchronized (this) {
-            log.addAll(lines);
-            if (!autoSkip && !lines.isEmpty()) {
-                queue.addAll(lines);
-                Runnable before = this.then;
-                this.then = before == null ? then : then == null ? before : () -> { before.run(); then.run(); };
-                if (current == null) {
-                    next();
-                    wait = PRESS_DELAY;
-                }
-                return;
-            }
+    // Starts a conversation (or adds to the one on show)
+    public void open(List<Line> lines) {
+        log.addAll(lines);
+        if (autoSkip || lines.isEmpty()) return;   // Nothing to show
+        waiting.addAll(lines);
+        if (current == null) {
+            next();
+            wait = PRESS_DELAY;
         }
-        if (then != null) then.run();   // Nothing to show: carry straight on
     }
 
-    public synchronized boolean isOpen() {
+    public boolean isOpen() {
         return current != null;
     }
 
     // One frame: type out more of the line, and act on a key press (pressed = E/Space/Enter went down
     // since the last frame)
     public void update(boolean pressed) {
-        Runnable finished = null;
-        synchronized (this) {
-            if (current == null) return;
-            ticks++;
-            if (wait > 0) {
-                wait--;
-                pressed = false;
-            }
-            int length = current.text().length();
-            if (shown < length) {
-                shown = pressed ? length : Math.min(length, shown + CHARS_PER_TICK);
-                return;
-            }
-            if (!pressed) return;
-            next();
-            if (current == null) {
-                finished = then;
-                then = null;
-            }
+        if (current == null) return;
+        ticks++;
+        if (wait > 0) {
+            wait--;
+            pressed = false;
         }
-        if (finished != null) finished.run();   // Outside the lock: it may start a battle or another conversation
+        int length = current.text().length();
+        if (shown < length) {               // Still typing: a press shows the whole line
+            if (pressed) {
+                shown = length;
+            } else {
+                shown = Math.min(length, shown + CHARS_PER_TICK);
+            }
+            return;
+        }
+        if (pressed) next();
     }
 
+    // Shows the next line waiting, or closes the box if there are none
     private void next() {
-        current = queue.poll();
+        if (waiting.isEmpty()) {
+            current = null;
+        } else {
+            current = waiting.remove(0);
+        }
         shown = 0;
     }
 
     // True if any line ever opened contains this text (for the checks)
-    public synchronized boolean said(String text) {
+    public boolean said(String text) {
         for (Line line : log) {
             if (line.text().contains(text)) return true;
         }
@@ -119,13 +108,25 @@ public class DialogueBox {
 
     // ------------------------------------------------------------------------------------ drawing
 
-    public synchronized void draw(Graphics2D g2d, int screenWidth, int bottomBarTop) {
+    public void draw(Graphics2D g2d, int screenWidth, int bottomBarTop) {
         if (current == null) return;
         Graphics2D g = (Graphics2D) g2d.create();
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         int y = bottomBarTop - H - 10;
         Style style = current.style();
         boolean paper = style == Style.PAPER;
+        boolean tip = style == Style.TIP;
+
+        // The colours: ink on paper for something written, gold for a tip, pale on dark for the rest
+        Color edge = BORDER;
+        Color textColor = PALE;
+        if (paper) {
+            edge = PAPER;
+            textColor = INK;
+        } else if (tip) {
+            edge = GOLD;
+            textColor = GOLD;
+        }
 
         // The box: dark with a blood-red edge, or a sheet of lined school paper for something written
         if (paper) {
@@ -141,34 +142,45 @@ public class DialogueBox {
         } else {
             g.setColor(BOX);
             g.fillRect(X, y, W, H);
-            g.setColor(style == Style.TIP ? GOLD.darker() : BORDER);
+            if (tip) {
+                g.setColor(GOLD.darker());
+            } else {
+                g.setColor(BORDER);
+            }
             g.setStroke(new BasicStroke(2));
             g.drawRect(X, y, W, H);
         }
 
         // Who's speaking (or what the paper is), on a tab over the box's top-left corner
-        String name = switch (style) {
-            case SPEECH, PAPER -> current.speaker();
-            case TIP -> "HOW TO PLAY";
-            default -> null;
-        };
-        if (name != null) {
+        String label = null;
+        if (style == Style.SPEECH) label = current.speaker().toUpperCase();
+        if (paper) label = current.speaker();
+        if (tip) label = "HOW TO PLAY";
+        if (label != null) {
             g.setFont(NAME);
             FontMetrics nm = g.getFontMetrics();
-            String label = style == Style.SPEECH ? name.toUpperCase() : name;
             int tabW = nm.stringWidth(label) + 24;
-            g.setColor(paper ? INK : BOX);
+            if (paper) {
+                g.setColor(INK);
+            } else {
+                g.setColor(BOX);
+            }
             g.fillRect(X + 12, y - 22, tabW, 24);
-            g.setColor(paper ? PAPER : style == Style.TIP ? GOLD : BORDER);
+            g.setColor(edge);
             g.drawRect(X + 12, y - 22, tabW, 24);
-            g.setColor(paper ? PAPER : style == Style.TIP ? GOLD : PALE);
+            if (paper || tip) {
+                g.setColor(edge);
+            } else {
+                g.setColor(PALE);
+            }
             g.drawString(label, X + 24, y - 5);
         }
 
         // The face, if the speaker has one
-        int textX = X + (paper ? 56 : 20);
-        BufferedImage face = style == Style.SPEECH && current.portrait() != null
-                ? portrait(current.portrait()) : null;
+        int textX = X + 20;
+        if (paper) textX = X + 56;
+        BufferedImage face = null;
+        if (style == Style.SPEECH && current.portrait() != null) face = portrait(current.portrait());
         if (face != null) {
             int px = X + 14, py = y + (H - PORTRAIT) / 2;
             g.setColor(new Color(24, 20, 20));
@@ -179,14 +191,20 @@ public class DialogueBox {
             textX = px + PORTRAIT + 18;
         }
 
-        // The text, wrapped to the box, typed out so far
-        g.setFont(style == Style.THOUGHT ? THOUGHT : TEXT);
-        g.setColor(paper ? INK : style == Style.TIP ? GOLD : PALE);
-        FontMetrics fm = g.getFontMetrics();
+        // The text, wrapped to the box, typed out so far. A thought is in italics and (brackets).
         String text = current.text();
-        if (style == Style.THOUGHT) text = "(" + text + ")";
-        int visible = shown >= current.text().length() ? text.length()
-                : (int) shown + (style == Style.THOUGHT ? 1 : 0);
+        int visible = (int) shown;
+        if (style == Style.THOUGHT) {
+            g.setFont(THOUGHT);
+            text = "(" + text + ")";
+            visible = visible + 1;                    // The "(" is there from the start
+        } else {
+            g.setFont(TEXT);
+        }
+        boolean allTyped = shown >= current.text().length();
+        if (allTyped) visible = text.length();
+        g.setColor(textColor);
+        FontMetrics fm = g.getFontMetrics();
         int lineY = y + 34;
         for (String line : wrap(text, fm, X + W - 24 - textX)) {
             if (visible <= 0) break;
@@ -196,8 +214,12 @@ public class DialogueBox {
         }
 
         // A blinking arrow once the whole line is out: press to go on
-        if (shown >= current.text().length() && (ticks / 20) % 2 == 0) {
-            g.setColor(paper ? INK : PALE);
+        if (allTyped && (ticks / 20) % 2 == 0) {
+            if (paper) {
+                g.setColor(INK);
+            } else {
+                g.setColor(PALE);
+            }
             int ax = X + W - 26, ay = y + H - 22;
             g.fillPolygon(new int[] {ax, ax + 12, ax + 6}, new int[] {ay, ay, ay + 8}, 3);
             g.setFont(PROMPT);
@@ -218,8 +240,11 @@ public class DialogueBox {
         double fit = Math.min((double) size / img.getWidth(), (double) size / img.getHeight());
         int w = (int) Math.round(img.getWidth() * fit), h = (int) Math.round(img.getHeight() * fit);
         Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, img.getHeight() <= 128
-                ? RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR : RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        if (img.getHeight() <= 128) {           // Small pixel art: pixel for pixel, sharp
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        } else {
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        }
         g2.drawImage(img, x + (size - w) / 2, y + (size - h) / 2, w, h, null);
         g2.dispose();
     }
@@ -230,7 +255,8 @@ public class DialogueBox {
         for (String paragraph : text.split("\n")) {
             StringBuilder line = new StringBuilder();
             for (String word : paragraph.split(" ")) {
-                String trial = line.length() == 0 ? word : line + " " + word;
+                String trial = word;
+                if (line.length() > 0) trial = line + " " + word;
                 if (fm.stringWidth(trial) > width && line.length() > 0) {
                     lines.add(line.toString());
                     line = new StringBuilder(word);

@@ -34,10 +34,17 @@ So the accurate picture doesn't need to be drawn. It can be **copied** from the 
 A **view** is a rectangle of a map that shows part of another map:
 
 ```java
-public record View(int col0, int row0, int col1, int row1, int sourceRow0) { ... }
+public static class View {
+    private final int col0, row0, col1, row1, sourceRow0;
+
+    public View(int col0, int row0, int col1, int row1, int sourceRow0) { ... }
+
+    public int row0() { return row0; }
+    ...
+}
 ```
 
-A **record** is a short way to write a small class that only holds a few values. Java writes the constructor and the getters for you: `view.row0()`, `view.sourceRow0()` and so on.
+A small class that only holds a few values: a constructor to fill them in, and a getter for each one: `view.row0()`, `view.sourceRow0()` and so on.
 
 The hallway's strip is the view `(col0, 13) to (col1, 17)`, showing the other map from row `3`.
 

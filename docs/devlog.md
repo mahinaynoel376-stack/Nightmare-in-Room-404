@@ -471,6 +471,24 @@ The quadrangle's building face lost its two side exits and their pillars, so the
 
 ---
 
+## 2026-11-25 — The code, simplified to beginner Java
+
+**Goal:** rewrite the whole codebase so it only uses what an introductory Java course teaches, without changing how the game plays.
+**What happened:** 516 places were changed, across 39 files of the game and all 15 checks and debug tools. A small script that ignores comments and strings counted them before and after: none are left.
+- **No threads.** The game loop was a `Thread` that ran `update()` 60 times a second while Swing drew the screen on its own thread, which is why there were `volatile` fields, `synchronized` methods, a `ConcurrentLinkedQueue` for typed letters and `SwingUtilities.invokeLater`. The loop is now a `javax.swing.Timer` that calls `GamePanel.actionPerformed` every 16 ms, on Swing's thread, so none of that is needed. The battles already worked this way. Pausing for the main menu is now just stopping the timer. The word list that loaded on a background thread is now read at startup (it takes about 0.15 s).
+- **No lambdas or method references.** The dialogue's "then do this" callbacks became fields in `Director` (`battleAfter`, `noticeAfter`, `journalAfter`, `endingAfter`), done in `Director.dialogueOver` when the box closes. Battles start with `GamePanel.startBattle` and end by calling `GamePanel.battleOver`; the checks look at `GamePanel.battleMonster` instead of swapping in their own `battleStarter`. The word battle's animation script was a queue of lambdas; each step is now a name (`"impact"`, `"enemyAttacks"`, `"won"`...) handled by `BattlePanel.doStep`, with the values it needs kept in fields. Keys use one named `KeyAction` class. The menu calls `Main.startGame()` and the others directly. Panels implement `ActionListener`, `KeyListener` and the mouse listeners themselves instead of anonymous adapter classes. The maps' floor patterns (`Lab::underlay`...) became classes implementing `MapBuilder.Underlay` (`new Lab()`).
+- **No records, `switch` arrows, `?:`, streams or `Optional`.** The 12 records became plain classes with the same getter names, so nothing that used them changed. Every `?:` became `if`/`else`, every `case X ->` a classic `case X:` or an `if` chain. Streams, `removeIf`, `getOrDefault`, `computeIfAbsent`, iterators and `ArrayDeque` became loops and `ArrayList`s. `HealthBar`'s enum with fields became two objects, `HealthBar.PLAYER` and `HealthBar.MONSTER`. The hallway flicker's bit-mixing hash (`>>>`, `^=`) became a `Random` with a 1 in 300 chance of a burst each frame, the same average as before. `++x` and `--x` hidden inside conditions, and chained assignments like `a = b = 0`, were split into plain statements.
+**Problems:**
+- In `ViewCheck`, a `for` loop that moved two variables at once (`up = up.right, down = ...`) became a `while` loop with the step at the end, but the loop body has a `continue`, which would have skipped the step and looped forever. The step is now done before that `continue` too.
+- The typing race's damage maths was first rewritten in a different order. With decimals, a different order can round differently, so it was put back in the original order.
+**Decisions:**
+- **Kept:** interfaces (`Backdrop`, `Underlay`, the listeners), plain enums, `List.of`/`Map.of` for fixed lists, try-with-resources for reading files, and the nested classes inside `BattleScreen`. These are part of normal beginner Java, or would need a much bigger reshuffle to remove.
+- **Same behaviour, checked three ways:** all 11 checks pass (542 tests, as before), and every check's printed output was compared line by line with the old code's: the only differences are the tree-hit damage, which is random in both, and one check's renamed text. Screens were drawn to pictures (the school view is pixel-identical), a full attack was played through the word battle's new step script, and the whole loop was played in a real window with simulated keys: the menu, walking, Esc and Continue, the journal, a battle opening and closing, and the ending going back to the menu.
+- **Timing:** a Swing timer ticks every 16 ms, so the game now runs at about 62 frames a second instead of exactly 60 (about 3% faster); the battles were already 62.
+**Open issues:** the step-by-step guides show code as it was when each was written; the snippets that used records, method references and `switch` arrows were updated, but older ones may still show earlier versions of the code.
+
+---
+
 ## Open issues and ideas
 
 - ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).

@@ -20,7 +20,8 @@ public class WalkStripDebug {
     private static final int MAX_SWAY = 2;   // ...and sideways
 
     public static void main(String[] args) throws IOException {
-        String outPath = args.length > 0 ? args[0] : "down_walk_strip.png";
+        String outPath = "down_walk_strip.png";  // Or the file given on the command line
+        if (args.length > 0) outPath = args[0];
         GamePanel gp = new GamePanel();
         Player player = gp.flor;
         int ts = gp.tileSize;
@@ -63,10 +64,15 @@ public class WalkStripDebug {
                     if (d < diff) { diff = d; bestBob = bob; bestSway = sway; }
                 }
             }
-            System.out.println("Step " + step + " head pixels differing from step 0: " + diff
-                    + (bestBob != 0 || bestSway != 0 ? " (with the body bobbing " + bestBob + " px, swaying " + bestSway + " px)" : ""));
+            String moved = "";
+            if (bestBob != 0 || bestSway != 0) moved = " (with the body bobbing " + bestBob + " px, swaying " + bestSway + " px)";
+            System.out.println("Step " + step + " head pixels differing from step 0: " + diff + moved);
             if (diff > 0) allSame = false;
         }
-        System.out.println(allSame ? "PASS: head is identical in every step" : "FAIL: head changes between steps");
+        if (allSame) {
+            System.out.println("PASS: head is identical in every step");
+        } else {
+            System.out.println("FAIL: head changes between steps");
+        }
     }
 }

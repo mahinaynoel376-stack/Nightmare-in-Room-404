@@ -57,6 +57,10 @@ tools/art/                    the Python scripts that made the tiles
 
 The [project structure guide](docs/project-structure-guide.md) explains each part.
 
+### How the code is written
+
+The code sticks to what an introductory Java course covers: classes and objects, methods, `if`/`else`, loops, `switch` with `case:` and `break`, arrays, `ArrayList` and `HashMap`, and interfaces (`Backdrop`, `MapBuilder.Underlay`, and Swing's listeners). There are no lambdas (`->`), method references (`::`), records, streams, `?:` operators or threads. Everything runs on Swing's own thread: the game loop is a `javax.swing.Timer` (see `GamePanel`), so a frame of the game, a key press and the drawing never happen at the same time.
+
 ## The guides
 
 Written step by step, for a beginner, in the order the game was built:

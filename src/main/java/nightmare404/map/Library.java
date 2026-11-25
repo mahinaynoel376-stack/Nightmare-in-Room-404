@@ -17,7 +17,8 @@ import nightmare404.tile.TileSet;
 // The legend below (and the LEGEND map) says which tile each character means; MapBuilder.paint reads it.
 // What's underneath each character (brick wall or wooden floor) depends only on its row,
 // and the stone wall strips around the room are added by code, like the classrooms have.
-public class Library {
+// A Library object is the floor under the furniture (see tileAt): MapBuilder asks it for each tile.
+public class Library implements MapBuilder.Underlay {
     public enum Part { WEST, ENTRANCE, EAST }
 
     private static final int TOP_WALL_ROW = 2;
@@ -103,14 +104,12 @@ public class Library {
     };
 
     public static TileMap build(TileSet tiles, int ts, Part part) {
-        String[] map = switch (part) {
-            case WEST -> WEST;
-            case ENTRANCE -> ENTRANCE;
-            case EAST -> EAST;
-        };
+        String[] map = EAST;
+        if (part == Part.WEST) map = WEST;
+        if (part == Part.ENTRANCE) map = ENTRANCE;
         MapBuilder b = new MapBuilder();
         b.fill(LAYER_FLOOR, 0, 0, 24, 17, VOID);
-        b.paint(map, LEGEND, Library::underlay);
+        b.paint(map, LEGEND, new Library());
         frame(b, part);
         if (part == Part.ENTRANCE) {
             b.bigDoor(DOOR_COL, DOOR_ROW, LIB_FLOOR_1);
@@ -120,10 +119,12 @@ public class Library {
 
     // What's under every character: brick wall on rows 3-4, the wall base on row 5, wooden floor below.
     // The floor mixes its two tiles in a scattered pattern, so it doesn't look like a grid.
-    private static int underlay(int col, int row) {
+    @Override
+    public int tileAt(int col, int row) {
         if (row <= 4) return LIB_WALL;
         if (row == 5) return LIB_WALL_BASE;
-        return (col * 7 + row * 3) % 5 == 0 ? LIB_FLOOR_2 : LIB_FLOOR_1;
+        if ((col * 7 + row * 3) % 5 == 0) return LIB_FLOOR_2;
+        return LIB_FLOOR_1;
     }
 
     // The legend: which tile goes on top of each character (EMPTY = nothing on top).
@@ -144,8 +145,10 @@ public class Library {
     // The stone frame every room in the building has: a top wall, a bottom wall, and side walls
     // at the library's two ends. Between the three screens there's no wall: it's one room.
     private static void frame(MapBuilder b, Part part) {
-        int first = part == Part.WEST ? 3 : 0;     // First and last columns inside the room
-        int last = part == Part.EAST ? 21 : 24;
+        int first = 0;                             // First and last columns inside the room
+        int last = 24;
+        if (part == Part.WEST) first = 3;
+        if (part == Part.EAST) last = 21;
         b.wallH(TOP_WALL_ROW, first, last);
         b.wallH(BOTTOM_WALL_ROW, first, last);
         if (part == Part.WEST) {

@@ -38,13 +38,13 @@ public class BottomUI {
 
         // The heart bar, then the numbers, vertically centred in the 32 px row
         Player player = gp.flor;
-        int barY = top + (height - HealthBar.height(HealthBar.Style.LEAD, BAR_SCALE)) / 2 + 1;
-        HealthBar.draw(g2d, HealthBar.Style.LEAD, player.health, player.maxHealth, BAR_X, barY, BAR_SCALE);
+        int barY = top + (height - HealthBar.PLAYER.height(BAR_SCALE)) / 2 + 1;
+        HealthBar.PLAYER.draw(g2d, player.health, player.maxHealth, BAR_X, barY, BAR_SCALE);
 
         g2d.setFont(LABEL_FONT);
         g2d.setColor(Color.WHITE);
         int textY = top + height / 2 + 5;
-        int numbersX = BAR_X + HealthBar.width(HealthBar.Style.LEAD, BAR_SCALE) + 8;
+        int numbersX = BAR_X + HealthBar.PLAYER.width(BAR_SCALE) + 8;
         g2d.drawString(player.health + " / " + player.maxHealth, numbersX, textY);
 
         // What the player carries into battle

@@ -19,9 +19,18 @@ import nightmare404.world.Room;
 //
 // It remembers what's already been shown (seen), so a scene plays once. Giving up after a lost battle
 // never undoes that: a page picked up again shows one line instead of the whole page.
+//
+// Some conversations lead to something when they're over: a boss's battle, a notice, the ending.
+// That's noted in the "...After" fields below, and done in dialogueOver when the conversation ends.
 public class Director {
     private final GamePanel gp;
     private final Set<String> seen = new HashSet<>();
+
+    // What happens when the conversation on show is over (null or false: nothing)
+    private Monster battleAfter;        // This monster's battle starts
+    private String noticeAfter;         // This notice shows at the bottom of the screen
+    private boolean journalAfter;       // The journal opens again (after reading a clue again)
+    private boolean endingAfter;        // The ending screen shows
 
     public Director(GamePanel gp) {
         this.gp = gp;
@@ -36,13 +45,13 @@ public class Director {
     public void update() {
         if (seen.add("intro")) {
             seen.add("floor4");
-            play(Story.INTRO, null);
+            play(Story.INTRO);
             return;
         }
         Room room = gp.currentRoom;
         if (room.outdoors) {
             if (seen.add("outside")) {
-                play(Story.OUTSIDE, null);
+                play(Story.OUTSIDE);
                 return;
             }
             SubjectZero zero = gp.world.finalBoss;   // Walking right past it while it sleeps: a hint, once
@@ -50,19 +59,25 @@ public class Director {
                 gp.showNotice(Story.BREATHING, 240);
             }
         } else if (seen.add("floor" + room.floor.number)) {
-            play(Story.arrive(room.floor.number), null);
+            play(Story.arrive(room.floor.number));
         }
     }
 
     // The player walked into a monster. A floor's boss says something first (once for each number of
     // clues found, so it reacts to what the player knows); then the battle starts.
-    public void beforeBattle(Monster m, Runnable fight) {
+    public void beforeBattle(Monster m) {
         if (m.boss && m == m.room.floor.boss) {
             Floor f = m.room.floor;
-            int found = f.quest == null ? 0 : f.quest.found(gp.flor.clues);
-            play(seen.add("boss" + f.number + ":" + found) ? Story.bossBefore(f.number, found) : List.of(), fight);
+            int found = 0;
+            if (f.quest != null) found = f.quest.found(gp.flor.clues);
+            battleAfter = m;
+            if (seen.add("boss" + f.number + ":" + found)) {
+                play(Story.bossBefore(f.number, found));
+            } else {
+                play(new ArrayList<Line>());          // Said it already: straight to the battle
+            }
         } else {
-            fight.run();
+            gp.startBattle(m);
         }
     }
 
@@ -88,13 +103,13 @@ public class Director {
         SubjectZero zero = gp.world.finalBoss;
         zero.wake();
         gp.showNotice("", 0);
-        play(Story.awakening(allCluesFound()), null);
+        play(Story.awakening(allCluesFound()));
     }
 
     // Subject Zero is down: the last words, then the ending screen
     public void zeroBeaten() {
-        boolean remembered = allCluesFound();
-        play(Story.ending(remembered), () -> gp.end(remembered));
+        endingAfter = true;
+        play(Story.ending(allCluesFound()));
     }
 
     // The player walked over a clue: read it, take what's with it, and see how the boss is weakened
@@ -102,7 +117,8 @@ public class Director {
         Player p = gp.flor;
         p.clues.add(clue.id);
         p.addSupplies(clue.supplies);
-        List<Line> lines = new ArrayList<>(seen.add("clue:" + clue.id) ? clue.pages : Story.clueAgain(clue.title));
+        List<Line> lines = Story.clueAgain(clue.title);   // Read before (then given up): one line
+        if (seen.add("clue:" + clue.id)) lines = clue.pages;
         Floor f = clue.room.floor;
         Quest q = f.quest;
         String note = q.things + " found: " + q.found(p.clues) + " of " + q.clues.size() + ".";
@@ -111,19 +127,21 @@ public class Director {
                     + Math.round(q.weakening(p.clues) * 100) + "% weaker.";
         }
         String supplies = clue.supplies.supplies();
-        String notice = supplies.isEmpty() ? note : note + "\nFound with it: " + supplies;
-        play(lines, () -> gp.showNotice(notice, 300));
+        noticeAfter = note;
+        if (!supplies.isEmpty()) noticeAfter = note + "\nFound with it: " + supplies;
+        play(lines);
     }
 
     // The player picked up what a boss dropped
     public void lootTaken(Monster boss) {
-        String notice = "Found: " + boss.loot.key() + "\n" + boss.loot.supplies();
-        play(Story.bossAfter(boss.room.floor.number, boss.loot.found()), () -> gp.showNotice(notice, 300));
+        noticeAfter = "Found: " + boss.loot.key() + "\n" + boss.loot.supplies();
+        play(Story.bossAfter(boss.room.floor.number, boss.loot.found()));
     }
 
-    // Reading a clue again from the journal
-    public void reread(Clue clue, Runnable then) {
-        play(clue.pages, then);
+    // Reading a clue again from the journal (it opens again afterwards)
+    public void reread(Clue clue) {
+        journalAfter = true;
+        play(clue.pages);
     }
 
     public int cluesFound() {
@@ -147,7 +165,32 @@ public class Director {
                 gp.flor.solidArea.getCenterY() - m.solidArea.getCenterY()) < distance;
     }
 
-    private void play(List<Line> lines, Runnable then) {
-        gp.dialogue.open(lines, then);
+    // Shows a conversation. If there's nothing to show (or no screen, in the checks), whatever was
+    // waiting for it happens straight away.
+    private void play(List<Line> lines) {
+        gp.dialogue.open(lines);
+        if (!gp.dialogue.isOpen()) dialogueOver();
+    }
+
+    // The conversation is over (GamePanel calls this the frame the dialogue box closes): do whatever
+    // was waiting for it
+    public void dialogueOver() {
+        if (noticeAfter != null) {
+            gp.showNotice(noticeAfter, 300);
+            noticeAfter = null;
+        }
+        if (journalAfter) {
+            journalAfter = false;
+            gp.journal.open();
+        }
+        if (endingAfter) {
+            endingAfter = false;
+            gp.end(allCluesFound());
+        }
+        if (battleAfter != null) {
+            Monster m = battleAfter;
+            battleAfter = null;
+            gp.startBattle(m);
+        }
     }
 }

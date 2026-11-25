@@ -82,7 +82,11 @@ public class PrincipalsOfficeBackdrop implements Backdrop {
         g.setColor(new Color(40, 28, 10));
         g.drawString("PRINCIPAL", 400 - g.getFontMetrics().stringWidth("PRINCIPAL") / 2, 190);
         for (int k = 0; k < 4; k++) {                                                // stacked files
-            g.setColor(k % 2 == 0 ? new Color(196, 168, 112) : new Color(170, 142, 92));
+            if (k % 2 == 0) {
+                g.setColor(new Color(196, 168, 112));
+            } else {
+                g.setColor(new Color(170, 142, 92));
+            }
             g.fillRect(470 - k, 184 - k * 3, 40, 3);
         }
         g.setColor(new Color(90, 70, 40));

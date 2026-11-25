@@ -34,23 +34,31 @@ import nightmare404.world.World;
 // that off to try the box itself, and starting a battle just remembers which monster it was.
 public class QuestCheck {
     static GamePanel gp; static Player p; static World w; static LastStand stand; static int fails = 0;
-    static Monster started;
 
-    static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what); if (!ok) fails++; }
+    static void check(String what, boolean ok) {
+        if (ok) {
+            System.out.println("  ok   " + what);
+        } else {
+            System.out.println("  FAIL " + what);
+            fails++;
+        }
+    }
     static void put(Room room, int col, int row) { gp.currentRoom = room; p.x = col * 32; p.y = row * 32; p.update(); }
     static void putPx(Room room, int x, int y) { gp.currentRoom = room; p.x = x; p.y = y; p.update(); }
-    static void ticks(int n) { for (int i = 0; i < n && started == null; i++) gp.update(); }
+    static void ticks(int n) { for (int i = 0; i < n && gp.battleMonster == null; i++) gp.update(); }
     static void hold(String keys, int n) {
-        started = null;
+        gp.battleMonster = null;
         gp.upPressed = keys.contains("U"); gp.downPressed = keys.contains("D"); gp.leftPressed = keys.contains("L"); gp.rightPressed = keys.contains("R");
         ticks(n);
-        gp.upPressed = gp.downPressed = gp.leftPressed = gp.rightPressed = false;
+        gp.upPressed = false;
+        gp.downPressed = false;
+        gp.leftPressed = false;
+        gp.rightPressed = false;
     }
     static nightmare404.battle.BattleScreen.BattleResult won() { return new nightmare404.battle.BattleScreen.BattleResult(true, p.health, p.kits); }
 
     public static void main(String[] a) {
         gp = new GamePanel(); p = gp.flor; w = gp.world; stand = gp.lastStand;
-        gp.battleStarter = m -> started = m;
         Floor f4 = w.floor4, f3 = w.floor3, f1 = w.floor1;
 
         System.out.println("1. The opening");
@@ -61,20 +69,19 @@ public class QuestCheck {
         System.out.println("2. The dialogue box");
         DialogueBox box = new DialogueBox();
         box.autoSkip = false;
-        boolean[] done = {false};
-        box.open(List.of(Line.narrate("First line."), Line.flor("Second.")), () -> done[0] = true);
+        box.open(List.of(Line.narrate("First line."), Line.flor("Second.")));
         check("a conversation opens", box.isOpen());
         box.update(true);
-        check("a key press right as it opens doesn't skip anything", box.isOpen() && !done[0]);
+        check("a key press right as it opens doesn't skip anything", box.isOpen());
         for (int i = 0; i < 20; i++) box.update(false);
         box.update(true);
-        check("pressing goes on to the next line", box.isOpen() && !done[0]);
+        check("pressing goes on to the next line", box.isOpen());
         box.update(true);
         check("pressing while it types shows the whole line, without going on", box.isOpen());
         box.update(true);
-        check("pressing on the last line closes it and runs what comes next", !box.isOpen() && done[0]);
+        check("pressing on the last line closes it", !box.isOpen());
         gp.dialogue.autoSkip = false;
-        gp.dialogue.open(List.of(Line.narrate("Wait.")), null);
+        gp.dialogue.open(List.of(Line.narrate("Wait.")));
         int x0 = p.x, y0 = p.y;
         hold("D", 40);
         check("while it's open the world waits: holding S doesn't move the player", p.x == x0 && p.y == y0 && gp.dialogue.isOpen());
@@ -86,8 +93,9 @@ public class QuestCheck {
         check("8 clues in all", all.size() == 8);
         for (Floor f = w.top; f != null; f = f.below) {
             Quest q = f.quest;
-            check("Floor " + f.number + ": " + (q == null ? "no quest" : q.title + ", " + q.clues.size() + " clues"),
-                    q != null && q.clues.size() == 2);
+            String quest = "no quest";
+            if (q != null) quest = q.title + ", " + q.clues.size() + " clues";
+            check("Floor " + f.number + ": " + quest, q != null && q.clues.size() == 2);
             if (q == null) continue;
             for (Clue c : q.clues) {
                 String where = c.id + " (" + c.title + ", " + c.room.name + ")";
@@ -132,11 +140,11 @@ public class QuestCheck {
         Room west = f4.find("West Stairs");
         putPx(west, west.map.stairs.downFoot.x, west.map.stairs.downFoot.y); ticks(40);
         hold("U", 150);
-        check("knowing both pages, Flor recognises the janitor before the Brute's battle", started == brute
+        check("knowing both pages, Flor recognises the janitor before the Brute's battle", gp.battleMonster == brute
                 && gp.dialogue.said("You're the janitor"));
         gp.inBattle = false;
         gp.endBattle(brute, won());
-        started = null; ticks(70);
+        gp.battleMonster = null; ticks(70);
         check("its key is picked up with a few words about it", p.keys.contains("West Stairwell Key")
                 && gp.dialogue.said("Now I've got the keys"));
 
@@ -165,7 +173,7 @@ public class QuestCheck {
             gp.update();
             for (TreeMonster t : w.trees()) if (t.hunting()) first = t;
         }
-        check("the trees wake and hunt, with no battle screen", first != null && started == null);
+        check("the trees wake and hunt, with no battle screen", first != null && gp.battleMonster == null);
         ticks(2);
         String word = stand.wordOf(first);
         check("a hunting tree has a word over it: \"" + word + "\" (3-5 letters while it's unhurt)",
@@ -203,7 +211,8 @@ public class QuestCheck {
         int hp = stand.healthOf(aim);
         stand.type(word.charAt(0));
         check("the first letter picks the monster", stand.target() == aim);
-        char wrong = word.charAt(1) == 'z' ? 'q' : 'z';
+        char wrong = 'z';                        // A letter that isn't the next one
+        if (word.charAt(1) == 'z') wrong = 'q';
         double focusBefore = stand.focus();
         stand.type(wrong);
         check("a wrong key costs focus (and the streak) but keeps the word", stand.focus() < focusBefore - 20
@@ -260,8 +269,8 @@ public class QuestCheck {
                 && same.defeated && w.treesLeft() == left - 1);
         for (TreeMonster t : w.trees()) if (!t.defeated && w.treesLeft() > 1) stand.fell(t);
         check("one tree left: Subject Zero still sleeps", w.treesLeft() == 1 && zero.asleep());
-        putPx(quad, zero.x, zero.y); started = null; ticks(40);
-        check("walking right onto it: nothing, but something is breathing", started == null && zero.asleep()
+        putPx(quad, zero.x, zero.y); gp.battleMonster = null; ticks(40);
+        check("walking right onto it: nothing, but something is breathing", gp.battleMonster == null && zero.asleep()
                 && gp.notice().contains("breathing") && stand.lastHitBy != zero);
         for (Clue c : all) p.clues.add(c.id);              // (Every clue found: the good ending, later)
         for (TreeMonster t : w.trees()) if (!t.defeated) stand.fell(t);
@@ -319,8 +328,13 @@ public class QuestCheck {
         check("fewer clues: the other ending (FORGOTTEN)", gp2.ended && !gp2.endedRemembered
                 && gp2.dialogue.said("Nobody can remember who used to sit there"));
 
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 
     static double dist(Hunter h) {

@@ -110,7 +110,13 @@ public class LibraryBackdrop implements Backdrop {
             plank.moveTo(px(vpx, vpy, xb0, FLOOR_TOP), FLOOR_TOP); plank.lineTo(px(vpx, vpy, xb1, FLOOR_TOP), FLOOR_TOP);
             plank.lineTo(px(vpx, vpy, xb1, STAGE_BOTTOM), STAGE_BOTTOM); plank.lineTo(px(vpx, vpy, xb0, STAGE_BOTTOM), STAGE_BOTTOM); plank.closePath();
             int shade = r.nextInt(3);
-            g.setColor(shade == 0 ? new Color(50, 34, 22) : shade == 1 ? new Color(42, 28, 18) : new Color(56, 38, 24));
+            if (shade == 0) {
+                g.setColor(new Color(50, 34, 22));
+            } else if (shade == 1) {
+                g.setColor(new Color(42, 28, 18));
+            } else {
+                g.setColor(new Color(56, 38, 24));
+            }
             g.fill(plank);
             g.setColor(new Color(16, 10, 6));
             g.setStroke(new BasicStroke(1));

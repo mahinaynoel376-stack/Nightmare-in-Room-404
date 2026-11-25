@@ -201,7 +201,7 @@ A bookcase on the wall and a bookshelf in the middle of the room use the same `B
 
 **Two floor tiles, no visible grid:** the sheet has two floor variants. `underlay()` mixes them with `(col * 7 + row * 3) % 5 == 0`, a simple formula that scatters variant 2 irregularly, so the floor doesn't look like a checkerboard.
 
-> **Updated on Floor 2:** this code was later moved into a shared `MapBuilder.paint(map, legend, underlay)`, and the legend became a `Map` instead of a `switch`. The idea is the same; see [`floor2-lab-guide.md`](floor2-lab-guide.md), Step 3.
+> **Updated on Floor 2:** this code was later moved into a shared `MapBuilder.paint(map, legend, underlay)`, and the legend became a `Map` instead of a `switch`. `underlay()` is now `Library`'s `tileAt` method (the `Underlay` interface). The idea is the same; see [`floor2-lab-guide.md`](floor2-lab-guide.md), Step 3.
 
 ### Safety checks
 

@@ -9,12 +9,22 @@ public class StairsEntryCheck {
     static void walk(String k, int n) {
         gp.upPressed = k.equals("U"); gp.downPressed = k.equals("D"); gp.leftPressed = k.equals("L"); gp.rightPressed = k.equals("R");
         for (int i = 0; i < n; i++) p.update();
-        gp.upPressed = gp.downPressed = gp.leftPressed = gp.rightPressed = false;
+        gp.upPressed = false;
+        gp.downPressed = false;
+        gp.leftPressed = false;
+        gp.rightPressed = false;
     }
     static void put(int col, int row) { p.x = col * 32; p.y = row * 32; p.update(); }
     static int hl() { return p.solidArea.x; } static int hr() { return p.solidArea.x + p.solidArea.width; }
     static int row() { return (p.solidArea.y + 8) / 32; }
-    static void check(String what, boolean ok, String got) { System.out.println((ok ? "  ok   " : "  FAIL ") + what + "  [" + got + "]"); if (!ok) fails++; }
+    static void check(String what, boolean ok, String got) {
+        if (ok) {
+            System.out.println("  ok   " + what + "  [" + got + "]");
+        } else {
+            System.out.println("  FAIL " + what + "  [" + got + "]");
+            fails++;
+        }
+    }
     public static void main(String[] a) {
         gp = new GamePanel(); gp.peaceful(); p = gp.flor;
         gp.currentRoom = gp.world.floor4.head;   // West Stairs: staircase cols 5-9 (x 160-320), rows 7-13
@@ -37,7 +47,12 @@ public class StairsEntryCheck {
         System.out.println("East Stairs (destroyed)");
         put(13, 11); walk("L", 200); check("side of the ruined stairs: blocked", hl() >= 384, "hitbox x " + hl());
         put(5, 9); walk("R", 200);   check("other side: blocked", hr() <= 224, "hitbox x " + hr());
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 }

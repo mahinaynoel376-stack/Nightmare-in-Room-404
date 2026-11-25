@@ -14,7 +14,8 @@ import nightmare404.tile.MapBuilder;
 public class Ground {
     // Grass, mixing its two tiles in a scattered pattern so it doesn't look like a grid
     static int grass(int col, int row) {
-        return (col * 5 + row * 3) % 4 == 0 ? GRASS_2 : GRASS_1;
+        if ((col * 5 + row * 3) % 4 == 0) return GRASS_2;
+        return GRASS_1;
     }
 
     // Grass in every cell from fromRow down that is still void (outside the building).

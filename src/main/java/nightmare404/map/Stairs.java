@@ -63,8 +63,12 @@ public class Stairs {
         Ground.boardedExit(b, exitMiddle(side), BOTTOM_WALL_ROW);
         if (side == Side.EAST) {
             int[][] trail = {{7, 14}, {8, 14}, {8, 15}, {9, 15}};
-            for (int i = 0; i < trail.length; i++) {
-                b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], i % 2 == 0 ? FOOTPRINTS : SLIME);
+            for (int i = 0; i < trail.length; i++) {       // Footprints and slime, one after the other
+                if (i % 2 == 0) {
+                    b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], FOOTPRINTS);
+                } else {
+                    b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], SLIME);
+                }
             }
         }
         return b.build(tiles, ts);
@@ -72,7 +76,8 @@ public class Stairs {
 
     // The column a west-side column ends up in: the same on the west, mirrored on the east
     private static int mirror(Side side, int westCol) {
-        return side == Side.WEST ? westCol : LAST - westCol;
+        if (side == Side.WEST) return westCol;
+        return LAST - westCol;
     }
 
     // The middle of the stairwell (and of its staircase): column 7 on the west, 9 on the east
@@ -82,7 +87,8 @@ public class Stairs {
 
     // The down flight's left column: 5 on the west (staircase 4-10), 7 on the east (staircase 6-12)
     private static int staircaseLeft(Side side) {
-        return side == Side.WEST ? 5 : LAST - 9;
+        if (side == Side.WEST) return 5;
+        return LAST - 9;
     }
 
     private static MapBuilder builder(int ts, Side side, Flight down, Flight up, boolean ground, int... wallSign) {
@@ -90,16 +96,33 @@ public class Stairs {
         int outerWall = mirror(side, 1);     // The end of the building
         int innerWall = mirror(side, 13);    // Where the hallway meets the stairwell
         int leftWall = Math.min(outerWall, innerWall), rightWall = Math.max(outerWall, innerWall);
-        int hall0 = west ? innerWall + 1 : 0, hall1 = west ? LAST : innerWall - 1;   // The hallway part
+        // The hallway part (hall0 to hall1), the inside of the building (inside0 to inside1), and
+        // where the hallway's wall runs (wall0 to wall1): to the right of the stairwell on the west
+        // side of the building, to its left on the east
+        int hall0, hall1, inside0, inside1, wall0, wall1;
+        if (west) {
+            hall0 = innerWall + 1;
+            hall1 = LAST;
+            inside0 = outerWall + 1;
+            inside1 = LAST;
+            wall0 = innerWall;
+            wall1 = LAST;
+        } else {
+            hall0 = 0;
+            hall1 = innerWall - 1;
+            inside0 = 0;
+            inside1 = outerWall - 1;
+            wall0 = 0;
+            wall1 = innerWall;
+        }
 
         MapBuilder b = new MapBuilder(Hallway.WIDTH, ROWS);
         b.fill(LAYER_FLOOR, 0, 0, LAST, ROWS - 1, VOID);
 
         // The hallway part keeps the hallway's wall (rows 3-6); the stairwell's back wall is higher
         // (rows 1-4), with floor in front of it (rows 5-6). The corridor runs through both.
-        int inside0 = west ? outerWall + 1 : 0, inside1 = west ? LAST : outerWall - 1;
         int well0 = leftWall + 1, well1 = rightWall - 1;     // The stairwell's own columns
-        wallFace(b, CAP_ROW, west ? innerWall : 0, west ? LAST : innerWall);
+        wallFace(b, CAP_ROW, wall0, wall1);
         wallFace(b, TOWER_CAP, well0, well1);
         b.fill(LAYER_FLOOR, well0, TOWER_CAP + 4, well1, CORRIDOR_TOP - 1, FLOOR);
         corridor(b, inside0, inside1);
@@ -130,8 +153,9 @@ public class Stairs {
 
         // Where the stairs take you: the half of the landing above each flight. A flight that
         // doesn't work has no zone (null), so it can never take you anywhere.
-        Rectangle downZone = down == Flight.OPEN ? new Rectangle(left * ts, LANDING_TOP * ts, 2 * ts, 2 * ts) : null;
-        Rectangle upZone = up == Flight.OPEN ? new Rectangle((left + 3) * ts, LANDING_TOP * ts, 2 * ts, 2 * ts) : null;
+        Rectangle downZone = null, upZone = null;
+        if (down == Flight.OPEN) downZone = new Rectangle(left * ts, LANDING_TOP * ts, 2 * ts, 2 * ts);
+        if (up == Flight.OPEN) upZone = new Rectangle((left + 3) * ts, LANDING_TOP * ts, 2 * ts, 2 * ts);
         b.staircase(new Staircase(downZone, upZone, foot(left, ts), foot(left + 3, ts)));
 
         flight(b, left, down);
@@ -153,23 +177,19 @@ public class Stairs {
 
     // Makes the flight starting at column col match its state
     private static void flight(MapBuilder b, int col, Flight state) {
-        switch (state) {
-            case OPEN -> { }
-            case BLOCKED -> {
-                // Rubble across the bottom step: the only way onto a flight, so it can't be used
-                b.set(LAYER_OBJECTS, col, FLIGHT_BOTTOM, RUBBLE);
-                b.set(LAYER_OBJECTS, col + 1, FLIGHT_BOTTOM, RUBBLE);
-            }
-            case COLLAPSED -> {
-                // Caved in: holes right across it, broken steps, and rubble on the bottom step.
-                // The holes and cracks are see-through overlays, drawn over the staircase's own steps.
-                b.set(LAYER_OBJECTS, col + 1, FLIGHT_TOP, STAIR_STEP_BROKEN);
-                b.set(LAYER_OBJECTS, col, 10, STAIR_HOLE).set(LAYER_OBJECTS, col + 1, 10, STAIR_STEP_BROKEN);
-                b.set(LAYER_OBJECTS, col, 11, STAIR_HOLE).set(LAYER_OBJECTS, col + 1, 11, STAIR_HOLE);
-                b.set(LAYER_OBJECTS, col + 1, 12, STAIR_HOLE);
-                b.set(LAYER_OBJECTS, col, FLIGHT_BOTTOM, STAIR_STEP_BROKEN);
-                b.set(LAYER_OBJECTS, col + 1, FLIGHT_BOTTOM, RUBBLE);
-            }
+        if (state == Flight.BLOCKED) {
+            // Rubble across the bottom step: the only way onto a flight, so it can't be used
+            b.set(LAYER_OBJECTS, col, FLIGHT_BOTTOM, RUBBLE);
+            b.set(LAYER_OBJECTS, col + 1, FLIGHT_BOTTOM, RUBBLE);
+        } else if (state == Flight.COLLAPSED) {
+            // Caved in: holes right across it, broken steps, and rubble on the bottom step.
+            // The holes and cracks are see-through overlays, drawn over the staircase's own steps.
+            b.set(LAYER_OBJECTS, col + 1, FLIGHT_TOP, STAIR_STEP_BROKEN);
+            b.set(LAYER_OBJECTS, col, 10, STAIR_HOLE).set(LAYER_OBJECTS, col + 1, 10, STAIR_STEP_BROKEN);
+            b.set(LAYER_OBJECTS, col, 11, STAIR_HOLE).set(LAYER_OBJECTS, col + 1, 11, STAIR_HOLE);
+            b.set(LAYER_OBJECTS, col + 1, 12, STAIR_HOLE);
+            b.set(LAYER_OBJECTS, col, FLIGHT_BOTTOM, STAIR_STEP_BROKEN);
+            b.set(LAYER_OBJECTS, col + 1, FLIGHT_BOTTOM, RUBBLE);
         }
     }
 

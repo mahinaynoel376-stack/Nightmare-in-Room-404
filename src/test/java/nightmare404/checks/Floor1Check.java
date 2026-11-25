@@ -14,7 +14,14 @@ import nightmare404.world.Room;
 public class Floor1Check {
     static GamePanel gp; static Player p; static int fails = 0;
 
-    static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what + "   [" + at() + "]"); if (!ok) fails++; }
+    static void check(String what, boolean ok) {
+        if (ok) {
+            System.out.println("  ok   " + what + "   [" + at() + "]");
+        } else {
+            System.out.println("  FAIL " + what + "   [" + at() + "]");
+            fails++;
+        }
+    }
     static String at() { return "Floor " + gp.currentRoom.floor.number + ", " + gp.currentRoom.name + ", col " + col() + " row " + row(); }
     static int row() { return (p.solidArea.y + 8) / 32; }
     static int col() { return (p.solidArea.x + 8) / 32; }
@@ -22,7 +29,10 @@ public class Floor1Check {
         Room start = gp.currentRoom;
         gp.upPressed = keys.contains("U"); gp.downPressed = keys.contains("D"); gp.leftPressed = keys.contains("L"); gp.rightPressed = keys.contains("R");
         for (int i = 0; i < n && gp.currentRoom == start; i++) p.update();
-        gp.upPressed = gp.downPressed = gp.leftPressed = gp.rightPressed = false;
+        gp.upPressed = false;
+        gp.downPressed = false;
+        gp.leftPressed = false;
+        gp.rightPressed = false;
     }
     static void go(Floor f, String room, int col, int row) { gp.currentRoom = f.find(room); p.x = col * 32; p.y = row * 32; p.update(); }
     static boolean in(String room) { return gp.currentRoom.name.equals(room); }
@@ -114,8 +124,13 @@ public class Floor1Check {
         for (Room r = f1.head; r != null; r = r.right) { back &= r.left == prev; prev = r; count++; }
         check("hallway: 5 screens, every left link points back, tail is last", back && count == 5 && f1.size == 5 && f1.tail == prev);
 
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
 
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 }

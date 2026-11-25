@@ -4,7 +4,6 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -46,9 +45,6 @@ import nightmare404.world.Room;
 //   with the trees beaten so far still beaten (see GamePanel.loseOutside).
 //
 // GamePanel calls update() every frame while the player is outside, and passes on the keys.
-// The game loop changes the lists here (strikes, words, roots...) while Swing draws them on its own
-// thread, so the public methods are synchronized: one thread at a time, or a list could change while
-// it's being drawn.
 public class LastStand {
     // ---- Focus ----
     public static final int FOCUS_MAX = 300;           // A full meter: 5 seconds of focus...
@@ -113,7 +109,27 @@ public class LastStand {
         Eruption(int x, int y) { this.x = x; this.y = y; }
     }
 
-    private record FloatText(double x, double y, String text, Color color, int born) {}
+    // A few words floating up from where something happened ("-12", "BLOCKED"), for a moment
+    private static final class FloatText {
+        private final double x, y;
+        private final String text;
+        private final Color color;
+        private final int born;              // The frame it appeared (see now)
+
+        FloatText(double x, double y, String text, Color color, int born) {
+            this.x = x;
+            this.y = y;
+            this.text = text;
+            this.color = color;
+            this.born = born;
+        }
+
+        double x() { return x; }
+        double y() { return y; }
+        String text() { return text; }
+        Color color() { return color; }
+        int born() { return born; }
+    }
 
     private final GamePanel gp;
     private final Random random = new Random(404);
@@ -140,16 +156,16 @@ public class LastStand {
 
     // ------------------------------------------------------------------------------------ the keys
 
-    public synchronized boolean focused() {
+    public boolean focused() {
         return focused;
     }
 
-    public synchronized double focus() {
+    public double focus() {
         return focus;
     }
 
     // SPACE: start focusing (if there's enough focus), or stop
-    public synchronized void toggleFocus() {
+    public void toggleFocus() {
         setFocus(!focused);
     }
 
@@ -163,14 +179,14 @@ public class LastStand {
     }
 
     // BACKSPACE: give up on the word being typed (to pick another monster)
-    public synchronized void dropTarget() {
+    public void dropTarget() {
         target = null;
         typed = 0;
     }
 
     // A letter typed while focusing. The first letter picks the monster (the nearest, if two words start
     // the same); the rest must follow its word. A wrong key costs focus and breaks the streak.
-    public synchronized void type(char c) {
+    public void type(char c) {
         if (!focused) return;
         c = Character.toLowerCase(c);
         if (c < 'a' || c > 'z') return;
@@ -206,9 +222,15 @@ public class LastStand {
     private void launch() {
         Player p = gp.flor;
         String word = words.get(target);
+        double penBonus = 1;
+        String note = "";                      // Shown with the damage when it lands
+        if (streak >= 2) note = "x" + (streak + 1);
+        if (redPenReady) {
+            penBonus = RED_PEN;
+            note = "RED PEN!";
+        }
         double damage = word.length() * DAMAGE_PER_LETTER * (1 + STREAK_BONUS * Math.min(streak, STREAK_MAX))
-                * (redPenReady ? RED_PEN : 1);
-        String note = redPenReady ? "RED PEN!" : streak >= 2 ? "x" + (streak + 1) : "";
+                * penBonus;
         redPenReady = false;
         streak++;
         strikes.add(new Strike(p.x + 16, p.y, target, (int) Math.round(damage), word, note));
@@ -218,35 +240,29 @@ public class LastStand {
     }
 
     // Keys 1-4: a First Aid Kit, an Old Textbook, a Red Pen, a Hall Pass
-    public synchronized void useItem(int n) {
+    public void useItem(int n) {
         Player p = gp.flor;
-        switch (n) {
-            case 1 -> {
-                if (p.kits <= 0 || p.health >= p.maxHealth) return;
-                p.kits--;
-                int before = p.health;
-                p.health = Math.min(p.maxHealth, p.health + BattleScreen.KIT_HEAL);
-                say(p.x + 16, p.y - 40, "+" + (p.health - before) + " HP", TYPED);
-            }
-            case 2 -> {
-                if (p.items.textbooks <= 0 || textbookReady) return;
-                p.items.textbooks--;
-                textbookReady = true;
-                gp.showNotice("Old Textbook: the next hit is halved.", 120);
-            }
-            case 3 -> {
-                if (p.items.redPens <= 0 || redPenReady) return;
-                p.items.redPens--;
-                redPenReady = true;
-                gp.showNotice("Red Pen: your next strike hits twice as hard.", 120);
-            }
-            case 4 -> {
-                if (p.items.hallPasses <= 0 || freeze > 0) return;
-                p.items.hallPasses--;
-                freeze = HALL_PASS;
-                gp.showNotice("Hall Pass: everything out here stands still for a moment.", 150);
-            }
-            default -> { }
+        if (n == 1) {
+            if (p.kits <= 0 || p.health >= p.maxHealth) return;
+            p.kits--;
+            int before = p.health;
+            p.health = Math.min(p.maxHealth, p.health + BattleScreen.KIT_HEAL);
+            say(p.x + 16, p.y - 40, "+" + (p.health - before) + " HP", TYPED);
+        } else if (n == 2) {
+            if (p.items.textbooks <= 0 || textbookReady) return;
+            p.items.textbooks--;
+            textbookReady = true;
+            gp.showNotice("Old Textbook: the next hit is halved.", 120);
+        } else if (n == 3) {
+            if (p.items.redPens <= 0 || redPenReady) return;
+            p.items.redPens--;
+            redPenReady = true;
+            gp.showNotice("Red Pen: your next strike hits twice as hard.", 120);
+        } else if (n == 4) {
+            if (p.items.hallPasses <= 0 || freeze > 0) return;
+            p.items.hallPasses--;
+            freeze = HALL_PASS;
+            gp.showNotice("Hall Pass: everything out here stands still for a moment.", 150);
         }
     }
 
@@ -254,13 +270,17 @@ public class LastStand {
 
     // Everything back to how it is when the player comes outside (or goes down): no strikes, no roots,
     // no saplings, every monster still standing at full health with no word yet
-    public synchronized void reset() {
+    public void reset() {
         focused = false;
         focus = FOCUS_MAX;
         dropTarget();
         streak = 0;
-        redPenReady = textbookReady = false;
-        hurt = freeze = mistakeFlash = saplingWaves = 0;
+        redPenReady = false;
+        textbookReady = false;
+        hurt = 0;
+        freeze = 0;
+        mistakeFlash = 0;
+        saplingWaves = 0;
         rootTimer = ROOT_EVERY;
         clock = 0;
         strikes.clear();
@@ -272,7 +292,7 @@ public class LastStand {
     }
 
     // One frame outside. While focusing the world moves at SLOW speed: a step every few frames.
-    public synchronized void update() {
+    public void update() {
         Room quad = gp.currentRoom;
         now++;
         if (hurt > 0) hurt--;
@@ -287,8 +307,14 @@ public class LastStand {
         } else {
             focus = Math.min(FOCUS_MAX, focus + FOCUS_REFILL);
         }
-        floats.removeIf(f -> now - f.born() > 50);
-        clock += focused ? SLOW : 1;
+        for (int i = floats.size() - 1; i >= 0; i--) {   // Floating words go after 50 frames
+            if (now - floats.get(i).born() > 50) floats.remove(i);
+        }
+        if (focused) {                         // Focusing: the world goes at 30% speed
+            clock += SLOW;
+        } else {
+            clock += 1;
+        }
         while (clock >= 1) {
             clock -= 1;
             step(quad);
@@ -305,14 +331,14 @@ public class LastStand {
         if (freeze > 0) freeze--;
         List<Hunter> all = new ArrayList<>();
         for (Monster m : quad.monsters) {
-            if (m instanceof Hunter h && !h.defeated) all.add(h);
+            if (m instanceof Hunter && !m.defeated) all.add((Hunter) m);
         }
         all.addAll(saplings);
         for (Hunter h : all) {
             if (h.defeated) continue;
             if (freeze == 0 || !h.hunting()) h.update(p);
             if (!h.hunting()) continue;
-            health.putIfAbsent(h, h.enemy.maxHp());
+            if (!health.containsKey(h)) health.put(h, h.enemy.maxHp());
             if (!words.containsKey(h)) words.put(h, newWord(h));
             if (hurt == 0 && h.touches(p)) {
                 grabbed(h);
@@ -359,15 +385,15 @@ public class LastStand {
     }
 
     private void moveStrikes(Room quad) {
-        for (Iterator<Strike> it = strikes.iterator(); it.hasNext(); ) {
-            Strike s = it.next();
+        for (int i = strikes.size() - 1; i >= 0; i--) {   // (Backwards, so removing one doesn't skip the next)
+            Strike s = strikes.get(i);
             if (s.target.defeated || !s.target.hunting()) {
-                it.remove();
+                strikes.remove(i);
                 continue;
             }
             double dx = s.target.centreX() - s.x, dy = s.target.centreY() - s.y, d = Math.hypot(dx, dy);
             if (d <= STRIKE_SPEED) {
-                it.remove();
+                strikes.remove(i);
                 impact(s);
                 continue;
             }
@@ -377,7 +403,7 @@ public class LastStand {
             boolean nearTarget = d < 30;
             if (s.travelled > CLEAR_DISTANCE && !nearTarget
                     && quad.map.stopsShots((int) Math.floor(s.x / 32), (int) Math.floor(s.y / 32))) {
-                it.remove();
+                strikes.remove(i);
                 say(s.x, s.y - 10, "BLOCKED", PALE);
             }
         }
@@ -386,23 +412,28 @@ public class LastStand {
     // A strike lands
     private void impact(Strike s) {
         Hunter h = s.target;
-        int left = health.getOrDefault(h, h.enemy.maxHp()) - s.damage;
-        say(h.centreX(), h.centreY() - 30, "-" + s.damage + (s.note.isEmpty() ? "" : "  " + s.note), GOLD);
+        int left = healthOf(h) - s.damage;
+        String text = "-" + s.damage;
+        if (!s.note.isEmpty()) text = text + "  " + s.note;
+        say(h.centreX(), h.centreY() - 30, text, GOLD);
         h.stunned = Math.max(h.stunned, 8);   // It flinches
-        if (h instanceof SubjectZero z) z.hurtPose = 14;
-        if (left <= 0) fell(h);
-        else health.put(h, left);
+        if (h instanceof SubjectZero) ((SubjectZero) h).hurtPose = 14;
+        if (left <= 0) {
+            fell(h);
+        } else {
+            health.put(h, left);
+        }
     }
 
     // A monster is brought down: a tree leaves a stump and the player catches their breath (and their
     // progress is saved); the last tree wakes Subject Zero; Subject Zero ends the game
-    public synchronized void fell(Hunter h) {
+    public void fell(Hunter h) {
         h.defeated = true;
         words.remove(h);
         health.remove(h);
         if (target == h) dropTarget();
-        if (h instanceof Sapling s) {
-            saplings.remove(s);
+        if (h instanceof Sapling) {
+            saplings.remove(h);
             say(h.centreX(), h.centreY(), "snap", PALE);
             return;
         }
@@ -424,8 +455,9 @@ public class LastStand {
     // later roots burst up there
     private void roots(SubjectZero zero) {
         Player p = gp.flor;
-        if (freeze == 0 && --rootTimer <= 0) {
-            double weakness = 1 - (double) health.getOrDefault(zero, zero.enemy.maxHp()) / zero.enemy.maxHp();
+        if (freeze == 0) rootTimer--;
+        if (freeze == 0 && rootTimer <= 0) {
+            double weakness = 1 - (double) healthOf(zero) / zero.enemy.maxHp();
             rootTimer = (int) Math.round(ROOT_EVERY * (1 - 0.4 * weakness));
             int px = (int) p.solidArea.getCenterX(), py = (int) p.solidArea.getCenterY();
             eruptions.add(new Eruption(px, py));                 // Right where the player stands...
@@ -436,10 +468,11 @@ public class LastStand {
             }
             zero.attackPose = 30;
         }
-        for (Iterator<Eruption> it = eruptions.iterator(); it.hasNext(); ) {
-            Eruption e = it.next();
+        for (int i = eruptions.size() - 1; i >= 0; i--) {   // (Backwards, so removing one doesn't skip the next)
+            Eruption e = eruptions.get(i);
             if (e.warn > 0) {
-                if (--e.warn == 0) {
+                e.warn--;
+                if (e.warn == 0) {
                     e.burst = ROOT_BURST;
                     double d = Math.hypot(p.solidArea.getCenterX() - e.x, p.solidArea.getCenterY() - e.y);
                     if (hurt == 0 && d <= ROOT_RADIUS + 6) {
@@ -447,15 +480,16 @@ public class LastStand {
                         lastHitBy = zero;
                     }
                 }
-            } else if (--e.burst <= 0) {
-                it.remove();
+            } else {
+                e.burst--;
+                if (e.burst <= 0) eruptions.remove(i);
             }
         }
     }
 
     // Hurt to two thirds, then to a third, Subject Zero calls up two saplings through the gates
     private void callSaplings(SubjectZero zero, Room quad) {
-        double left = (double) health.getOrDefault(zero, zero.enemy.maxHp()) / zero.enemy.maxHp();
+        double left = (double) healthOf(zero) / zero.enemy.maxHp();
         if (!(saplingWaves == 0 && left <= 2 / 3.0 || saplingWaves == 1 && left <= 1 / 3.0)) return;
         saplingWaves++;
         for (int i = 0; i < 2; i++) {
@@ -472,7 +506,7 @@ public class LastStand {
     // short for the saplings. No two monsters' words start with the same letter, so the first letter
     // typed always picks one.
     private String newWord(Hunter h) {
-        double weakness = 1 - (double) health.getOrDefault(h, h.enemy.maxHp()) / h.enemy.maxHp();
+        double weakness = 1 - (double) healthOf(h) / h.enemy.maxHp();
         int shortest, longest;
         if (h instanceof SubjectZero) {
             shortest = 5 + (int) Math.round(weakness * 2);
@@ -485,8 +519,8 @@ public class LastStand {
             longest = 5 + (int) Math.round(weakness * 3);
         }
         Set<Character> taken = new HashSet<>();
-        for (Map.Entry<Hunter, String> e : words.entrySet()) {
-            if (e.getKey() != h) taken.add(e.getValue().charAt(0));
+        for (Hunter other : words.keySet()) {
+            if (other != h) taken.add(words.get(other).charAt(0));
         }
         String old = words.get(h);
         List<String> fit = new ArrayList<>(), anyLength = new ArrayList<>();
@@ -495,12 +529,14 @@ public class LastStand {
             anyLength.add(w);
             if (w.length() >= shortest && w.length() <= longest) fit.add(w);
         }
-        List<String> from = !fit.isEmpty() ? fit : !anyLength.isEmpty() ? anyLength : TypingBattle.words();
+        List<String> from = TypingBattle.words();   // Any word at all, if nothing better fits
+        if (!anyLength.isEmpty()) from = anyLength;
+        if (!fit.isEmpty()) from = fit;
         return from.get(random.nextInt(from.size()));
     }
 
     // The monsters that can be struck right now: hunting, and on screen
-    public synchronized List<Hunter> foesInView() {
+    public List<Hunter> foesInView() {
         List<Hunter> foes = new ArrayList<>();
         int camX = gp.cameraX(), camY = gp.cameraY();
         Rectangle view = new Rectangle(camX - 16, camY - 16, gp.screenWidth + 32, gp.screenHeight - gp.tileSize + 32);
@@ -511,36 +547,38 @@ public class LastStand {
     }
 
     // For the checks and the drawing
-    public synchronized String wordOf(Hunter h) {
+    public String wordOf(Hunter h) {
         return words.get(h);
     }
 
-    public synchronized int healthOf(Hunter h) {
-        return health.getOrDefault(h, h.enemy.maxHp());
+    // A monster's health (full if it hasn't been hurt yet)
+    public int healthOf(Hunter h) {
+        if (health.containsKey(h)) return health.get(h);
+        return h.enemy.maxHp();
     }
 
-    public synchronized Hunter target() {
+    public Hunter target() {
         return target;
     }
 
-    public synchronized int strikesInFlight() {
+    public int strikesInFlight() {
         return strikes.size();
     }
 
-    public synchronized int eruptions() {
+    public int eruptions() {
         return eruptions.size();
     }
 
-    public synchronized List<Sapling> saplings() {
+    public List<Sapling> saplings() {
         return List.copyOf(saplings);
     }
 
-    public synchronized boolean frozen() {
+    public boolean frozen() {
         return freeze > 0;
     }
 
     // True on the frames the player should blink (just hit: can't be hit again yet)
-    public synchronized boolean hidePlayer(long ticks) {
+    public boolean hidePlayer(long ticks) {
         return hurt > 0 && (ticks / 4) % 2 == 0;
     }
 
@@ -566,7 +604,7 @@ public class LastStand {
 
     // In the world (the camera's shift already applied): the roots, the saplings, the strikes, the
     // focus shade, then every monster's word on top
-    public synchronized void drawWorld(Graphics2D g2d, int camX, int camY, long ticks) {
+    public void drawWorld(Graphics2D g2d, int camX, int camY, long ticks) {
         Graphics2D g = (Graphics2D) g2d.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -593,21 +631,31 @@ public class LastStand {
             int w = fm.stringWidth(word) + 12, cx = h.centreX();
             int top = h.y + 32 - h.drawnHeight() - 34;   // The word, with room for its health bar under it
             int bx = cx - w / 2;
-            int alpha = focused ? 225 : 150;
+            int alpha = 150;                            // See-through, until the player focuses
+            int textAlpha = 170;
+            if (focused) {
+                alpha = 225;
+                textAlpha = 255;
+            }
             g.setColor(new Color(12, 10, 10, alpha));
             g.fillRoundRect(bx, top, w, 20, 6, 6);
-            g.setColor(locked ? GOLD : new Color(130, 18, 18, alpha));
+            int typedHere = 0;                          // Letters typed so far (only the word being typed has any)
+            if (locked) {
+                g.setColor(GOLD);
+                typedHere = typed;
+            } else {
+                g.setColor(new Color(130, 18, 18, alpha));
+            }
             g.drawRoundRect(bx, top, w, 20, 6, 6);
-            int typedHere = locked ? typed : 0;
             g.setColor(TYPED);
             g.drawString(word.substring(0, typedHere), bx + 6, top + 15);
-            g.setColor(new Color(240, 236, 226, focused ? 255 : 170));
+            g.setColor(new Color(240, 236, 226, textAlpha));
             g.drawString(word.substring(typedHere), bx + 6 + fm.stringWidth(word.substring(0, typedHere)), top + 15);
             int max = h.enemy.maxHp();
             if (max > 1) {                              // Its health, under the word (see HealthBar)
-                int hp = health.getOrDefault(h, max);
-                int barW = HealthBar.width(HealthBar.Style.ENEMY, 1);
-                HealthBar.draw(g, HealthBar.Style.ENEMY, hp, max, cx - barW / 2, top + 22, 1, alpha / 255f);
+                int hp = healthOf(h);
+                int barW = HealthBar.MONSTER.width(1);
+                HealthBar.MONSTER.draw(g, hp, max, cx - barW / 2, top + 22, 1, alpha / 255f);
             }
         }
         g.setFont(FLOAT_FONT);
@@ -630,7 +678,11 @@ public class LastStand {
             g.setColor(new Color(30, 14, 8, 150));
             g.fillOval(e.x - r, e.y - r / 2, r * 2, r);
             boolean pulse = (ticks / 6) % 2 == 0;
-            g.setColor(new Color(220, 40, 20, pulse ? 200 : 120));
+            if (pulse) {
+                g.setColor(new Color(220, 40, 20, 200));
+            } else {
+                g.setColor(new Color(220, 40, 20, 120));
+            }
             g.setStroke(new BasicStroke(2));
             g.drawOval(e.x - ROOT_RADIUS, e.y - ROOT_RADIUS / 2, ROOT_RADIUS * 2, ROOT_RADIUS);
             g.setColor(new Color(20, 8, 4));
@@ -653,27 +705,42 @@ public class LastStand {
     }
 
     // On the screen: the focus meter (top middle), what's ready, and a red flash for a wrong key
-    public synchronized void drawHud(Graphics2D g2d) {
+    public void drawHud(Graphics2D g2d) {
         Graphics2D g = (Graphics2D) g2d.create();
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setFont(HUD_FONT);
-        String label = focused ? "FOCUSED: type a word" + (streak >= 2 ? "   streak x" + streak : "")
-                : "SPACE focus   1-4 items";
+        String label = "SPACE focus   1-4 items";
+        if (focused) {
+            label = "FOCUSED: type a word";
+            if (streak >= 2) label = label + "   streak x" + streak;
+        }
         int labelW = g.getFontMetrics().stringWidth(label);
         int middle = 440;                               // A little right of centre, clear of the room's name
         int w = 220, x = middle - w / 2, y = 16;
         int boxW = Math.max(w, labelW) + 16, boxX = middle - boxW / 2;
         g.setColor(new Color(8, 6, 6, 190));
         g.fillRect(boxX, y - 6, boxW, 40);
-        g.setColor(focused ? FOCUS_BLUE : new Color(70, 74, 90));
+        if (focused) {
+            g.setColor(FOCUS_BLUE);
+        } else {
+            g.setColor(new Color(70, 74, 90));
+        }
         g.drawRect(boxX, y - 6, boxW, 40);
         g.setColor(new Color(30, 30, 46));
         g.fillRect(x, y, w, 9);
-        g.setColor(focus >= FOCUS_MIN || focused ? FOCUS_BLUE : new Color(90, 90, 110));
+        if (focus >= FOCUS_MIN || focused) {           // Blue once there's enough to focus
+            g.setColor(FOCUS_BLUE);
+        } else {
+            g.setColor(new Color(90, 90, 110));
+        }
         g.fillRect(x, y, (int) Math.round(w * focus / FOCUS_MAX), 9);
         g.setColor(new Color(160, 160, 190));
         g.drawLine(x + w * FOCUS_MIN / FOCUS_MAX, y - 2, x + w * FOCUS_MIN / FOCUS_MAX, y + 10);
-        g.setColor(focused ? new Color(190, 210, 255) : PALE);
+        if (focused) {
+            g.setColor(new Color(190, 210, 255));
+        } else {
+            g.setColor(PALE);
+        }
         g.drawString(label, middle - labelW / 2, y + 26);
         StringBuilder ready = new StringBuilder();
         if (redPenReady) ready.append("RED PEN READY   ");

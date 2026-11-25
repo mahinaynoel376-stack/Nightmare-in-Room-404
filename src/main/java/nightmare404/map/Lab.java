@@ -5,6 +5,7 @@ import static nightmare404.tile.TileSet.*;
 
 import java.util.Map;
 
+import nightmare404.tile.MapBuilder;
 import nightmare404.tile.TileMap;
 import nightmare404.tile.TileSet;
 
@@ -14,7 +15,8 @@ import nightmare404.tile.TileSet;
 //
 // The rooms tell a story without any text: in the Containment Lab one pod has been smashed from
 // the inside, and a trail of slime and footprints leads out of the door towards the east stairs.
-public class Lab {
+// A Lab object is the floor under the furniture (see tileAt): MapBuilder asks it for each tile.
+public class Lab implements MapBuilder.Underlay {
     public enum Part { CHEMISTRY, BIOLOGY, CONTAINMENT }
 
 
@@ -118,30 +120,28 @@ public class Lab {
             Map.entry('*', BLOOD_SPLAT), Map.entry('~', CRACK));
 
     public static TileMap build(TileSet tiles, int ts, Part part) {
-        return SingleRoom.build(tiles, ts, mapFor(part), LEGEND, Lab::underlay);
+        return SingleRoom.build(tiles, ts, mapFor(part), LEGEND, new Lab());
     }
 
     // The name plaque for the hallway wall in front of each lab (3 tiles: this ID and the next two)
     public static int sign(Part part) {
-        return switch (part) {
-            case CHEMISTRY -> SIGN_CHEMISTRY;
-            case BIOLOGY -> SIGN_BIOLOGY;
-            case CONTAINMENT -> SIGN_CONTAINMENT;
-        };
+        if (part == Part.CHEMISTRY) return SIGN_CHEMISTRY;
+        if (part == Part.BIOLOGY) return SIGN_BIOLOGY;
+        return SIGN_CONTAINMENT;
     }
 
     private static String[] mapFor(Part part) {
-        return switch (part) {
-            case CHEMISTRY -> CHEMISTRY;
-            case BIOLOGY -> BIOLOGY;
-            case CONTAINMENT -> CONTAINMENT;
-        };
+        if (part == Part.CHEMISTRY) return CHEMISTRY;
+        if (part == Part.BIOLOGY) return BIOLOGY;
+        return CONTAINMENT;
     }
 
     // Tiled wall on rows 3-4, the wall base on row 5, lab floor below (two tiles mixed, like the library)
-    private static int underlay(int col, int row) {
+    @Override
+    public int tileAt(int col, int row) {
         if (row <= 4) return LAB_WALL;
         if (row == 5) return LAB_WALL_BASE;
-        return (col * 7 + row * 3) % 5 == 0 ? LAB_FLOOR_2 : LAB_FLOOR_1;
+        if ((col * 7 + row * 3) % 5 == 0) return LAB_FLOOR_2;
+        return LAB_FLOOR_1;
     }
 }

@@ -102,7 +102,9 @@ public class ClassroomBackdrop implements Backdrop {
         g.draw(new Line2D.Double(cx, cy, cx + Math.cos(hour) * 10, cy + Math.sin(hour) * 10));
         g.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.draw(new Line2D.Double(cx, cy, cx + Math.cos(min) * 16, cy + Math.sin(min) * 16));
-        double sec = ((battle.ticks / 50) % 2 == 0 ? 40 : 41) / 60.0 * 2 * Math.PI - Math.PI / 2;
+        int second = 41;                                 // The second hand ticks between 40 and 41, stuck
+        if ((battle.ticks / 50) % 2 == 0) second = 40;
+        double sec = second / 60.0 * 2 * Math.PI - Math.PI / 2;
         g.setColor(new Color(150, 20, 20));
         g.setStroke(new BasicStroke(1.2f));
         g.draw(new Line2D.Double(cx, cy, cx + Math.cos(sec) * 18, cy + Math.sin(sec) * 18));
@@ -139,7 +141,11 @@ public class ClassroomBackdrop implements Backdrop {
                 Path2D q = new Path2D.Double();
                 q.moveTo(px(vpx, vpy, xb0, y0), y0); q.lineTo(px(vpx, vpy, xb1, y0), y0);
                 q.lineTo(px(vpx, vpy, xb1, y1), y1); q.lineTo(px(vpx, vpy, xb0, y1), y1); q.closePath();
-                g.setColor(Math.floorMod(ri + ci, 2) == 0 ? new Color(58, 60, 54) : new Color(34, 36, 33));
+                if (Math.floorMod(ri + ci, 2) == 0) {
+                    g.setColor(new Color(58, 60, 54));
+                } else {
+                    g.setColor(new Color(34, 36, 33));
+                }   // Checkerboard
                 g.fill(q);
             }
         }

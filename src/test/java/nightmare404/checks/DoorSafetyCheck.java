@@ -9,7 +9,14 @@ import nightmare404.world.Floor;
 public class DoorSafetyCheck {
     static int fails = 0;
 
-    static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what); if (!ok) fails++; }
+    static void check(String what, boolean ok) {
+        if (ok) {
+            System.out.println("  ok   " + what);
+        } else {
+            System.out.println("  FAIL " + what);
+            fails++;
+        }
+    }
 
     public static void main(String[] a) {
         GamePanel gp = new GamePanel(); gp.peaceful();
@@ -23,7 +30,12 @@ public class DoorSafetyCheck {
         }
         check("a door link to a map without a door is refused at start-up", refused);
         check("the existing link is untouched (Biology Lab)", f2.find("Hallway (Biology Lab)").door.name.equals("Biology Lab"));
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 }

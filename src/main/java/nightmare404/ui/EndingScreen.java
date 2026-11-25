@@ -32,11 +32,17 @@ public class EndingScreen {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         float fade = Math.min(1f, ticks / 90f);
         g.setComposite(AlphaComposite.SrcOver.derive(fade));
-        g.setColor(remembered ? new Color(30, 24, 14) : Color.BLACK);
+        if (remembered) {                // The good ending fades to a warm dark, the other to black
+            g.setColor(new Color(30, 24, 14));
+        } else {
+            g.setColor(Color.BLACK);
+        }
         g.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
         if (ticks > 60) {
             g.setComposite(AlphaComposite.SrcOver.derive(Math.min(1f, (ticks - 60) / 60f)));
-            centred(g, BIG, remembered ? GOLD : BLOOD, Story.endingTitle(remembered), 250);
+            Color titleColor = BLOOD;
+            if (remembered) titleColor = GOLD;
+            centred(g, BIG, titleColor, Story.endingTitle(remembered), 250);
             centred(g, TEXT, PALE, Story.endingHint(remembered), 310);
             centred(g, TEXT, PALE, "Clues found: " + found + " of " + total, 350);
             if (ticks > 150 && (ticks / 30) % 2 == 0) {

@@ -150,14 +150,17 @@ Indoors, what's under each character (floor or wall) depended only on its **row*
 Both are 36 strings of 50 characters. The `Underlay` used by `paint` simply looks the cell up in `GROUND`:
 
 ```java
-private static int ground(int col, int row) {
+public int tileAt(int col, int row) {        // Quadrangle implements MapBuilder.Underlay
     char ch = GROUND[row].charAt(col);
-    return switch (ch) {
-        case '.' -> Ground.grass(col, row);
-        case ',' -> PAVING;
-        case ':' -> ...asphalt...;
+    switch (ch) {
+        case '.':
+            return Ground.grass(col, row);
+        case ',':
+            return PAVING;
+        case ':':
+            ...asphalt...
         ...
-    };
+    }
 }
 ```
 
@@ -241,7 +244,11 @@ Walls, trees, the bus's side and the book piles stop bullets. Fences, gates, ben
 ### `Quadrangle.STRONGHOLDS` and `Quadrangle.SPAWN_GATES`
 
 ```java
-public record KeyLocation(String name, Rectangle area, String whyItHelps) {}
+public static class KeyLocation {          // A name, the tiles it covers, and why it helps
+    private final String name, whyItHelps;
+    private final Rectangle area;
+    ...                                     // a constructor, and name(), area(), whyItHelps()
+}
 
 public static final List<KeyLocation> STRONGHOLDS = List.of(
         new KeyLocation("The Wrecked Bus", ..., "High ground. The roof is walled in on three sides; ..."),

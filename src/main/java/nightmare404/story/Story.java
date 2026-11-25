@@ -36,22 +36,26 @@ public class Story {
     // ---------------------------------------------------------------- arriving on a floor (the first time)
 
     public static List<Line> arrive(int floor) {
-        return switch (floor) {
-            case 3 -> List.of(
+        if (floor == 3) {
+            return List.of(
                     narrate("Floor 3. The library's big double doors stand open, and from somewhere inside comes a whisper."),
                     think("The way down must be at the other end of the building."),
                     tip("This floor's clues: two old checkout cards, somewhere in the library."));
-            case 2 -> List.of(
+        }
+        if (floor == 2) {
+            return List.of(
                     narrate("Floor 2. A crooked LABORATORY sign. The air smells of chemicals, and of something rotten."),
                     narrate("A trail of slime and bloody footprints leads out of the Containment Lab and away down the hall."),
                     think("Something got out of there. Something big."),
                     tip("This floor's clues: two pages of a lab report, in the Chemistry and Biology labs."));
-            case 1 -> List.of(
+        }
+        if (floor == 1) {
+            return List.of(
                     narrate("The ground floor. Through the windows: the quadrangle, and beyond it, the gates."),
                     think("The front doors are in the middle of the hall. Almost there."),
                     tip("This floor's clues: a staff memo in the Faculty Room, and a register in the Records Room."));
-            default -> List.of();
-        };
+        }
+        return List.of();                      // Floor 4: the opening scene says it all (see INTRO)
     }
 
     // ---------------------------------------------------------------- the clues (placed by Quests)
@@ -94,45 +98,57 @@ public class Story {
 
     // Before the fight. What the player says depends on how many of the floor's clues they found.
     public static List<Line> bossBefore(int floor, int found) {
-        return switch (floor) {
-            case 4 -> switch (found) {
-                case 0 -> List.of(narrate("Something huge has wedged itself into the stairwell. It doesn't even look at you."));
-                case 1 -> List.of(narrate("A ring of keys hangs from the Brute's belt, half buried in rubble. "
+        if (floor == 4) {
+            if (found == 0) {
+                return List.of(narrate("Something huge has wedged itself into the stairwell. It doesn't even look at you."));
+            }
+            if (found == 1) {
+                return List.of(narrate("A ring of keys hangs from the Brute's belt, half buried in rubble. "
                         + "Where have you seen keys like that before?"));
-                default -> List.of(flor("Those keys... You're the janitor. You stayed up here to look for them."),
-                        narrate("The Brute flinches. For a moment it looks almost human."));
-            };
-            case 3 -> switch (found) {
-                case 0 -> List.of(narrate("At the end of the library, something whispers. You can't make out the words."));
-                case 1 -> List.of(narrate("It's whispering names. The same few names, over and over."));
-                default -> List.of(flor("Those are the names from the checkout cards. I know them now, too. "
-                        + "You don't have to keep them all by yourself."), narrate("The whispering falters."));
-            };
-            case 2 -> switch (found) {
-                case 0 -> List.of(narrate("Something stirs among the pods. It is very, very hungry."));
-                case 1 -> List.of(narrate("Test Subject X. A scrap of a student ID is still stuck to what's left of its sleeve."));
-                default -> List.of(flor("They called you X because they forgot your name. I'm sorry."),
-                        narrate("Subject X hesitates. Its mouth closes, just for a moment."));
-            };
-            case 1 -> switch (found) {
-                case 0 -> List.of(say("Principal", "principal", "Your permanent record is on my desk. Sit down. This won't take long."));
-                case 1 -> List.of(narrate("The Principal is striking names out of a register. One of them is yours."),
+            }
+            return List.of(flor("Those keys... You're the janitor. You stayed up here to look for them."),
+                    narrate("The Brute flinches. For a moment it looks almost human."));
+        }
+        if (floor == 3) {
+            if (found == 0) {
+                return List.of(narrate("At the end of the library, something whispers. You can't make out the words."));
+            }
+            if (found == 1) {
+                return List.of(narrate("It's whispering names. The same few names, over and over."));
+            }
+            return List.of(flor("Those are the names from the checkout cards. I know them now, too. "
+                    + "You don't have to keep them all by yourself."), narrate("The whispering falters."));
+        }
+        if (floor == 2) {
+            if (found == 0) {
+                return List.of(narrate("Something stirs among the pods. It is very, very hungry."));
+            }
+            if (found == 1) {
+                return List.of(narrate("Test Subject X. A scrap of a student ID is still stuck to what's left of its sleeve."));
+            }
+            return List.of(flor("They called you X because they forgot your name. I'm sorry."),
+                    narrate("Subject X hesitates. Its mouth closes, just for a moment."));
+        }
+        if (floor == 1) {
+            if (found == 0) {
+                return List.of(say("Principal", "principal", "Your permanent record is on my desk. Sit down. This won't take long."));
+            }
+            if (found == 1) {
+                return List.of(narrate("The Principal is striking names out of a register. One of them is yours."),
                         say("Principal", "principal", "Sit. Down."));
-                default -> List.of(flor("You struck them all out. Everyone who stayed late. You're not striking me out."),
-                        narrate("The Principal's pen snaps in half."));
-            };
-            default -> List.of();
-        };
+            }
+            return List.of(flor("You struck them all out. Everyone who stayed late. You're not striking me out."),
+                    narrate("The Principal's pen snaps in half."));
+        }
+        return List.of();
     }
 
     // Picking up what the boss dropped: what it was (the loot's own text), then what Flor makes of it
     public static List<Line> bossAfter(int floor, String found) {
-        Line thought = switch (floor) {
-            case 4 -> think("The janitor stayed late to help them. Now I've got the keys.");
-            case 3 -> think("It was holding on to their names. I'll hold on to them now.");
-            case 2 -> think("Pod 2 is still empty. Whatever Subject Zero is, it's outside.");
-            default -> think("The Master Key. The front doors are right there.");
-        };
+        Line thought = think("The Master Key. The front doors are right there.");   // Floor 1
+        if (floor == 4) thought = think("The janitor stayed late to help them. Now I've got the keys.");
+        if (floor == 3) thought = think("It was holding on to their names. I'll hold on to them now.");
+        if (floor == 2) thought = think("Pod 2 is still empty. Whatever Subject Zero is, it's outside.");
         return List.of(narrate(found), thought);
     }
 
@@ -154,19 +170,21 @@ public class Story {
     public static final String SAPLINGS = "Subject Zero calls up its saplings through the gates!";
 
     public static String treeFelled(int heal, int left) {
-        return "The Hollow Oak falls. You catch your breath: +" + heal + " HP.\n"
-                + (left == 1 ? "1 tree left." : left + " trees left.");
+        String treesLeft = left + " trees left.";
+        if (left == 1) treesLeft = "1 tree left.";
+        return "The Hollow Oak falls. You catch your breath: +" + heal + " HP.\n" + treesLeft;
     }
 
     // When the last tree falls
     public static List<Line> awakening(boolean rememberedEveryone) {
+        Line answer = flor("Nobody's forgetting me tonight.");   // What Flor says back depends on the clues
+        if (rememberedEveryone) answer = flor("I remember all of them. And I'll remember you.");
         return List.of(
                 narrate("The last tree falls. Every root in the quadrangle goes still."),
                 narrate("By the south gate, the heap of dead leaves sits up. Every root you cut leads back to it."),
                 say("Subject Zero", "subject_zero", "...STAY... IN... YOUR... SEAT..."),
                 flor("Subject Zero. The one that broke out of pod 2."),
-                rememberedEveryone ? flor("I remember all of them. And I'll remember you.")
-                        : flor("Nobody's forgetting me tonight."),
+                answer,
                 tip("Subject Zero's words are longer. When the ground cracks around you, get out of the way: "
                         + "SPACE to stop focusing, then run."));
     }
@@ -192,12 +210,13 @@ public class Story {
 
     // The ending screen's big word, and the line under it
     public static String endingTitle(boolean remembered) {
-        return remembered ? "REMEMBERED" : "FORGOTTEN";
+        if (remembered) return "REMEMBERED";
+        return "FORGOTTEN";
     }
 
     public static String endingHint(boolean remembered) {
-        return remembered ? "You found every clue, and nobody was forgotten."
-                : "Find all 8 clues to remember everyone.";
+        if (remembered) return "You found every clue, and nobody was forgotten.";
+        return "Find all 8 clues to remember everyone.";
     }
 
     // Waking up after losing

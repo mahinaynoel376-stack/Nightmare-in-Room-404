@@ -4,7 +4,6 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import nightmare404.battle.BattleScreen;
@@ -35,21 +34,29 @@ import nightmare404.world.Room;
 // No window opens: starting a battle is swapped for "remember which monster it was".
 public class EncounterCheck {
     static GamePanel gp; static Player p; static int fails = 0;
-    static Monster started;     // The monster whose battle was started, if any
 
-    static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what); if (!ok) fails++; }
+    static void check(String what, boolean ok) {
+        if (ok) {
+            System.out.println("  ok   " + what);
+        } else {
+            System.out.println("  FAIL " + what);
+            fails++;
+        }
+    }
     static void put(Room room, int col, int row) { gp.currentRoom = room; p.x = col * 32; p.y = row * 32; p.update(); }
-    static void ticks(int n) { for (int i = 0; i < n && started == null; i++) gp.update(); }
+    static void ticks(int n) { for (int i = 0; i < n && gp.battleMonster == null; i++) gp.update(); }
     static void hold(String keys, int n) {
-        started = null;
+        gp.battleMonster = null;
         gp.upPressed = keys.contains("U"); gp.downPressed = keys.contains("D"); gp.leftPressed = keys.contains("L"); gp.rightPressed = keys.contains("R");
         ticks(n);
-        gp.upPressed = gp.downPressed = gp.leftPressed = gp.rightPressed = false;
+        gp.upPressed = false;
+        gp.downPressed = false;
+        gp.leftPressed = false;
+        gp.rightPressed = false;
     }
 
     public static void main(String[] a) {
         gp = new GamePanel(); p = gp.flor;
-        gp.battleStarter = m -> started = m;
         List<Room> rooms = new ArrayList<>();
         for (Floor f = gp.world.top; f != null; f = f.below)
             for (Room r = f.head; r != null; r = r.right) {
@@ -61,11 +68,16 @@ public class EncounterCheck {
         check("Room 404, where the game starts, has no monsters", gp.world.floor4.find("Room 404").monsters.isEmpty());
         check("the player starts in Room 404", gp.currentRoom.name.equals("Room 404"));
         for (Floor f = gp.world.top; f != null; f = f.below) {
-            check("Floor " + f.number + " has a boss: " + (f.boss == null ? "none" : f.boss.enemy.name() + " in " + f.boss.room.name), f.boss != null && f.boss.boss);
+            String boss = "none";
+            if (f.boss != null) boss = f.boss.enemy.name() + " in " + f.boss.room.name;
+            check("Floor " + f.number + " has a boss: " + boss, f.boss != null && f.boss.boss);
         }
         int hallwayMonsters = 0;
         for (Room r : rooms) {
-            long regular = r.monsters.stream().filter(m -> !m.boss).count();
+            int regular = 0;                         // The monsters that aren't bosses
+            for (Monster m : r.monsters) {
+                if (!m.boss) regular++;
+            }
             if (r.floor.indexOf(r) >= 0) {           // The hallway list: hallway screens and stairwells
                 hallwayMonsters += regular;
                 if (regular > 0) check(r.name + " (Floor " + r.floor.number + "): one monster patrolling", regular == 1
@@ -124,9 +136,9 @@ public class EncounterCheck {
         put(r402, 12, 15); ticks(40);                // Far away (6 rows down): it just patrols
         check("far away, the Desk Mimic doesn't chase (" + mimic.enemy.name() + ")", !mimic.chasing);
         mimic.reset();
-        put(r402, 7, 9); started = null;             // In its aisle, 3 tiles ahead of it
+        put(r402, 7, 9); gp.battleMonster = null;             // In its aisle, 3 tiles ahead of it
         ticks(120);
-        check("close by, it notices and comes after the player", started == mimic);
+        check("close by, it notices and comes after the player", gp.battleMonster == mimic);
         check("touching it starts its battle (the world pauses)", gp.inBattle);
 
         System.out.println("4. After a battle");
@@ -141,9 +153,9 @@ public class EncounterCheck {
         check("gave up: health and kits as they were when the floor began (100 HP, 3 kits)", p.health == 100 && p.kits == 3);
         check("gave up: the Desk Mimic, beaten since, is back", !mimic.defeated && !wraith.defeated);
         check("gave up: the Chalk Wraith is back at its post", wraith.x == 20 * 32 && wraith.y == 6 * 32);
-        put(r402, 12, 13); started = null;
+        put(r402, 12, 13); gp.battleMonster = null;
         ticks(30);
-        check("right after a battle the monsters give the player a moment", started == null);
+        check("right after a battle the monsters give the player a moment", gp.battleMonster == null);
 
         System.out.println("5. The Brute stands in the middle of the stairs down, and drops the key to them");
         Floor f4 = gp.world.floor4, f3 = gp.world.floor3, f2 = gp.world.floor2, f1 = gp.world.floor1;
@@ -155,7 +167,7 @@ public class EncounterCheck {
         for (int i = 0; i < 3; i++) {
             putPx(f4west, xs[i], foot.y); ticks(40);
             hold("U", 150);
-            check("climbing " + sides[i] + ": the Brute stops the player (its battle starts)", started == f4.boss && gp.currentRoom.floor == f4);
+            check("climbing " + sides[i] + ": the Brute stops the player (its battle starts)", gp.battleMonster == f4.boss && gp.currentRoom.floor == f4);
             gp.inBattle = false;
         }
         check("without its key, Floor 4's way down is locked", f4.locked(p.keys) && f4.lockedNote != null);
@@ -164,7 +176,7 @@ public class EncounterCheck {
         gp.endBattle(f4.boss, new BattleResult(true, 80, 3));
         check("won: the Brute leaves its loot where it stood", f4.boss.defeated && !f4.boss.lootTaken
                 && gp.notice().contains("glints"));
-        started = null; ticks(70);
+        gp.battleMonster = null; ticks(70);
         check("standing on it picks it up: the West Stairwell Key", p.keys.contains("West Stairwell Key") && f4.boss.lootTaken);
         check("...and supplies: +1 kit (4), +1 Red Pen (" + p.items.redPens + ")", p.kits == 4 && p.items.redPens == pens + 1);
         check("...and the player reads what they found", gp.dialogue.said("janitor's key"));
@@ -181,10 +193,10 @@ public class EncounterCheck {
         int textbooks = p.items.textbooks, passes = p.items.hallPasses;
         pens = p.items.redPens;
         gp.endBattle(undead, new BattleResult(true, 55, 2));
-        putPx(f3.boss.room, f3.boss.x, f3.boss.y); started = null; ticks(100);   // After the grace period
-        check("the Whisperer: walking up to it starts its battle", started == f3.boss);
+        putPx(f3.boss.room, f3.boss.x, f3.boss.y); gp.battleMonster = null; ticks(100);   // After the grace period
+        check("the Whisperer: walking up to it starts its battle", gp.battleMonster == f3.boss);
         gp.endBattle(f3.boss, new BattleResult(true, 40, 1));
-        started = null; ticks(70);
+        gp.battleMonster = null; ticks(70);
         check("won: it drops the East Stairwell Key, +1 kit, +1 Textbook, +1 Hall Pass",
                 p.keys.contains("East Stairwell Key") && p.kits == 2 && p.items.textbooks == textbooks + 1 && p.items.hallPasses == passes + 1);
         Monster worm = libWest.monsters.get(0);
@@ -228,17 +240,30 @@ public class EncounterCheck {
         System.out.println("8. The quadrangle's trees wake when you come outside, and come after you");
         Room quad = gp.world.quadrangle;
         List<TreeMonster> trees = new ArrayList<>();
-        for (Monster m : quad.monsters) if (m instanceof TreeMonster t) trees.add(t);
+        for (Monster m : quad.monsters) {
+            if (m instanceof TreeMonster) trees.add((TreeMonster) m);
+        }
         check(trees.size() + " trees in the quadrangle (fewer than before: 13), and every one is a monster",
                 trees.size() == 6 && trees.size() == Quadrangle.trees().size()
                 && quad.monsters.size() == trees.size() + 1 && quad.monsters.contains(gp.world.finalBoss));
-        check("each one stands where a tree is drawn on the map", trees.stream().allMatch(EncounterCheck::treeOnMap));
+        boolean allOnMap = true;
+        for (TreeMonster t : trees) {
+            if (!treeOnMap(t)) allOnMap = false;
+        }
+        check("each one stands where a tree is drawn on the map", allOnMap);
         put(hall, 7, 10); gp.update();               // Back inside, then out again through the main entrance
-        put(quad, 24, 5); started = null; ticks(1);
-        check("just outside, they're all still asleep: just trees",
-                trees.stream().allMatch(t -> t.asleep() && treeOnMap(t) && !t.touches(p)));
+        put(quad, 24, 5); gp.battleMonster = null; ticks(1);
+        boolean justTrees = true;
+        for (TreeMonster t : trees) {
+            if (!t.asleep() || !treeOnMap(t) || t.touches(p)) justTrees = false;
+        }
+        check("just outside, they're all still asleep: just trees", justTrees);
         ticks(80);
-        check("a moment later, they still are", trees.stream().allMatch(TreeMonster::asleep));
+        boolean allAsleep = true;
+        for (TreeMonster t : trees) {
+            if (!t.asleep()) allAsleep = false;
+        }
+        check("a moment later, they still are", allAsleep);
         TreeMonster nearest = trees.get(0);
         for (TreeMonster t : trees) if (dist(t) < dist(nearest)) nearest = t;
         int waited = 81;
@@ -247,7 +272,11 @@ public class EncounterCheck {
         check("  its tree leaves the map, and the ground where its trunk stood is torn up", !treeOnMap(nearest)
                 && quad.map.tileAt(TileMap.LAYER_OBJECTS, nearest.treeCol(), nearest.treeRow() + 1) == TileSet.CRACK
                 && !quad.map.isSolid(nearest.treeCol(), nearest.treeRow() + 1));
-        check("  the ones further off are still asleep: they wake one after another", trees.stream().anyMatch(TreeMonster::asleep));
+        boolean someAsleep = false;
+        for (TreeMonster t : trees) {
+            if (t.asleep()) someAsleep = true;
+        }
+        check("  the ones further off are still asleep: they wake one after another", someAsleep);
         check("  while it's popping out it can't grab anyone", !nearest.hunting());
         for (int i = 0; i < TreeMonster.POP_TICKS; i++) gp.update();
         check("after popping out it hunts the player", nearest.hunting() && nearest.chasing);
@@ -255,12 +284,12 @@ public class EncounterCheck {
         for (int i = 0; i < 20; i++) gp.update();
         check("  it comes closer (" + (int) before + " -> " + (int) dist(nearest) + " px)", dist(nearest) < before);
         int hpBefore = p.health;
-        started = null;
+        gp.battleMonster = null;
         gp.lastStand.lastHitBy = null;
         for (int i = 0; i < 1500 && gp.lastStand.lastHitBy == null; i++) gp.update();
         check("a tree reaches the player and hits them, out on the map (" + hpBefore + " -> " + p.health + " HP)",
                 gp.lastStand.lastHitBy instanceof TreeMonster && p.health < hpBefore);
-        check("  no battle screen opens: the quadrangle is fought on the map (see QuestCheck)", started == null && !gp.inBattle);
+        check("  no battle screen opens: the quadrangle is fought on the map (see QuestCheck)", gp.battleMonster == null && !gp.inBattle);
         check("  (a tree that did start a battle would get the typing race; everyone else gets the word battle)",
                 GamePanel.typingFight(nearest) && !GamePanel.typingFight(f4.boss) && !GamePanel.typingFight(mimic));
         TreeMonster caught = (TreeMonster) gp.lastStand.lastHitBy;
@@ -268,9 +297,8 @@ public class EncounterCheck {
         gp.lastStand.fell(caught);
         check("felled: it's beaten, and doesn't hunt any more", caught.defeated && !caught.hunting());
         put(hall, 7, 10); gp.update();               // Inside, then back out
-        put(quad, 24, 5); started = null; ticks(1);
-        check("coming back, every tree still standing is back in its place, asleep",
-                trees.stream().filter(t -> !t.defeated).allMatch(t -> t.asleep() && treeOnMap(t)));
+        put(quad, 24, 5); gp.battleMonster = null; ticks(1);
+        check("coming back, every tree still standing is back in its place, asleep", standingAsleep(trees));
         check("  and the beaten one stays gone", caught.defeated && !treeOnMap(caught));
         gp.lastStand.lastHitBy = null;
         for (int i = 0; i < 3000 && gp.lastStand.lastHitBy == null; i++) gp.update();
@@ -282,8 +310,7 @@ public class EncounterCheck {
                 gp.currentRoom == quad && p.checkpointRoom == quad && p.x == p.checkpointX && p.y == p.checkpointY);
         check("  with at least half health (" + p.health + ")", p.health >= 50);
         check("  the felled tree stays felled (every one felled outside is kept)", caught.defeated && !treeOnMap(caught));
-        check("  the others are back in their places, asleep", trees.stream().filter(t -> !t.defeated)
-                .allMatch(t -> t.asleep() && treeOnMap(t)));
+        check("  the others are back in their places, asleep", standingAsleep(trees));
 
         System.out.println("9. The typing race");
         EnemyDef testOak = new EnemyDef("Test Oak", "treant", 60, "QUADRANGLE", "",
@@ -299,7 +326,8 @@ public class EncounterCheck {
                 foe - d.foeHp == (int) Math.round(len * 2.5 * 1.5) && d.streak == 1);
         toTyping(d);
         int time = d.timeLeft;
-        char wrong = d.word.charAt(0) == 'z' ? 'q' : 'z';
+        char wrong = 'z';                        // A letter that isn't the next one
+        if (d.word.charAt(0) == 'z') wrong = 'q';
         d.type(wrong);
         check("a wrong key: no progress, the streak is broken, and it costs a quarter of a second",
                 d.typed == 0 && d.streak == 0 && time - d.timeLeft == 15);
@@ -354,7 +382,15 @@ public class EncounterCheck {
 
         System.out.println("11. The word battles' turn timer: lenient for weak monsters, harsh for strong ones");
         List<EnemyDef> byHp = new ArrayList<>(BattleScreensDebug.ALL);
-        byHp.sort(Comparator.comparingInt(EnemyDef::maxHp));
+        for (int i = 1; i < byHp.size(); i++) {   // Weakest first (an insertion sort by health)
+            EnemyDef e = byHp.get(i);
+            int j = i - 1;
+            while (j >= 0 && byHp.get(j).maxHp() > e.maxHp()) {
+                byHp.set(j + 1, byHp.get(j));
+                j--;
+            }
+            byHp.set(j + 1, e);
+        }
         boolean ordered = true;
         int previous = Integer.MAX_VALUE;
         StringBuilder table = new StringBuilder();
@@ -362,12 +398,18 @@ public class EncounterCheck {
             int secs = BattleScreen.turnSeconds(e);
             if (secs > previous) ordered = false;
             previous = secs;
-            table.append(table.length() == 0 ? "" : ", ").append(e.name()).append(" ").append(secs).append("s");
+            if (table.length() > 0) table.append(", ");
+            table.append(e.name()).append(" ").append(secs).append("s");
         }
         System.out.println("       " + table);
         check("a stronger monster never gives more time than a weaker one", ordered);
-        check("the 4th floor's monsters give 40-45 seconds a turn", List.of(FourthFloorEnemies.DESK_MIMIC, FourthFloorEnemies.CHALK_WRAITH,
-                FourthFloorEnemies.CRAWLER, FourthFloorEnemies.HALL_MONITOR).stream().allMatch(e -> BattleScreen.turnSeconds(e) >= 40));
+        EnemyDef[] fourthFloor = {FourthFloorEnemies.DESK_MIMIC, FourthFloorEnemies.CHALK_WRAITH,
+                FourthFloorEnemies.CRAWLER, FourthFloorEnemies.HALL_MONITOR};
+        boolean lenient = true;
+        for (EnemyDef e : fourthFloor) {
+            if (BattleScreen.turnSeconds(e) < 40) lenient = false;
+        }
+        check("the 4th floor's monsters give 40-45 seconds a turn", lenient);
         check("the Principal gives only 15", BattleScreen.turnSeconds(LobbyEnemies.PRINCIPAL) == 15);
         check("doing nothing: the Desk Mimic waits out its 45 seconds...", BattleScreen.enemyTurnsWhileIdle(FourthFloorEnemies.DESK_MIMIC, 44) == 0);
         check("  ...then takes its turn", BattleScreen.enemyTurnsWhileIdle(FourthFloorEnemies.DESK_MIMIC, 47) == 1);
@@ -376,16 +418,21 @@ public class EncounterCheck {
                         && BattleScreen.enemyTurnsWhileIdle(LobbyEnemies.PRINCIPAL, 17) == 1
                         && BattleScreen.enemyTurnsWhileIdle(LobbyEnemies.PRINCIPAL, 34) == 2);
 
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 
     // Walks up to a floor's boss, beats it, and stands on what it drops; checks the key it gave
     static void takeBossKey(Floor f, String key) {
-        putPx(f.boss.room, f.boss.x, f.boss.y); started = null; ticks(60);
-        boolean fought = started == f.boss;
+        putPx(f.boss.room, f.boss.x, f.boss.y); gp.battleMonster = null; ticks(60);
+        boolean fought = gp.battleMonster == f.boss;
         gp.endBattle(f.boss, new BattleResult(true, p.health, p.kits));
-        started = null; ticks(70);
+        gp.battleMonster = null; ticks(70);
         check("Floor " + f.number + ": " + f.boss.enemy.name() + " (" + f.boss.room.name + ") fights, then drops the " + key,
                 fought && p.keys.contains(key) && key.equals(f.exitKey));
     }
@@ -396,6 +443,15 @@ public class EncounterCheck {
     static boolean treeOnMap(TreeMonster t) {
         return t.room.map.tileAt(TileMap.LAYER_OBJECTS, t.treeCol(), t.treeRow()) == TileSet.TREE_FIRST
                 && t.room.map.isSolid(t.treeCol(), t.treeRow() + 1);
+    }
+
+    // True if every tree still standing is asleep, back where its tree is drawn (felled ones are skipped)
+    static boolean standingAsleep(List<TreeMonster> trees) {
+        for (TreeMonster t : trees) {
+            if (t.defeated) continue;
+            if (!t.asleep() || !treeOnMap(t)) return false;
+        }
+        return true;
     }
 
     static double dist(Monster m) {

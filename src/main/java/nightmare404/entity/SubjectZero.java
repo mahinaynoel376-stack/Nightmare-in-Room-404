@@ -61,7 +61,8 @@ public class SubjectZero extends Hunter {
     public void reset() {
         super.reset();
         resetHunt();
-        attackPose = hurtPose = 0;
+        attackPose = 0;
+        hurtPose = 0;
     }
 
     // The player has come outside: it starts again from the gate
@@ -94,8 +95,17 @@ public class SubjectZero extends Hunter {
             g.drawImage(sleeping, cx - sleeping.getWidth() / 2, feet - h, sleeping.getWidth(), h, null);
             return;
         }
-        BufferedImage pose = hurtPose > 0 ? hurtImage : attackPose > 0 ? attackImage : image;
-        int sway = stunned > 0 ? ((stunned / 2) % 2 == 0 ? 3 : -3) : (int) Math.round(Math.sin((ticks + phase) / 18.0) * 2);
+        BufferedImage pose = image;
+        if (attackPose > 0) pose = attackImage;
+        if (hurtPose > 0) pose = hurtImage;
+        int sway = (int) Math.round(Math.sin((ticks + phase) / 18.0) * 2);   // Swaying gently...
+        if (stunned > 0) {                     // ...or reeling from a hit
+            if ((stunned / 2) % 2 == 0) {
+                sway = 3;
+            } else {
+                sway = -3;
+            }
+        }
         Graphics2D s = (Graphics2D) g.create();
         s.setComposite(AlphaComposite.SrcOver.derive(0.4f));
         s.setColor(Color.BLACK);

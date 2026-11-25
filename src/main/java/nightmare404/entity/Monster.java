@@ -8,7 +8,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 
 import nightmare404.battle.BattleScreen;
 import nightmare404.battle.BattleScreen.EnemyDef;
@@ -50,14 +50,20 @@ public class Monster {
 
     private final Point[] route;            // Patrol waypoints, in pixels; the first is where it starts
     private int target;                     // The waypoint it's walking to
-    private final ArrayDeque<Point> trail = new ArrayDeque<>();   // Where it's been while chasing
+    private final ArrayList<Point> trail = new ArrayList<>();   // Where it's been while chasing (newest last)
     private int stuck;
     protected final BufferedImage image;    // The battle sprite, scaled once to its size in the world
     protected final int phase;              // So the monsters don't all bob in step
 
     // routeTiles: {col, row} pairs, the first being where it starts. One pair = it stands still.
     public Monster(EnemyDef enemy, Room room, boolean boss, int ts, int[]... routeTiles) {
-        this(enemy, room, boss, ts, boss ? BOSS_HEIGHT : HEIGHT, routeTiles);
+        this(enemy, room, boss, ts, heightFor(boss), routeTiles);
+    }
+
+    // How tall it's drawn: bosses are bigger
+    private static int heightFor(boolean boss) {
+        if (boss) return BOSS_HEIGHT;
+        return HEIGHT;
     }
 
     // The same, drawn `height` pixels tall in the world (for monsters of another size, like the trees)
@@ -96,7 +102,8 @@ public class Monster {
     public void reset() {
         x = route[0].x;
         y = route[0].y;
-        target = route.length > 1 ? 1 : 0;
+        target = 0;
+        if (route.length > 1) target = 1;   // Off to its next waypoint (if it has one)
         chasing = false;
         trail.clear();
         stuck = 0;
@@ -107,9 +114,11 @@ public class Monster {
     // hallway screen, in view): then it just walks its round (or back to it).
     public void update(Player player) {
         if (defeated || boss || route.length < 2) return;   // Bosses stand guard
-        int dist = player == null ? Integer.MAX_VALUE
-                : (int) Math.hypot(player.solidArea.getCenterX() - solidArea.getCenterX(),
-                                   player.solidArea.getCenterY() - solidArea.getCenterY());
+        int dist = Integer.MAX_VALUE;           // How far away the player is (very far if not here)
+        if (player != null) {
+            dist = (int) Math.hypot(player.solidArea.getCenterX() - solidArea.getCenterX(),
+                                    player.solidArea.getCenterY() - solidArea.getCenterY());
+        }
         if (!chasing && dist < NOTICE_RANGE) {
             chasing = true;
             stuck = 0;
@@ -124,11 +133,11 @@ public class Monster {
                 stuck++;
             } else {
                 stuck = 0;
-                trail.push(new Point(oldX, oldY));
-                if (trail.size() > MAX_TRAIL) trail.removeLast();
+                trail.add(new Point(oldX, oldY));
+                if (trail.size() > MAX_TRAIL) trail.remove(0);   // Forget the oldest step
             }
         } else if (!trail.isEmpty()) {
-            Point back = trail.pop();               // Retrace its steps back to its route
+            Point back = trail.remove(trail.size() - 1);   // Retrace its steps back to its route, newest first
             x = back.x;
             y = back.y;
             syncHitbox();
@@ -156,7 +165,8 @@ public class Monster {
 
     // The area it grabs from: its hitbox, a little bigger; for a boss, 2 tiles wide
     private Rectangle reach() {
-        Rectangle reach = boss ? new Rectangle(x + 16 - 32, y + 8, 64, 24) : new Rectangle(solidArea);
+        Rectangle reach = new Rectangle(solidArea);
+        if (boss) reach = new Rectangle(x + 16 - 32, y + 8, 64, 24);
         reach.grow(4, 4);
         return reach;
     }
@@ -199,7 +209,9 @@ public class Monster {
             return;
         }
         int cx = x + 16, feet = y + 32;
-        int lift = (int) Math.round(Math.abs(Math.sin((ticks + phase) / 10.0)) * (boss ? 2 : 3));
+        int bob = 3;                            // How high it bobs (a boss is heavier)
+        if (boss) bob = 2;
+        int lift = (int) Math.round(Math.abs(Math.sin((ticks + phase) / 10.0)) * bob);
         g.setColor(new Color(0, 0, 0, 90));
         g.fillOval(cx - image.getWidth() * 2 / 5, feet - 5, image.getWidth() * 4 / 5, 8);
         g.drawImage(image, cx - image.getWidth() / 2, feet - image.getHeight() - lift, null);
@@ -257,8 +269,11 @@ public class Monster {
         BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = out.createGraphics();
         g.setComposite(AlphaComposite.Src);
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, src.getHeight() <= 128
-                ? RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR : RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        if (src.getHeight() <= 128) {           // Small pixel art: pixel for pixel, sharp
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        } else {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        }
         g.drawImage(src, 0, 0, w, h, null);
         g.dispose();
         return out;

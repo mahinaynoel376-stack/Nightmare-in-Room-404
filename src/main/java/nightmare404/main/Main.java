@@ -3,17 +3,18 @@ package nightmare404.main;
 import java.awt.Dimension;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 
+import nightmare404.battle.BattleScreen;
 import nightmare404.ui.MainMenu;
 
-// Opens the window on the main menu, and swaps between the menu and the game in it:
-//   Start Game  a new game (dropping any game in progress)
-//   Continue    back to the game in progress, just as it was left (Esc in the game comes back here)
-//   Journal     the game in progress with its journal open; closing the journal comes back here
+// Opens the window on the main menu, and swaps between the menu and the game in it. The menu's
+// lines call these methods (see MainMenu):
+//   Start Game  startGame: a new game (dropping any game in progress)
+//   Continue    continueGame: back to the game in progress, just as it was left
+//   Journal     openJournal: the game in progress with its journal open; closing it comes back here
 //   Options     handled by the menu itself (see Settings)
-//   Quit        closes the game
-// After the ending, Enter comes back to the menu with nothing left to continue.
+//   Quit        quit: closes the game
+// Esc in the game, and Enter after the ending, call showMenu.
 public class Main {
     // Developing? true = no enemies: every monster starts beaten and every floor's key is in your
     // pocket, so you can walk the whole school freely. Set back to false for the real game.
@@ -25,15 +26,14 @@ public class Main {
     private static GamePanel game;          // The game in progress (null before Start Game, and after the ending)
 
 	public static void main(String[] args) {
-        SwingUtilities.invokeLater(Main::openWindow);   // Swing's windows are made on its own thread
-    }
+        // Read the word battle's 170,000-word dictionary now (it takes a moment), so battles open at once
+        BattleScreen.dictionary();
 
-    private static void openWindow() {
         window = new JFrame("Nightmare in Room 404");
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setResizable(false);
 
-        menu = new MainMenu(Main::startGame, Main::continueGame, Main::openJournal, Main::quit);
+        menu = new MainMenu();
         menu.setPreferredSize(new Dimension(32 * 25, 32 * 19));   // The game's screen: 25 x 19 tiles of 32 px (see GamePanel)
         menu.setGameInProgress(false);
         window.setContentPane(menu);
@@ -45,29 +45,28 @@ public class Main {
         menu.requestFocusInWindow();
     }
 
-    private static void startGame() {
+    public static void startGame() {
         if (game != null) game.stop();
         game = new GamePanel();
         if (NO_ENEMIES || Boolean.getBoolean("nightmare.noEnemies")) game.peaceful();
-        game.onMenu = Main::showMenu;
         show(game);
-        game.startGameThread();             // Start the game loop thread
+        game.start();                       // Start the game loop
     }
 
-    private static void continueGame() {
+    public static void continueGame() {
         if (game == null) return;
         show(game);
-        game.resume();
+        game.start();
     }
 
-    private static void openJournal() {
+    public static void openJournal() {
         if (game == null) return;
         game.openJournalFromMenu();
         continueGame();
     }
 
     // Esc in the game, or Enter after the ending (when the game is over and is dropped)
-    private static void showMenu() {
+    public static void showMenu() {
         if (game != null && game.ended) {
             game.stop();
             game = null;
@@ -76,6 +75,7 @@ public class Main {
         show(menu);
     }
 
+    // Puts the menu or the game in the window
     private static void show(JComponent screen) {
         window.setContentPane(screen);
         window.revalidate();
@@ -83,7 +83,7 @@ public class Main {
         screen.requestFocusInWindow();
     }
 
-    private static void quit() {
+    public static void quit() {
         window.dispose();
         System.exit(0);
     }

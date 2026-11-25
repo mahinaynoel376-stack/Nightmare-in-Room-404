@@ -193,8 +193,12 @@ public class Player {
     public void update() {
         // 1. Read input (the last key checked decides which way the sprite faces)
         moving = gp.upPressed || gp.downPressed || gp.leftPressed || gp.rightPressed;
-        speed = gp.sprintPressed ? SPRINT_SPEED : WALK_SPEED;
-        int animTicks = gp.sprintPressed ? SPRINT_ANIM_TICKS : WALK_ANIM_TICKS;
+        speed = WALK_SPEED;
+        int animTicks = WALK_ANIM_TICKS;
+        if (gp.sprintPressed) {                // Running: faster, and the legs move faster too
+            speed = SPRINT_SPEED;
+            animTicks = SPRINT_ANIM_TICKS;
+        }
         int dx = 0, dy = 0;
         if (gp.upPressed) { dy -= speed; direction = 0; }
         if (gp.downPressed) { dy += speed; direction = 1; }
@@ -205,7 +209,8 @@ public class Player {
         //    side of the screen, follow the current room's link to the next room.
         moveWithCollision(dx, dy);
         Rectangle doorHere = gp.currentRoom.map.doorTouching(solidArea);
-        Room behindDoor = doorHere == null ? null : gp.currentRoom.doorLeadsTo(gp.currentRoom.map.doorIndex(doorHere));
+        Room behindDoor = null;                // Where the door we're standing in leads (null: no door)
+        if (doorHere != null) behindDoor = gp.currentRoom.doorLeadsTo(gp.currentRoom.map.doorIndex(doorHere));
         if (behindDoor != null && behindDoor.outdoors && gp.currentRoom.floor.locked(keys)) {
             // The way out of the building is locked until the player has the floor's key
             gp.showNotice(gp.currentRoom.floor.lockedNote);
@@ -355,10 +360,20 @@ public class Player {
     // Moves to the target floor's stairwell at the other end of the same flight, at its foot.
     // (Went down? Then you arrive at the bottom of that floor's way up, and vice versa.)
     private void arriveOnStairs(Floor target, boolean wentDown) {
-        Room room = wentDown ? target.upStairs() : target.downStairs();
+        Room room;
+        if (wentDown) {
+            room = target.upStairs();
+        } else {
+            room = target.downStairs();
+        }
         gp.enterRoom(room);
         Staircase arrival = room.map.stairs;
-        Point foot = wentDown ? arrival.upFoot : arrival.downFoot;
+        Point foot;
+        if (wentDown) {
+            foot = arrival.upFoot;
+        } else {
+            foot = arrival.downFoot;
+        }
         x = foot.x;
         y = foot.y;
         direction = 1;   // Face down, away from the stairs
@@ -372,7 +387,9 @@ public class Player {
     }
 
     public void draw(Graphics2D g2d) {
-        BufferedImage image = sprites[direction][moving ? WALK_CYCLES[direction][walkStep] : 0];
+        int frame = 0;                         // Standing still: the idle frame
+        if (moving) frame = WALK_CYCLES[direction][walkStep];
+        BufferedImage image = sprites[direction][frame];
 
         // The sprite is 1 tile wide and 2 tiles tall, so it's drawn one tile above
         // the hitbox: the feet sit on (x, y) and the head extends upward

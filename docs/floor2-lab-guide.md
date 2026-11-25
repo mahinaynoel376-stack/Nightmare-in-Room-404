@@ -124,13 +124,26 @@ public interface Underlay {
 }
 ```
 
-An interface is a promise: "whatever you give me has a `tileAt(col, row)` method". The library and the labs keep it simple by pointing at a method they already have:
+An interface is a promise: "whatever you give me has a `tileAt(col, row)` method". The library and the labs keep that promise themselves: each one says it *is* an `Underlay`, and has the method:
 
 ```java
-b.paint(map, LEGEND, Lab::underlay);
+public class Lab implements MapBuilder.Underlay {
+    ...
+    public int tileAt(int col, int row) {
+        if (row <= 4) return LAB_WALL;
+        if (row == 5) return LAB_WALL_BASE;
+        ...
+    }
+}
 ```
 
-`Lab::underlay` is a **method reference**: it means "use `Lab`'s `underlay` method as the `Underlay`". Now `paint` can ask any room "what's under column 5, row 9?" without knowing which room it is.
+Then a `Lab` object can be handed to `paint` as the underlay:
+
+```java
+b.paint(map, LEGEND, new Lab());
+```
+
+Now `paint` can ask any room "what's under column 5, row 9?" without knowing which room it is. (The battles' backgrounds work the same way: each one implements `Backdrop`.)
 
 **Proof it changed nothing:** after the move, every library screen was compared with the pictures from before. They're pixel-identical.
 

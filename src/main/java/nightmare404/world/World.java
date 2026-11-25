@@ -196,7 +196,7 @@ public class World {
     public List<TreeMonster> trees() {
         List<TreeMonster> trees = new ArrayList<>();
         for (Monster m : quadrangle.monsters) {
-            if (m instanceof TreeMonster t) trees.add(t);
+            if (m instanceof TreeMonster) trees.add((TreeMonster) m);
         }
         return trees;
     }
@@ -254,7 +254,8 @@ public class World {
                 System.out.println("  " + r.name + here(r, current));
                 for (Room linked : r.linkedRooms()) {
                     for (Room side = Floor.leftEnd(linked); side != null; side = side.right) {
-                        String link = side == linked ? "door -> " : "        ";
+                        String link = "        ";
+                        if (side == linked) link = "door -> ";   // The room the door opens into
                         System.out.println("      " + link + side.name + here(side, current));
                     }
                 }
@@ -263,6 +264,7 @@ public class World {
     }
 
     private static String here(Room r, Room current) {
-        return r == current ? "   <- you are here" : "";
+        if (r == current) return "   <- you are here";
+        return "";
     }
 }

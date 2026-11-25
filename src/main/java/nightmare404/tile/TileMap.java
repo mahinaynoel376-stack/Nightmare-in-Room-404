@@ -43,8 +43,23 @@ public class TileMap {
     // A VIEW is an area of this map that shows part of another map: the floor below, seen over
     // the hallway's railing. Rows row0..row1 (columns col0..col1) show the other map's rows from
     // sourceRow0 down, in the same columns. A view is only scenery: always solid, never a door.
-    // (A "record" is a short way to write a small class that just holds some values.)
-    public record View(int col0, int row0, int col1, int row1, int sourceRow0) {
+    public static class View {
+        private final int col0, row0, col1, row1, sourceRow0;
+
+        public View(int col0, int row0, int col1, int row1, int sourceRow0) {
+            this.col0 = col0;
+            this.row0 = row0;
+            this.col1 = col1;
+            this.row1 = row1;
+            this.sourceRow0 = sourceRow0;
+        }
+
+        public int col0() { return col0; }
+        public int row0() { return row0; }
+        public int col1() { return col1; }
+        public int row1() { return row1; }
+        public int sourceRow0() { return sourceRow0; }
+
         boolean contains(int col, int row) {
             return col >= col0 && col <= col1 && row >= row0 && row <= row1;
         }
@@ -89,7 +104,17 @@ public class TileMap {
                 }
             }
         }
-        doors.sort((a, b) -> Integer.compare(a.x, b.x));   // Number the doors from left to right
+        // Number the doors from left to right: sort them by x. (An insertion sort: each door in turn
+        // moves left past any door that's further right than it.)
+        for (int i = 1; i < doors.size(); i++) {
+            Rectangle door = doors.get(i);
+            int j = i - 1;
+            while (j >= 0 && doors.get(j).x > door.x) {
+                doors.set(j + 1, doors.get(j));
+                j--;
+            }
+            doors.set(j + 1, door);
+        }
     }
 
     // The tile ID at a cell in one layer (EMPTY if nothing is there).

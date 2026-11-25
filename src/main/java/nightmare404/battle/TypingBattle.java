@@ -8,7 +8,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
-import java.util.function.Consumer;
 import javax.swing.*;
 
 import nightmare404.battle.BattleScreen.Attack;
@@ -16,6 +15,7 @@ import nightmare404.battle.BattleScreen.BattleResult;
 import nightmare404.battle.BattleScreen.EnemyDef;
 import nightmare404.battle.BattleScreen.Items;
 import nightmare404.battle.BattleScreen.Sprites;
+import nightmare404.main.GamePanel;
 import nightmare404.ui.HealthBar;
 
 // The quadrangle's fights (its trees, see nightmare404.entity.TreeMonster): a typing race instead
@@ -31,7 +31,8 @@ import nightmare404.ui.HealthBar;
 //
 // The rules are in Duel, which draws nothing (so the checks can play a whole fight); TypingPanel
 // draws it and reads the keyboard. It's opened like the word battle: TypingBattle.fight(...) shows it
-// in the game's window and hands back a BattleResult when the player wins, or loses and gives up.
+// in the game's window and hands a BattleResult to game.battleOver when the player wins, or loses
+// and gives up.
 public class TypingBattle {
     // ---- Time (in seconds, at 60 frames a second) ----
     static final int FPS = 60;
@@ -50,10 +51,10 @@ public class TypingBattle {
     static final double RED_PEN = 2.0;             // A Red Pen doubles the next word
     static final double TEXTBOOK = 0.5;            // An Old Textbook halves the next hit
 
-    // Shows the fight in the game's window, in place of whatever is there, and calls whenDone with
-    // the result when the player wins, or loses and gives up. Items are used up in place.
-    public static void fight(JFrame frame, EnemyDef enemy, int hp, int kits, Items items, Consumer<BattleResult> whenDone) {
-        TypingPanel panel = new TypingPanel(enemy, hp, kits, items, whenDone);
+    // Shows the fight in the game's window, in place of whatever is there, and hands the result to
+    // game.battleOver when the player wins, or loses and gives up. Items are used up in place.
+    public static void fight(GamePanel game, JFrame frame, EnemyDef enemy, int hp, int kits, Items items) {
+        TypingPanel panel = new TypingPanel(enemy, hp, kits, items, game);
         frame.setContentPane(panel);
         frame.revalidate();
         panel.start();
@@ -75,7 +76,7 @@ public class TypingBattle {
     // The words, from /battle/typing_words.txt (a few stand in if it's missing)
     private static List<String> words;
 
-    public static synchronized List<String> words() {
+    public static List<String> words() {
         if (words != null) return words;
         Set<String> list = new LinkedHashSet<>();
         try (InputStream in = BattleScreen.resource("typing_words.txt")) {
@@ -86,17 +87,18 @@ public class TypingBattle {
                 String line;
                 while ((line = r.readLine()) != null) {
                     String w = line.trim().toLowerCase();
-                    if (!w.isEmpty() && !w.startsWith("#") && w.chars().allMatch(c -> c >= 'a' && c <= 'z')) list.add(w);
+                    if (!w.isEmpty() && !w.startsWith("#") && BattleScreen.onlyLetters(w)) list.add(w);
                 }
             }
         } catch (IOException e) {
             System.err.println("Could not read typing_words.txt: " + e.getMessage());
         }
-        if (list.size() < 20) {
-            list.addAll(Arrays.asList("oak elm root bark leaf twig moss branch forest shadow school hollow roots thorn "
-                    .concat("midnight detention whisper darkness nightmare overgrown").split(" ")));
+        if (list.size() < 20) {                    // The file's missing: a few words to be going on with
+            String spare = "oak elm root bark leaf twig moss branch forest shadow school hollow roots thorn "
+                    + "midnight detention whisper darkness nightmare overgrown";
+            for (String w : spare.split(" ")) list.add(w);
         }
-        words = List.copyOf(list);
+        words = new ArrayList<>(list);
         return words;
     }
 
@@ -108,7 +110,21 @@ public class TypingBattle {
         public enum State { READY, TYPING, PAUSE, WON, LOST }
         public enum Kind { FOE_HIT, HERO_HIT, FOE_HEALED, HERO_HEALED, MISTAKE, ITEM }
         // Something that just happened, for the screen to show (amount: damage or healing)
-        public record Event(Kind kind, int amount, String text) {}
+        public static class Event {
+            private final Kind kind;
+            private final int amount;
+            private final String text;
+
+            public Event(Kind kind, int amount, String text) {
+                this.kind = kind;
+                this.amount = amount;
+                this.text = text;
+            }
+
+            public Kind kind() { return kind; }
+            public int amount() { return amount; }
+            public String text() { return text; }
+        }
 
         public final EnemyDef enemy;
         public final Items items;
@@ -129,7 +145,8 @@ public class TypingBattle {
 
         public Duel(EnemyDef enemy, int hp, int kits, Items items, long seed) {
             this.enemy = enemy;
-            this.items = items != null ? items : new Items();
+            if (items == null) items = new Items();
+            this.items = items;
             startHp = Math.max(1, Math.min(BattleScreen.HERO_MAX_HP, hp));
             startKits = Math.max(0, kits);
             startItems = new int[] {this.items.textbooks, this.items.redPens, this.items.hallPasses};
@@ -146,17 +163,20 @@ public class TypingBattle {
             items.redPens = startItems[1];
             items.hallPasses = startItems[2];
             streak = 0;
-            textbookReady = redPenReady = false;
+            textbookReady = false;
+            redPenReady = false;
             word = "";
             typed = 0;
-            timeLeft = timeMax = 0;
+            timeLeft = 0;
+            timeMax = 0;
             state = State.READY;
             stateTimer = READY_TICKS;
             events.clear();
         }
 
         public BattleResult result() {
-            return new BattleResult(state == State.WON, state == State.WON ? heroHp : 0, kits);
+            if (state == State.WON) return new BattleResult(true, heroHp, kits);
+            return new BattleResult(false, 0, kits);
         }
 
         // 0 = the monster is unhurt ... 1 = it's nearly dead
@@ -165,20 +185,27 @@ public class TypingBattle {
         }
 
         public int readyCountdown() {
-            return state == State.READY ? stateTimer : 0;
+            if (state == State.READY) return stateTimer;
+            return 0;
         }
 
         public void tick() {
-            switch (state) {
-                case READY -> { if (--stateTimer <= 0) nextWord(); }
-                case TYPING -> { if (--timeLeft <= 0) foeAttacks(); }
-                case PAUSE -> {
-                    if (--stateTimer > 0) return;
-                    if (foeHp <= 0) state = State.WON;
-                    else if (heroHp <= 0) state = State.LOST;
-                    else nextWord();
+            if (state == State.READY) {               // "3, 2, 1..." then the first word
+                stateTimer--;
+                if (stateTimer <= 0) nextWord();
+            } else if (state == State.TYPING) {       // The word's clock runs down
+                timeLeft--;
+                if (timeLeft <= 0) foeAttacks();
+            } else if (state == State.PAUSE) {        // A moment for the hit to show, then what's next
+                stateTimer--;
+                if (stateTimer > 0) return;
+                if (foeHp <= 0) {
+                    state = State.WON;
+                } else if (heroHp <= 0) {
+                    state = State.LOST;
+                } else {
+                    nextWord();
                 }
-                default -> { }
             }
         }
 
@@ -186,7 +213,8 @@ public class TypingBattle {
         public void type(char c) {
             if (state != State.TYPING || !Character.isLetter(c)) return;
             if (Character.toLowerCase(c) == word.charAt(typed)) {
-                if (++typed == word.length()) wordDone();
+                typed++;
+                if (typed == word.length()) wordDone();
             } else {
                 streak = 0;
                 timeLeft = Math.max(1, timeLeft - (int) Math.round(MISTAKE_COST * FPS));
@@ -233,11 +261,20 @@ public class TypingBattle {
 
         // The word's done: it hits the monster
         private void wordDone() {
-            boolean quick = timeLeft * 2 > timeMax;
-            double damage = word.length() * DAMAGE_PER_LETTER * (quick ? QUICK_BONUS : 1)
-                    * (1 + STREAK_BONUS * Math.min(streak, STREAK_MAX)) * (redPenReady ? RED_PEN : 1);
+            boolean quick = timeLeft * 2 > timeMax;   // More than half the time left
+            double quickBonus = 1, penBonus = 1;
+            String note = "";
+            if (quick) {
+                quickBonus = QUICK_BONUS;
+                note = "QUICK!";
+            }
+            if (redPenReady) {
+                penBonus = RED_PEN;
+                note = "RED PEN!";
+            }
+            double damage = word.length() * DAMAGE_PER_LETTER * quickBonus
+                    * (1 + STREAK_BONUS * Math.min(streak, STREAK_MAX)) * penBonus;
             int hit = Math.max(1, (int) Math.round(damage));
-            String note = redPenReady ? "RED PEN!" : quick ? "QUICK!" : "";
             redPenReady = false;
             streak++;
             foeHp = Math.max(0, foeHp - hit);
@@ -285,7 +322,8 @@ public class TypingBattle {
         // with less time per letter as it weakens
         private void nextWord() {
             double w = weakness();
-            int shortest = 3 + (int) Math.round(w * 3), longest = 6 + (int) Math.round(w * 5);
+            int shortest = 3 + (int) Math.round(w * 3);
+            int longest = 6 + (int) Math.round(w * 5);
             List<String> fit = new ArrayList<>();
             for (String s : words) {
                 if (s.length() >= shortest && s.length() <= longest && !s.equals(word)) fit.add(s);
@@ -294,7 +332,8 @@ public class TypingBattle {
             word = fit.get(random.nextInt(fit.size()));
             typed = 0;
             double seconds = (TIME_BASE + TIME_PER_LETTER * word.length()) * (1 - (1 - FASTEST) * w);
-            timeMax = timeLeft = (int) Math.round(seconds * FPS);
+            timeMax = (int) Math.round(seconds * FPS);
+            timeLeft = timeMax;
             state = State.TYPING;
         }
     }
@@ -303,7 +342,9 @@ public class TypingBattle {
     //  The screen
     // =====================================================================================
 
-    static class TypingPanel extends JPanel {
+    // The fight listens for its own keys, mouse and timer: Swing calls keyTyped, keyPressed,
+    // mousePressed, mouseMoved and actionPerformed (the other listener methods it must have do nothing).
+    static class TypingPanel extends JPanel implements ActionListener, KeyListener, MouseListener, MouseMotionListener {
         static final int W = 800, H = 600, TOP_H = 58, HORIZON = 232, STAGE_BOTTOM = 372, FLOOR_Y = 346;
         static final int HERO_X = 180, FOE_X = 600;
         static final Rectangle CONTINUE_BTN = new Rectangle(300, 330, 200, 46);
@@ -314,8 +355,8 @@ public class TypingBattle {
         static final String HERO_SPRITE = "/characters/player/right_idle";   // The player, facing the monster
 
         final Duel duel;
-        final Consumer<BattleResult> onFinish;
-        javax.swing.Timer timer;
+        final GamePanel game;   // The game to go back to when the fight is over (null for a preview)
+        final javax.swing.Timer timer = new javax.swing.Timer(16, this);   // Calls actionPerformed every 16 ms
         long ticks;
         boolean finished;
         Point mouse = new Point(-1, -1);
@@ -329,8 +370,8 @@ public class TypingBattle {
         final List<String> floatText = new ArrayList<>();
         final double[][] leaves = new double[22][];
 
-        TypingPanel(EnemyDef enemy, int heroHp, int kits, Items items, Consumer<BattleResult> onFinish) {
-            this.onFinish = onFinish;
+        TypingPanel(EnemyDef enemy, int heroHp, int kits, Items items, GamePanel game) {
+            this.game = game;
             duel = new Duel(enemy, heroHp, kits, items, System.nanoTime());
             heroShown = duel.heroHp;
             foeShown = duel.foeHp;
@@ -343,20 +384,29 @@ public class TypingBattle {
             setBackground(Color.BLACK);
             setFocusable(true);
             setFocusTraversalKeysEnabled(false);
-            installInput();
+            addKeyListener(this);
+            addMouseListener(this);
+            addMouseMotionListener(this);
         }
 
         void start() {
-            if (timer == null) timer = new javax.swing.Timer(16, e -> { tick(); repaint(); });
             timer.start();
-            SwingUtilities.invokeLater(this::requestFocusInWindow);
+            requestFocusInWindow();
         }
 
+        // The timer: one frame of the fight
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            tick();
+            repaint();
+        }
+
+        // The player won, or lost and gave up: back to the game with the result
         void finish() {
             if (finished) return;
             finished = true;
-            if (timer != null) timer.stop();
-            if (onFinish != null) onFinish.accept(duel.result());
+            timer.stop();
+            if (game != null) game.battleOver(duel.result());
         }
 
         void showBanner(String text, int life) {
@@ -373,28 +423,28 @@ public class TypingBattle {
             ticks++;
             Duel.State before = duel.state;
             duel.tick();
-            for (Duel.Event e : duel.events) {
-                switch (e.kind()) {
-                    case FOE_HIT -> {
-                        foeShake = 18;
-                        heroLunge = 16;
-                        addFloat(FOE_X, 170, "-" + e.amount(), 0);
-                        if (!e.text().isEmpty()) addFloat(FOE_X, 140, e.text(), 2);
-                    }
-                    case HERO_HIT -> {
-                        foeLunge = 22;
-                        heroShake = 18;
-                        redFlash = 14;
-                        addFloat(HERO_X, 200, "-" + e.amount(), 0);
-                        showBanner(e.text(), 130);
-                    }
-                    case FOE_HEALED -> {
-                        addFloat(FOE_X, 170, "+" + e.amount(), 1);
-                        showBanner(e.text(), 130);
-                    }
-                    case HERO_HEALED -> addFloat(HERO_X, 200, "+" + e.amount(), 1);
-                    case MISTAKE -> wordShake = 10;
-                    case ITEM -> showBanner(e.text(), 110);
+            for (Duel.Event e : duel.events) {        // Show what just happened in the duel
+                Duel.Kind kind = e.kind();
+                if (kind == Duel.Kind.FOE_HIT) {
+                    foeShake = 18;
+                    heroLunge = 16;
+                    addFloat(FOE_X, 170, "-" + e.amount(), 0);
+                    if (!e.text().isEmpty()) addFloat(FOE_X, 140, e.text(), 2);
+                } else if (kind == Duel.Kind.HERO_HIT) {
+                    foeLunge = 22;
+                    heroShake = 18;
+                    redFlash = 14;
+                    addFloat(HERO_X, 200, "-" + e.amount(), 0);
+                    showBanner(e.text(), 130);
+                } else if (kind == Duel.Kind.FOE_HEALED) {
+                    addFloat(FOE_X, 170, "+" + e.amount(), 1);
+                    showBanner(e.text(), 130);
+                } else if (kind == Duel.Kind.HERO_HEALED) {
+                    addFloat(HERO_X, 200, "+" + e.amount(), 1);
+                } else if (kind == Duel.Kind.MISTAKE) {
+                    wordShake = 10;
+                } else if (kind == Duel.Kind.ITEM) {
+                    showBanner(e.text(), 110);
                 }
             }
             duel.events.clear();
@@ -416,7 +466,11 @@ public class TypingBattle {
             for (int i = floats.size() - 1; i >= 0; i--) {
                 double[] f = floats.get(i);
                 f[1] -= 0.8;
-                if (--f[2] <= 0) { floats.remove(i); floatText.remove(i); }
+                f[2]--;
+                if (f[2] <= 0) {
+                    floats.remove(i);
+                    floatText.remove(i);
+                }
             }
             for (double[] l : leaves) {
                 l[1] += l[2];
@@ -425,40 +479,53 @@ public class TypingBattle {
             }
         }
 
-        void installInput() {
-            addKeyListener(new KeyAdapter() {
-                @Override public void keyTyped(KeyEvent e) {
-                    char c = e.getKeyChar();
-                    if (duel.state == Duel.State.WON || duel.state == Duel.State.LOST) return;
-                    switch (c) {
-                        case '1' -> duel.useKit();
-                        case '2' -> duel.useTextbook();
-                        case '3' -> duel.useRedPen();
-                        case '4' -> duel.useHallPass();
-                        default -> duel.type(c);
-                    }
-                }
-
-                @Override public void keyPressed(KeyEvent e) {
-                    int code = e.getKeyCode();
-                    if (duel.state == Duel.State.WON && code == KeyEvent.VK_ENTER) finish();
-                    else if (duel.state == Duel.State.LOST && code == KeyEvent.VK_ENTER) restartFight();
-                    else if (duel.state == Duel.State.LOST && code == KeyEvent.VK_ESCAPE) finish();
-                }
-            });
-            addMouseMotionListener(new MouseMotionAdapter() {
-                @Override public void mouseMoved(MouseEvent e) { mouse = e.getPoint(); }
-            });
-            addMouseListener(new MouseAdapter() {
-                @Override public void mousePressed(MouseEvent e) {
-                    requestFocusInWindow();
-                    Point p = e.getPoint();
-                    if (duel.state == Duel.State.WON && CONTINUE_BTN.contains(p)) finish();
-                    else if (duel.state == Duel.State.LOST && RETRY_BTN.contains(p)) restartFight();
-                    else if (duel.state == Duel.State.LOST && GIVEUP_BTN.contains(p)) finish();
-                }
-            });
+        // A key typed: a letter for the word, or 1-4 to use an item
+        @Override
+        public void keyTyped(KeyEvent e) {
+            char c = e.getKeyChar();
+            if (duel.state == Duel.State.WON || duel.state == Duel.State.LOST) return;
+            if (c == '1') {
+                duel.useKit();
+            } else if (c == '2') {
+                duel.useTextbook();
+            } else if (c == '3') {
+                duel.useRedPen();
+            } else if (c == '4') {
+                duel.useHallPass();
+            } else {
+                duel.type(c);
+            }
         }
+
+        // Enter and Esc, once the fight is over
+        @Override
+        public void keyPressed(KeyEvent e) {
+            int code = e.getKeyCode();
+            if (duel.state == Duel.State.WON && code == KeyEvent.VK_ENTER) finish();
+            if (duel.state == Duel.State.LOST && code == KeyEvent.VK_ENTER) restartFight();
+            if (duel.state == Duel.State.LOST && code == KeyEvent.VK_ESCAPE) finish();
+        }
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            mouse = e.getPoint();
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            requestFocusInWindow();
+            Point p = e.getPoint();
+            if (duel.state == Duel.State.WON && CONTINUE_BTN.contains(p)) finish();
+            if (duel.state == Duel.State.LOST && RETRY_BTN.contains(p)) restartFight();
+            if (duel.state == Duel.State.LOST && GIVEUP_BTN.contains(p)) finish();
+        }
+
+        @Override public void keyReleased(KeyEvent e) { }
+        @Override public void mouseClicked(MouseEvent e) { }
+        @Override public void mouseReleased(MouseEvent e) { }
+        @Override public void mouseEntered(MouseEvent e) { }
+        @Override public void mouseExited(MouseEvent e) { }
+        @Override public void mouseDragged(MouseEvent e) { }
 
         void restartFight() {
             duel.restart();
@@ -498,7 +565,13 @@ public class TypingBattle {
         void drawHero(Graphics2D g) {
             double x = HERO_X;
             if (heroLunge > 0) x += Math.sin(Math.PI * heroLunge / 16.0) * 30;
-            if (heroShake > 0) x += (heroShake / 2) % 2 == 0 ? 6 : -6;
+            if (heroShake > 0) {                      // Just hit: shaking, 6 px one way then the other
+                if ((heroShake / 2) % 2 == 0) {
+                    x += 6;
+                } else {
+                    x -= 6;
+                }
+            }
             g.setColor(new Color(0, 0, 0, 120));
             g.fill(new Ellipse2D.Double(x - 40, FLOOR_Y - 8, 80, 14));
             BufferedImage img = Sprites.get(HERO_SPRITE, true);
@@ -509,7 +582,13 @@ public class TypingBattle {
             if (foeFade >= 40) return;
             double x = FOE_X, y = FLOOR_Y + Math.abs(Math.sin(ticks / 14.0)) * -3;
             if (foeLunge > 0) x -= Math.sin(Math.PI * foeLunge / 22.0) * 70;
-            if (foeShake > 0) x += (foeShake / 2) % 2 == 0 ? 7 : -7;
+            if (foeShake > 0) {
+                if ((foeShake / 2) % 2 == 0) {
+                    x += 7;
+                } else {
+                    x -= 7;
+                }
+            }
             String key = duel.enemy.sprite();
             boolean windingUp = duel.state == Duel.State.TYPING && duel.timeLeft * 4 < duel.timeMax;
             BufferedImage img = null;
@@ -555,14 +634,13 @@ public class TypingBattle {
             // The health bars (see HealthBar), the same as the word battle's
             int scale = BattleScreen.BattlePanel.BAR_SCALE;
             if (duel.heroHp > 0 && duel.heroHp <= BattleScreen.HERO_MAX_HP * 0.3) {
-                BattleScreen.BattlePanel.lowHealthGlow(g, 18, 24, HealthBar.Style.LEAD, ticks);
+                BattleScreen.BattlePanel.lowHealthGlow(g, 18, 24, HealthBar.PLAYER, ticks);
             }
-            HealthBar.drawWithNumbers(g, HealthBar.Style.LEAD, heroShown, duel.heroHp, BattleScreen.HERO_MAX_HP, 18, 24,
-                    scale, false);
+            HealthBar.PLAYER.drawWithNumbers(g, heroShown, duel.heroHp, BattleScreen.HERO_MAX_HP, 18, 24, scale, false);
             String name = duel.enemy.name();
             shadow(g, name, W - 18 - g.getFontMetrics().stringWidth(name), 20, PALE);
-            HealthBar.drawWithNumbers(g, HealthBar.Style.ENEMY, foeShown, duel.foeHp, duel.enemy.maxHp(),
-                    W - 18 - HealthBar.width(HealthBar.Style.ENEMY, scale), 24, scale, true);
+            HealthBar.MONSTER.drawWithNumbers(g, foeShown, duel.foeHp, duel.enemy.maxHp(),
+                    W - 18 - HealthBar.MONSTER.width(scale), 24, scale, true);
             // The place, on a sign, like the word battle's door signs
             g.setPaint(new GradientPaint(0, 9, new Color(150, 128, 82), 0, 49, new Color(92, 76, 44)));
             g.fillRoundRect(306, 9, 188, 40, 6, 6);
@@ -589,9 +667,14 @@ public class TypingBattle {
 
             if (duel.state == Duel.State.READY) {
                 int left = duel.readyCountdown();
-                String text = left > 45 ? String.valueOf((left - 46) / 35 + 1) : "TYPE!";
+                String text = "TYPE!";                 // "3", "2", "1", then "TYPE!"
+                Color color = TYPED;
+                if (left > 45) {
+                    text = String.valueOf((left - 46) / 35 + 1);
+                    color = PALE;
+                }
                 g.setFont(new Font(MONO, Font.BOLD, 54));
-                shadow(g, text, 400 - g.getFontMetrics().stringWidth(text) / 2, by + 78, left > 45 ? PALE : TYPED);
+                shadow(g, text, 400 - g.getFontMetrics().stringWidth(text) / 2, by + 78, color);
                 g.setFont(new Font(SERIF, Font.ITALIC, 15));
                 String hint = "Type each word before its time runs out.";
                 shadow(g, hint, 400 - g.getFontMetrics().stringWidth(hint) / 2, by + 118, PALE);
@@ -601,21 +684,32 @@ public class TypingBattle {
             if (word.isEmpty()) return;
             g.setFont(new Font(MONO, Font.BOLD, 46));
             FontMetrics fm = g.getFontMetrics();
-            int x = 400 - fm.stringWidth(word) / 2 + (wordShake > 0 ? ((wordShake / 2) % 2 == 0 ? 8 : -8) : 0);
+            int x = 400 - fm.stringWidth(word) / 2;
+            if (wordShake > 0) {                      // A wrong key: the word shakes
+                if ((wordShake / 2) % 2 == 0) {
+                    x += 8;
+                } else {
+                    x -= 8;
+                }
+            }
             int y = by + 66;
             boolean typing = duel.state == Duel.State.TYPING;
             for (int i = 0; i < word.length(); i++) {
                 String ch = String.valueOf(word.charAt(i));
-                Color c = i < duel.typed || !typing ? TYPED : i == duel.typed ? NEXT : PALE;
+                Color c = PALE;                        // Still to type
+                if (i == duel.typed) c = NEXT;         // The next letter
+                if (i < duel.typed || !typing) c = TYPED;   // Typed already
                 if (wordShake > 0 && i == duel.typed) c = new Color(240, 80, 70);
                 shadow(g, ch, x, y, c);
                 if (typing && i == duel.typed) g.fillRect(x, y + 6, fm.charWidth('m') - 4, 3);
                 x += fm.charWidth('m');
             }
             // The timer: green, then amber, then red and pulsing
-            double left = duel.timeMax == 0 ? 0 : (double) duel.timeLeft / duel.timeMax;
-            if (!typing) left = 0;
-            Color tc = left > 0.5 ? new Color(90, 190, 90) : left > 0.25 ? new Color(220, 170, 60) : new Color(210, 50, 40);
+            double left = 0;                           // How much of the word's time is left: 1 = all of it
+            if (typing && duel.timeMax > 0) left = (double) duel.timeLeft / duel.timeMax;
+            Color tc = new Color(210, 50, 40);
+            if (left > 0.25) tc = new Color(220, 170, 60);
+            if (left > 0.5) tc = new Color(90, 190, 90);
             int tw = 460, tx = 400 - tw / 2, ty = by + 90;
             g.setColor(new Color(0, 0, 0, 160));
             g.fillRect(tx - 2, ty - 2, tw + 4, 14);
@@ -638,16 +732,24 @@ public class TypingBattle {
             int w = 180, gap = 10, x0 = (W - (4 * w + 3 * gap)) / 2, y = 538;
             for (int i = 0; i < 4; i++) {
                 int x = x0 + i * (w + gap);
-                boolean has = counts[i] > 0;
-                g.setColor(has ? new Color(40, 44, 38) : new Color(24, 24, 24));
+                // Greyed out when there are none left
+                Color fill = new Color(24, 24, 24), edge = new Color(50, 50, 50);
+                Color keyColor = new Color(90, 90, 90), textColor = new Color(100, 100, 100);
+                if (counts[i] > 0) {
+                    fill = new Color(40, 44, 38);
+                    edge = new Color(110, 120, 96);
+                    keyColor = new Color(230, 200, 110);
+                    textColor = PALE;
+                }
+                g.setColor(fill);
                 g.fillRoundRect(x, y, w, 46, 10, 10);
-                g.setColor(has ? new Color(110, 120, 96) : new Color(50, 50, 50));
+                g.setColor(edge);
                 g.drawRoundRect(x, y, w, 46, 10, 10);
                 g.setFont(new Font(MONO, Font.BOLD, 20));
-                shadow(g, String.valueOf(i + 1), x + 12, y + 30, has ? new Color(230, 200, 110) : new Color(90, 90, 90));
+                shadow(g, String.valueOf(i + 1), x + 12, y + 30, keyColor);
                 g.setFont(new Font(MONO, Font.BOLD, 13));
-                shadow(g, names[i], x + 36, y + 20, has ? PALE : new Color(100, 100, 100));
-                shadow(g, "x" + counts[i], x + 36, y + 37, has ? PALE : new Color(100, 100, 100));
+                shadow(g, names[i], x + 36, y + 20, textColor);
+                shadow(g, "x" + counts[i], x + 36, y + 37, textColor);
             }
         }
 
@@ -711,14 +813,21 @@ public class TypingBattle {
 
         void button(Graphics2D g, Rectangle r, String text, boolean red) {
             boolean over = r.contains(mouse);
-            g.setColor(red ? (over ? new Color(190, 34, 30) : new Color(160, 24, 22)) : (over ? new Color(96, 98, 96) : new Color(78, 80, 78)));
+            if (red && over) g.setColor(new Color(190, 34, 30));      // Red, lighter under the mouse...
+            if (red && !over) g.setColor(new Color(160, 24, 22));
+            if (!red && over) g.setColor(new Color(96, 98, 96));      // ...or grey
+            if (!red && !over) g.setColor(new Color(78, 80, 78));
             g.fillRoundRect(r.x, r.y, r.width, r.height, 10, 10);
             g.setColor(new Color(20, 14, 12));
             g.setStroke(new BasicStroke(2));
             g.drawRoundRect(r.x, r.y, r.width, r.height, 10, 10);
             g.setStroke(new BasicStroke(1));
             g.setFont(new Font(MONO, Font.BOLD, 15));
-            g.setColor(red ? Color.WHITE : PALE);
+            if (red) {
+                g.setColor(Color.WHITE);
+            } else {
+                g.setColor(PALE);
+            }
             g.drawString(text, r.x + r.width / 2 - g.getFontMetrics().stringWidth(text) / 2, r.y + r.height / 2 + 5);
         }
 

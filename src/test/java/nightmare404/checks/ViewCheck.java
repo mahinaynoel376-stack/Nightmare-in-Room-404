@@ -24,13 +24,21 @@ public class ViewCheck {
         TileMap quad = gp.world.quadrangle.map;
         int screenStart = 0;
         for (Floor floor = gp.world.top; floor != null; floor = floor.below) {
-            Room up = floor.head, down = floor.below == null ? null : floor.below.head;
-            for (; up != null; up = up.right, down = down == null ? null : down.right) {
+            Room up = floor.head;                    // A hallway screen on this floor...
+            Room down = null;                        // ...and the one below it (none under the ground floor)
+            if (floor.below != null) down = floor.below.head;
+            while (up != null) {
                 TileMap map = up.map;
                 int start = screenStart;
-                screenStart = up.right == null ? 0 : screenStart + map.cols;
+                if (up.right == null) {
+                    screenStart = 0;                 // The end of the hallway: start again on the next floor
+                } else {
+                    screenStart = screenStart + map.cols;
+                }
                 if (map.views().isEmpty()) {
                     if (floor.below != null) { System.out.println("  FAIL " + floor.number + " " + up.name + ": no view"); fails++; }
+                    up = up.right;                   // On to the next screen (as at the end of the loop)
+                    if (down != null) down = down.right;
                     continue;
                 }
                 screens++;
@@ -59,14 +67,28 @@ public class ViewCheck {
                     if (d != null && d.y >= 13 * 32) doorsOk = false;
                 }
                 boolean ok = bad == 0 && doorsOk;
-                String shows = down != null ? "Floor " + floor.below.number + " " + down.name : "the Quadrangle";
-                System.out.println((ok ? "  ok   " : "  FAIL ") + "Floor " + floor.number + " " + up.name + " shows "
-                        + shows + (bad > 0 ? " (" + bad + " mismatches)" : "") + (doorsOk ? "" : " (door in view!)"));
-                if (!ok) fails++;
+                String shows = "the Quadrangle";
+                if (down != null) shows = "Floor " + floor.below.number + " " + down.name;
+                String problems = "";
+                if (bad > 0) problems += " (" + bad + " mismatches)";
+                if (!doorsOk) problems += " (door in view!)";
+                String result = "  ok   ";
+                if (!ok) {
+                    result = "  FAIL ";
+                    fails++;
+                }
+                System.out.println(result + "Floor " + floor.number + " " + up.name + " shows " + shows + problems);
+                up = up.right;                       // On to the next screen along
+                if (down != null) down = down.right;
             }
         }
         System.out.println(screens + " screens with a view, " + cells + " cells checked");
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 }

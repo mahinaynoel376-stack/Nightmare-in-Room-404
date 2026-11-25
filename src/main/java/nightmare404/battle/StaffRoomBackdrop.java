@@ -88,7 +88,11 @@ public class StaffRoomBackdrop implements Backdrop {
         g.setColor(new Color(50, 30, 16, 200));
         g.fill(el(396, 192, 24, 4)); g.fillRect(398, 194, 2, 12); g.fill(el(396, 205, 6, 4));
         for (int k = 0; k < 3; k++) {                                                // stack of marking
-            g.setColor(k % 2 == 0 ? new Color(214, 206, 180) : new Color(190, 182, 156));
+            if (k % 2 == 0) {
+                g.setColor(new Color(214, 206, 180));
+            } else {
+                g.setColor(new Color(190, 182, 156));
+            }
             g.fillRect(430 - k, 188 - k * 2, 26, 3);
         }
         g.setColor(new Color(180, 30, 30)); g.fillRect(452, 183, 8, 1);             // red pen on top
@@ -166,7 +170,11 @@ public class StaffRoomBackdrop implements Backdrop {
                 Path2D q = new Path2D.Double();
                 q.moveTo(px(vpx, vpy, xb0, y0), y0); q.lineTo(px(vpx, vpy, xb1, y0), y0);
                 q.lineTo(px(vpx, vpy, xb1, y1), y1); q.lineTo(px(vpx, vpy, xb0, y1), y1); q.closePath();
-                g.setColor(Math.floorMod(ri + ci, 2) == 0 ? new Color(70, 78, 64) : new Color(54, 60, 50));
+                if (Math.floorMod(ri + ci, 2) == 0) {
+                    g.setColor(new Color(70, 78, 64));
+                } else {
+                    g.setColor(new Color(54, 60, 50));
+                }   // Checkerboard
                 g.fill(q);
             }
         }

@@ -9,7 +9,14 @@ import nightmare404.world.Room;
 public class CameraCheck {
     static GamePanel gp; static Player p; static int fails = 0;
 
-    static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what); if (!ok) fails++; }
+    static void check(String what, boolean ok) {
+        if (ok) {
+            System.out.println("  ok   " + what);
+        } else {
+            System.out.println("  FAIL " + what);
+            fails++;
+        }
+    }
     // Where a hallway screen starts along the whole floor, in pixels: the widths of all the screens to its left
     // (the screens aren't all the same width, so positions can't just be "screen number x 800")
     static int offset(Room r) { int px = 0; for (Room n = r.left; n != null; n = n.left) px += n.map.widthPx(); return px; }
@@ -38,7 +45,12 @@ public class CameraCheck {
         check("the player never jumps: biggest step " + maxWorldJump + " px (speed " + p.speed + ")", maxWorldJump <= p.speed);
         check("the camera never jumps, even between screens: biggest step " + maxCamJump + " px", maxCamJump <= p.speed);
         check("at the west end the camera doesn't show past the building (camera = " + gp.cameraX() + ")", gp.cameraX() >= 0);
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 }

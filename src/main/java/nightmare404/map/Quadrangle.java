@@ -31,7 +31,8 @@ import nightmare404.tile.TileSet;
 // Written as TWO character maps of the same size: GROUND (what's underfoot) and THINGS (what stands
 // on it). The bus, the court's fence and the doorways are placed in code, because they're more than
 // one tile or need invisible walls.
-public class Quadrangle {
+// A Quadrangle object is the ground under everything (see tileAt): MapBuilder asks it for each tile.
+public class Quadrangle implements MapBuilder.Underlay {
     public static final int WIDTH = 50, HEIGHT = 36;
 
     public static final int DOOR_COL = 23, DOOR_ROW = 3;       // The main entrance (4 wide), in the middle
@@ -42,7 +43,20 @@ public class Quadrangle {
     private static final int CAGE_GATE_COL = 33;                // The 2-tile gap in the court's fence
 
     // A place worth knowing about: its name, the tiles it covers, and why it helps
-    public record KeyLocation(String name, Rectangle area, String whyItHelps) {}
+    public static class KeyLocation {
+        private final String name, whyItHelps;
+        private final Rectangle area;
+
+        public KeyLocation(String name, Rectangle area, String whyItHelps) {
+            this.name = name;
+            this.area = area;
+            this.whyItHelps = whyItHelps;
+        }
+
+        public String name() { return name; }
+        public Rectangle area() { return area; }
+        public String whyItHelps() { return whyItHelps; }
+    }
 
     public static final List<KeyLocation> STRONGHOLDS = List.of(
             new KeyLocation("The Wrecked Bus", new Rectangle(BUS_COL, BUS_ROW, BUS_ROOF_WIDTH, 2),
@@ -165,7 +179,15 @@ public class Quadrangle {
 
     // Things bigger than one tile. In THINGS each one is written as its top-left letter, with '+' on
     // the rest of the cells it covers; props() then fills in its tiles, in reading order from first.
-    private record Prop(int first, int width, int height) {}
+    private static class Prop {
+        final int first, width, height;    // Its first tile ID (the rest follow it), and its size in tiles
+
+        Prop(int first, int width, int height) {
+            this.first = first;
+            this.width = width;
+            this.height = height;
+        }
+    }
     private static final Map<Character, Prop> PROPS = Map.of(
             'T', new Prop(TREE_FIRST, 2, 2),
             'h', new Prop(BUSH_FIRST, 2, 1),
@@ -186,7 +208,7 @@ public class Quadrangle {
 
     public static TileMap build(TileSet tiles, int ts) {
         MapBuilder b = new MapBuilder(WIDTH, HEIGHT);
-        b.paint(THINGS, LEGEND, Quadrangle::ground);
+        b.paint(THINGS, LEGEND, new Quadrangle());
         props(b);
         b.wallH(0, 0, WIDTH - 1);              // Stone edge along the top of the building's face
         doorway(b);
@@ -196,18 +218,27 @@ public class Quadrangle {
     }
 
     // What's under each tile comes from the GROUND map
-    private static int ground(int col, int row) {
+    @Override
+    public int tileAt(int col, int row) {
         char ch = GROUND[row].charAt(col);
-        return switch (ch) {
-            case '.' -> Ground.grass(col, row);
-            case ',' -> PAVING;
-            case ':' -> (col * 7 + row * 3) % 5 == 0 ? Q_ASPHALT_2 : Q_ASPHALT_1;
-            case 'w' -> Q_WALL;
-            case '_' -> Q_WALL_BASE;
-            case ' ' -> VOID;
-            default -> throw new IllegalArgumentException(
-                    "Unknown ground character '" + ch + "' at column " + col + ", row " + row);
-        };
+        switch (ch) {
+            case '.':
+                return Ground.grass(col, row);
+            case ',':
+                return PAVING;
+            case ':':                              // Asphalt: two tiles mixed
+                if ((col * 7 + row * 3) % 5 == 0) return Q_ASPHALT_2;
+                return Q_ASPHALT_1;
+            case 'w':
+                return Q_WALL;
+            case '_':
+                return Q_WALL_BASE;
+            case ' ':
+                return VOID;
+            default:
+                throw new IllegalArgumentException(
+                        "Unknown ground character '" + ch + "' at column " + col + ", row " + row);
+        }
     }
 
     // The way back into the building: the main entrance, the same 4-wide doorway as on the other side,
@@ -235,9 +266,9 @@ public class Quadrangle {
             for (int col = 0; col < WIDTH; col++) {
                 Prop prop = PROPS.get(THINGS[row].charAt(col));
                 if (prop == null) continue;
-                for (int r = 0; r < prop.height(); r++) {
-                    for (int c = 0; c < prop.width(); c++) {
-                        b.set(LAYER_OBJECTS, col + c, row + r, prop.first() + r * prop.width() + c);
+                for (int r = 0; r < prop.height; r++) {
+                    for (int c = 0; c < prop.width; c++) {
+                        b.set(LAYER_OBJECTS, col + c, row + r, prop.first + r * prop.width + c);
                     }
                 }
             }

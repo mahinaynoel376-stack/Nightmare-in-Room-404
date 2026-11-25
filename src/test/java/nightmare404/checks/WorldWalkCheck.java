@@ -8,14 +8,24 @@ import nightmare404.world.Room;
 // and the linked list itself (every left/right/door link points back the right way)
 public class WorldWalkCheck {
     static GamePanel gp; static Player p; static int fails = 0;
-    static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what); if (!ok) fails++; }
+    static void check(String what, boolean ok) {
+        if (ok) {
+            System.out.println("  ok   " + what);
+        } else {
+            System.out.println("  FAIL " + what);
+            fails++;
+        }
+    }
     static String at() { return gp.currentRoom.name + " col " + (p.solidArea.x + 8) / 32 + " row " + (p.solidArea.y + 8) / 32; }
     // Holds keys for up to n ticks; stops early when the room changes
     static void walk(String keys, int n) {
-        var start = gp.currentRoom;
+        Room start = gp.currentRoom;
         gp.upPressed = keys.contains("U"); gp.downPressed = keys.contains("D"); gp.leftPressed = keys.contains("L"); gp.rightPressed = keys.contains("R");
         for (int i = 0; i < n && gp.currentRoom == start; i++) p.update();
-        gp.upPressed = gp.downPressed = gp.leftPressed = gp.rightPressed = false;
+        gp.upPressed = false;
+        gp.downPressed = false;
+        gp.leftPressed = false;
+        gp.rightPressed = false;
     }
     static void put(int col, int row) { p.x = col * 32; p.y = row * 32; p.update(); }
     static void go(String room) { gp.currentRoom = gp.world.floor4.find(room); }
@@ -69,11 +79,23 @@ public class WorldWalkCheck {
         check("West Stairs -> right: " + at(), gp.currentRoom.name.equals("Hallway (Room 402)"));
 
         System.out.println("4. Linked list integrity");
-        int count = 0; var prev = (Room) null;
-        for (var r = gp.world.floor4.head; r != null; r = r.right) { check(r.name + ": left link points back", r.left == prev); prev = r; count++; }
+        int count = 0;
+        Room prev = null;
+        for (Room r = gp.world.floor4.head; r != null; r = r.right) {
+            check(r.name + ": left link points back", r.left == prev);
+            prev = r;
+            count++;
+        }
         check("tail is the last node, size " + gp.world.floor4.size + " == " + count, gp.world.floor4.tail == prev && count == gp.world.floor4.size);
-        for (var r = gp.world.floor4.head; r != null; r = r.right) if (r.door != null) check(r.door.name + " <-> " + r.name + " door links both ways", r.door.door == r);
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
-        System.exit(fails == 0 ? 0 : 1);
+        for (Room r = gp.world.floor4.head; r != null; r = r.right) {
+            if (r.door != null) check(r.door.name + " <-> " + r.name + " door links both ways", r.door.door == r);
+        }
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 }

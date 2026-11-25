@@ -18,7 +18,9 @@ import nightmare404.world.World;
 //   java -Djava.awt.headless=true -cp build/test/classes nightmare404.debug.MapPreviewDebug [output folder]
 public class MapPreviewDebug {
     public static void main(String[] args) throws IOException {
-        File outDir = new File(args.length > 0 ? args[0] : "map_previews");
+        String folder = "map_previews";          // Or the folder given on the command line
+        if (args.length > 0) folder = args[0];
+        File outDir = new File(folder);
         outDir.mkdirs();
 
         int ts = 32;

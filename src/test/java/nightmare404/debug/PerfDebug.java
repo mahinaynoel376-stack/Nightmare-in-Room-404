@@ -15,7 +15,14 @@ public class PerfDebug { public static void main(String[] a) throws Exception {
     long t0 = System.nanoTime(); TileSet ts = new TileSet(); long t1 = System.nanoTime(); new World(ts, 32); long t2 = System.nanoTime();
     System.out.printf("Startup: load+mirror tiles %.1f ms, build the whole world %.2f ms%n", (t1-t0)/1e6, (t2-t1)/1e6);
     Map<Integer,Integer> types = new TreeMap<>();
-    for (int i = 0; i < TileSet.COUNT; i++) types.merge(ts.image(i).getType(), 1, Integer::sum);
+    for (int i = 0; i < TileSet.COUNT; i++) {   // How many tiles of each image type
+        int type = ts.image(i).getType();
+        if (types.containsKey(type)) {
+            types.put(type, types.get(type) + 1);
+        } else {
+            types.put(type, 1);
+        }
+    }
     System.out.println("Tile image types (5=3BYTE_BGR, 6=4BYTE_ABGR, 13=BYTE_INDEXED, 2=INT_ARGB): " + types);
 
     GamePanel gp = new GamePanel(); gp.setSize(800, 608);

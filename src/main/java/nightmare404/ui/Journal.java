@@ -58,7 +58,8 @@ public class Journal {
     // The clue chosen to read again, or null if none has been found
     public Clue chosen() {
         List<Clue> found = found();
-        return found.isEmpty() ? null : found.get(Math.min(selected, found.size() - 1));
+        if (found.isEmpty()) return null;
+        return found.get(Math.min(selected, found.size() - 1));
     }
 
     // The clues found so far, in the order the journal lists them
@@ -105,9 +106,12 @@ public class Journal {
             if (q == null) continue;
             boolean reached = director.seen("floor" + f.number);
             g.setFont(HEADING);
-            g.setColor(reached ? INK : FADED);
-            String heading = "Floor " + f.number + ":  " + (reached ? q.title : "???");
-            if (reached) heading += "   " + q.found(gp.flor.clues) + "/" + q.clues.size();
+            String heading = "Floor " + f.number + ":  ???";   // Not been there yet: faded, no name
+            g.setColor(FADED);
+            if (reached) {
+                heading = "Floor " + f.number + ":  " + q.title + "   " + q.found(gp.flor.clues) + "/" + q.clues.size();
+                g.setColor(INK);
+            }
             g.drawString(heading, x + 60, ly);
             ly += 22;
             g.setFont(ENTRY);
@@ -117,8 +121,13 @@ public class Journal {
                     g.setColor(BLOOD);
                     g.drawString(">", x + 62, ly);
                 }
-                g.setColor(has ? INK : FADED);
-                g.drawString(has ? c.title + "  (" + c.room.name + ")" : "???", x + 80, ly);
+                if (has) {
+                    g.setColor(INK);
+                    g.drawString(c.title + "  (" + c.room.name + ")", x + 80, ly);
+                } else {
+                    g.setColor(FADED);
+                    g.drawString("???", x + 80, ly);
+                }
                 ly += 22;
             }
         }
@@ -129,16 +138,17 @@ public class Journal {
             ly += 22;
             g.setFont(ENTRY);
             SubjectZero zero = world.finalBoss;
-            String status = zero != null && zero.defeated ? "Subject Zero is gone."
-                    : zero != null && zero.awake() ? "Every tree is down. Subject Zero is awake."
-                    : "Trees still standing: " + world.treesLeft() + " of " + world.trees().size();
+            String status = "Trees still standing: " + world.treesLeft() + " of " + world.trees().size();
+            if (zero != null && zero.awake()) status = "Every tree is down. Subject Zero is awake.";
+            if (zero != null && zero.defeated) status = "Subject Zero is gone.";
             g.drawString(status, x + 80, ly);
         }
 
         g.setFont(SMALL);
         g.setColor(FADED);
-        g.drawString(chosen == null ? "J or Esc  close" : "W / S  choose     E  read again     J or Esc  close",
-                x + 60, y + h - 14);
+        String keys = "W / S  choose     E  read again     J or Esc  close";
+        if (chosen == null) keys = "J or Esc  close";      // No clues yet: nothing to choose
+        g.drawString(keys, x + 60, y + h - 14);
         g.dispose();
     }
 }

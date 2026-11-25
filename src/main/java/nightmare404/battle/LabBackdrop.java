@@ -22,7 +22,11 @@ public class LabBackdrop implements Backdrop {
         g.fillRect(0, TOP_H, W, FLOOR_TOP - TOP_H);
         for (int i = 0; i < 46; i++) { // stained, cracked and missing tiles
             int tx = r.nextInt(40) * 20, ty = TOP_H + 12 + r.nextInt(7) * 20;
-            g.setColor(r.nextInt(3) == 0 ? new Color(12, 16, 16, 210) : new Color(96, 100, 70, 45));
+            if (r.nextInt(3) == 0) {
+                g.setColor(new Color(12, 16, 16, 210));
+            } else {
+                g.setColor(new Color(96, 100, 70, 45));
+            }
             g.fillRect(tx + 1, ty + 1, 19, 19);
         }
         g.setColor(new Color(18, 24, 24, 110));
@@ -202,7 +206,11 @@ public class LabBackdrop implements Backdrop {
                 Path2D q = new Path2D.Double();
                 q.moveTo(px(vpx, vpy, xb0, y0), y0); q.lineTo(px(vpx, vpy, xb1, y0), y0);
                 q.lineTo(px(vpx, vpy, xb1, y1), y1); q.lineTo(px(vpx, vpy, xb0, y1), y1); q.closePath();
-                g.setColor(Math.floorMod(ri + ci, 2) == 0 ? new Color(60, 66, 66) : new Color(46, 50, 50));
+                if (Math.floorMod(ri + ci, 2) == 0) {
+                    g.setColor(new Color(60, 66, 66));
+                } else {
+                    g.setColor(new Color(46, 50, 50));
+                }   // Checkerboard
                 g.fill(q);
                 g.setColor(new Color(20, 22, 22));
                 g.setStroke(new BasicStroke(1));

@@ -36,8 +36,8 @@ public class QuestTracker {
             SubjectZero zero = world.finalBoss;
             title = "THE QUADRANGLE";
             done = zero != null && zero.defeated;
-            progress = zero != null && zero.awake() && !zero.defeated ? "Subject Zero is awake"
-                    : "Trees standing: " + world.treesLeft() + " of " + world.trees().size();
+            progress = "Trees standing: " + world.treesLeft() + " of " + world.trees().size();
+            if (zero != null && zero.awake() && !zero.defeated) progress = "Subject Zero is awake";
         } else {
             Floor floor = gp.currentRoom.floor;
             Quest quest = floor.quest;
@@ -62,10 +62,18 @@ public class QuestTracker {
         int h = 58, x = gp.screenWidth - w - 14, y = 12;
         g.setColor(BOX);
         g.fillRect(x, y, w, h);
-        g.setColor(done ? GOLD.darker() : BORDER);
+        if (done) {                      // Done: in gold
+            g.setColor(GOLD.darker());
+        } else {
+            g.setColor(BORDER);
+        }
         g.drawRect(x, y, w, h);
         g.setFont(TITLE);
-        g.setColor(done ? GOLD : PALE);
+        if (done) {
+            g.setColor(GOLD);
+        } else {
+            g.setColor(PALE);
+        }
         g.drawString(title, x + 12, y + 19);
         g.setFont(SMALL);
         g.setColor(PALE);

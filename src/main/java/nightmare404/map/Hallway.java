@@ -106,16 +106,14 @@ public class Hallway {
     // The hallway screen in front of one office (Floor 1, the ground floor)
     public static TileMap officeFront(TileSet tiles, int ts, TileMap office, Office.Part part, Position pos) {
         MapBuilder b = namedRoomFront(tiles, office, pos, Office.sign(part), true);
-        switch (part) {
-            case FACULTY -> b.set(LAYER_OBJECTS, 7, 9, BLOOD_SPLAT);
-            case PRINCIPAL -> {
-                b.set(LAYER_OBJECTS, 12, WINDOW_ROW, FIRE_ALARM);
-                mainEntrance(b);                                      // The middle of the building
-            }
-            case RECORDS -> {
-                b.set(LAYER_OBJECTS, 2, WINDOW_ROW, SCRATCHES);       // Claw marks over the broken door
-                b.set(LAYER_OBJECTS, 10, 10, CRACK);
-            }
+        if (part == Office.Part.FACULTY) {
+            b.set(LAYER_OBJECTS, 7, 9, BLOOD_SPLAT);
+        } else if (part == Office.Part.PRINCIPAL) {
+            b.set(LAYER_OBJECTS, 12, WINDOW_ROW, FIRE_ALARM);
+            mainEntrance(b);                                          // The middle of the building
+        } else if (part == Office.Part.RECORDS) {
+            b.set(LAYER_OBJECTS, 2, WINDOW_ROW, SCRATCHES);           // Claw marks over the broken door
+            b.set(LAYER_OBJECTS, 10, 10, CRACK);
         }
         scatter(b, 100 + part.ordinal(), OFFICE_LITTER, OFFICE_JUNK);
         return b.build(tiles, ts);
@@ -131,7 +129,11 @@ public class Hallway {
             b.set(LAYER_WALLS_H, col, RAIL_ROW, EMPTY);              // Open up the low wall here
             b.set(LAYER_OBJECTS, col, RAIL_ROW, MAIN_ENTRANCE_FIRST + i);
             for (int row = BELOW_CAP_ROW; row <= BELOW_FLOOR_ROW; row++) {
-                b.set(LAYER_FLOOR, col, row, (col * 3 + row) % 4 == 0 ? G_FLOOR_2 : G_FLOOR_1);   // The path outside
+                if ((col * 3 + row) % 4 == 0) {                         // The path outside: two tiles mixed
+                    b.set(LAYER_FLOOR, col, row, G_FLOOR_2);
+                } else {
+                    b.set(LAYER_FLOOR, col, row, G_FLOOR_1);
+                }
             }
         }
         for (int col : new int[] {ENTRANCE_COL - 1, ENTRANCE_COL + MAIN_ENTRANCE_WIDTH}) {
@@ -144,22 +146,22 @@ public class Hallway {
     // in the middle of the wall and some signs of what happened.
     public static TileMap labFront(TileSet tiles, int ts, TileMap lab, Lab.Part part, Position pos) {
         MapBuilder b = namedRoomFront(tiles, lab, pos, Lab.sign(part), false);
-        switch (part) {
-            case CHEMISTRY -> {
-                b.set(LAYER_OBJECTS, 13, WINDOW_ROW, HAZARD_DECAL);  // Warning sign over the sealed door
-                b.set(LAYER_OBJECTS, 7, 9, TOXIC_PUDDLE);
-            }
-            case BIOLOGY -> {
-                b.set(LAYER_OBJECTS, 12, WINDOW_ROW, HANDPRINT);
-                b.set(LAYER_OBJECTS, 9, 10, FOOTPRINTS);
-            }
-            case CONTAINMENT -> {
-                b.set(LAYER_OBJECTS, 2, WINDOW_ROW, HAZARD_DECAL);   // Warning sign over the sealed door
-                // The trail from the smashed pod carries on out of the door and along the corridor,
-                // towards the collapsed east stairs
-                int[][] trail = {{13, 7}, {14, 8}, {15, 9}, {16, 10}};
-                for (int i = 0; i < trail.length; i++) {
-                    b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], i % 2 == 0 ? FOOTPRINTS : SLIME);
+        if (part == Lab.Part.CHEMISTRY) {
+            b.set(LAYER_OBJECTS, 13, WINDOW_ROW, HAZARD_DECAL);      // Warning sign over the sealed door
+            b.set(LAYER_OBJECTS, 7, 9, TOXIC_PUDDLE);
+        } else if (part == Lab.Part.BIOLOGY) {
+            b.set(LAYER_OBJECTS, 12, WINDOW_ROW, HANDPRINT);
+            b.set(LAYER_OBJECTS, 9, 10, FOOTPRINTS);
+        } else if (part == Lab.Part.CONTAINMENT) {
+            b.set(LAYER_OBJECTS, 2, WINDOW_ROW, HAZARD_DECAL);       // Warning sign over the sealed door
+            // The trail from the smashed pod carries on out of the door and along the corridor,
+            // towards the collapsed east stairs: footprints and slime, one after the other
+            int[][] trail = {{13, 7}, {14, 8}, {15, 9}, {16, 10}};
+            for (int i = 0; i < trail.length; i++) {
+                if (i % 2 == 0) {
+                    b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], FOOTPRINTS);
+                } else {
+                    b.set(LAYER_OBJECTS, trail[i][0], trail[i][1], SLIME);
                 }
             }
         }
@@ -189,26 +191,22 @@ public class Hallway {
     // on the middle screen.
     public static TileMap libraryFront(TileSet tiles, int ts, Library.Part part) {
         MapBuilder b = corridorScreen(false);
-        switch (part) {
-            case WEST -> {
-                windows(b, new int[] {2, 6, 10, 14}, new int[] {}, false);
-                b.set(LAYER_OBJECTS, 0, CAP_ROW + 1, COBWEB_LEFT);
-                b.set(LAYER_OBJECTS, 5, CAP_ROW + 1, SCRATCHES);        // Claw marks on the wall...
-                b.set(LAYER_OBJECTS, 10, 9, BLOOD_SPLAT);               // ...and blood on the floor
-            }
-            case ENTRANCE -> {
-                b.bigDoor(6, WINDOW_ROW, FLOOR);                        // The only way into the library
-                b.set(LAYER_OBJECTS, 7, CAP_ROW + 1, LIBRARY_PLAQUE_L);
-                b.set(LAYER_OBJECTS, 8, CAP_ROW + 1, LIBRARY_PLAQUE_R);
-                windows(b, new int[] {3, 13}, new int[] {}, false);
-                b.set(LAYER_OBJECTS, 11, WINDOW_ROW, HANDPRINT);        // A bloody handprint beside the door
-                b.set(LAYER_OBJECTS, 4, 10, CRACK);
-            }
-            case EAST -> {
-                windows(b, new int[] {2, 6, 10, 14}, new int[] {}, false);
-                b.set(LAYER_OBJECTS, LAST, CAP_ROW + 1, COBWEB_RIGHT);
-                b.set(LAYER_OBJECTS, 6, 8, BLOOD_DRIPS);
-            }
+        if (part == Library.Part.WEST) {
+            windows(b, new int[] {2, 6, 10, 14}, new int[] {}, false);
+            b.set(LAYER_OBJECTS, 0, CAP_ROW + 1, COBWEB_LEFT);
+            b.set(LAYER_OBJECTS, 5, CAP_ROW + 1, SCRATCHES);            // Claw marks on the wall...
+            b.set(LAYER_OBJECTS, 10, 9, BLOOD_SPLAT);                   // ...and blood on the floor
+        } else if (part == Library.Part.ENTRANCE) {
+            b.bigDoor(6, WINDOW_ROW, FLOOR);                            // The only way into the library
+            b.set(LAYER_OBJECTS, 7, CAP_ROW + 1, LIBRARY_PLAQUE_L);
+            b.set(LAYER_OBJECTS, 8, CAP_ROW + 1, LIBRARY_PLAQUE_R);
+            windows(b, new int[] {3, 13}, new int[] {}, false);
+            b.set(LAYER_OBJECTS, 11, WINDOW_ROW, HANDPRINT);            // A bloody handprint beside the door
+            b.set(LAYER_OBJECTS, 4, 10, CRACK);
+        } else if (part == Library.Part.EAST) {
+            windows(b, new int[] {2, 6, 10, 14}, new int[] {}, false);
+            b.set(LAYER_OBJECTS, LAST, CAP_ROW + 1, COBWEB_RIGHT);
+            b.set(LAYER_OBJECTS, 6, 8, BLOOD_DRIPS);
         }
         scatter(b, 300 + part.ordinal(), LIBRARY_LITTER, LIBRARY_JUNK);
         return b.build(tiles, ts);
@@ -230,8 +228,16 @@ public class Hallway {
     private static void place(MapBuilder b, Random random, List<int[]> placed, int[] choices, int count, boolean blocks) {
         for (int tries = 0; count > 0 && tries < 500; tries++) {
             int col = 1 + random.nextInt(WIDTH - 2);
-            int row = blocks ? (random.nextBoolean() ? CORRIDOR_TOP : CORRIDOR_BOTTOM)
-                             : CORRIDOR_TOP + random.nextInt(CORRIDOR_BOTTOM - CORRIDOR_TOP + 1);
+            int row;
+            if (blocks) {                      // Things in the way go against a wall, top or bottom...
+                if (random.nextBoolean()) {
+                    row = CORRIDOR_TOP;
+                } else {
+                    row = CORRIDOR_BOTTOM;
+                }
+            } else {                           // ...litter can go anywhere
+                row = CORRIDOR_TOP + random.nextInt(CORRIDOR_BOTTOM - CORRIDOR_TOP + 1);
+            }
             if (b.get(LAYER_OBJECTS, col, row) != EMPTY || nextTo(placed, col, row)) continue;
             if (blocks && (col < 2 || col > LAST - 2 || inFrontOfOpening(b, col, row))) continue;
             b.set(LAYER_OBJECTS, col, row, choices[random.nextInt(choices.length)]);
@@ -251,7 +257,8 @@ public class Hallway {
     // True if something stands in the wall right beside (col, row): a door (on the top row) or the
     // main entrance and its pillars (on the bottom row). Junk there would be in the way.
     private static boolean inFrontOfOpening(MapBuilder b, int col, int row) {
-        int wallRow = row == CORRIDOR_TOP ? BASE_ROW : RAIL_ROW;
+        int wallRow = RAIL_ROW;
+        if (row == CORRIDOR_TOP) wallRow = BASE_ROW;
         for (int c = col - 1; c <= col + 1; c++) {
             if (b.get(LAYER_OBJECTS, c, wallRow) != EMPTY) return true;
         }

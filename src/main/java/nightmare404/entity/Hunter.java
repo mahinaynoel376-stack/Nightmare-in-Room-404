@@ -21,7 +21,8 @@ public abstract class Hunter extends Monster {
 
     // Forgets how it was getting round things, and stops reeling (when it's put back in its place)
     protected void resetHunt() {
-        stuck = sidestep = 0;
+        stuck = 0;
+        sidestep = 0;
         stunned = 0;
     }
 
@@ -44,17 +45,29 @@ public abstract class Hunter extends Monster {
             }
             int dx = Integer.signum(player.x - x), dy = Integer.signum(player.y - y);
             boolean acrossFirst = Math.abs(player.x - x) >= Math.abs(player.y - y);
-            boolean moved = acrossFirst ? tryMove(dx, 0) || tryMove(0, dy) : tryMove(0, dy) || tryMove(dx, 0);
+            boolean moved;                       // The longer way first; if that's blocked, the other
+            if (acrossFirst) {
+                moved = tryMove(dx, 0) || tryMove(0, dy);
+            } else {
+                moved = tryMove(0, dy) || tryMove(dx, 0);
+            }
             if (!moved) break;
         }
         if (sidestep > 0) {
             sidestep--;
         } else if (x == oldX && y == oldY) {
-            if (++stuck > STUCK_LIMIT) {        // Step round: at right angles to the way it's trying to go
+            stuck++;
+            if (stuck > STUCK_LIMIT) {          // Step round: at right angles to the way it's trying to go
                 boolean acrossFirst = Math.abs(player.x - x) >= Math.abs(player.y - y);
-                int way = (phase + stuck) % 2 == 0 ? 1 : -1;
-                sideX = acrossFirst ? 0 : way;
-                sideY = acrossFirst ? way : 0;
+                int way = -1;                   // Which way round: it differs from monster to monster
+                if ((phase + stuck) % 2 == 0) way = 1;
+                if (acrossFirst) {
+                    sideX = 0;
+                    sideY = way;
+                } else {
+                    sideX = way;
+                    sideY = 0;
+                }
                 sidestep = SIDESTEP;
                 stuck = 0;
             }

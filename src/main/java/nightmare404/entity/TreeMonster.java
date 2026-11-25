@@ -100,9 +100,13 @@ public class TreeMonster extends Hunter {
     public void update(Player player) {
         if (defeated) return;
         if (asleep) {
-            if (untilWake > 0 && --untilWake == 0) wake();
+            if (untilWake > 0) {                   // Counting down to waking up
+                untilWake--;
+                if (untilWake == 0) wake();
+            }
         } else if (popping > 0) {
-            if (++popping >= POP_TICKS) {
+            popping++;
+            if (popping >= POP_TICKS) {
                 popping = 0;
                 chasing = true;
             }
@@ -142,9 +146,18 @@ public class TreeMonster extends Hunter {
         } else if (popping > 0 && popping < 44) {
             drawRising(g, cx, feet, popping - 24);
         } else {
-            int lift = popping > 0 ? 0 : (int) Math.round(Math.abs(Math.sin((ticks + phase) / 7.0)) * 3);
-            int sway = popping > 0 ? 0 : (int) Math.round(Math.sin((ticks + phase) / 14.0) * 1.5);
-            if (stunned > 0) sway = (stunned / 2) % 2 == 0 ? 3 : -3;   // Reeling: it shakes
+            int lift = 0, sway = 0;            // Bobbing and swaying as it walks (not while it pops out)
+            if (popping == 0) {
+                lift = (int) Math.round(Math.abs(Math.sin((ticks + phase) / 7.0)) * 3);
+                sway = (int) Math.round(Math.sin((ticks + phase) / 14.0) * 1.5);
+            }
+            if (stunned > 0) {                 // Reeling: it shakes
+                if ((stunned / 2) % 2 == 0) {
+                    sway = 3;
+                } else {
+                    sway = -3;
+                }
+            }
             shadow(g, cx, feet);
             g.drawImage(image, cx - image.getWidth() / 2 + sway, feet - image.getHeight() - lift, null);
             if (popping > 0 || chasing) {
@@ -157,7 +170,8 @@ public class TreeMonster extends Hunter {
 
     // Part 1 of popping out: the tree shakes harder and harder, leaves fall, and its eyes open
     private void drawShiver(Graphics2D g, int cx, int feet, int t) {
-        int jitter = ((t / 2) % 2 == 0 ? 1 : -1) * (1 + t / 8);
+        int jitter = 1 + t / 8;                // Shaking one way then the other, harder as t grows
+        if ((t / 2) % 2 != 0) jitter = -jitter;
         BufferedImage tree = plainTree();
         if (tree != null) g.drawImage(tree, cx - 32 + jitter, feet - 64, null);
         g.setColor(new Color(0, 143, 68));
@@ -190,10 +204,15 @@ public class TreeMonster extends Hunter {
         for (int i = 0; i < 14; i++) {                  // Clods of dirt, flying out and falling back
             double angle = Math.PI * (0.15 + 0.7 * ((i * 37 + phase) % 100) / 100.0);
             double speed = 2.2 + ((i * 53) % 10) / 4.0;
-            double vx = Math.cos(angle) * speed * (i % 2 == 0 ? 1 : -1), vy = -Math.sin(angle) * speed;
+            double vx = Math.cos(angle) * speed, vy = -Math.sin(angle) * speed;
+            if (i % 2 != 0) vx = -vx;                   // Every other one flies the other way
             double px = cx + vx * t, py = feet - 4 + vy * t + 0.18 * t * t;
             if (py > feet + 2) continue;
-            g.setColor(i % 3 == 0 ? new Color(60, 14, 0) : new Color(96, 62, 30));
+            if (i % 3 == 0) {
+                g.setColor(new Color(60, 14, 0));
+            } else {
+                g.setColor(new Color(96, 62, 30));
+            }
             g.fillRect((int) px, (int) py, 3, 3);
         }
     }

@@ -9,7 +9,14 @@ import nightmare404.world.Room;
 public class Floor3Check {
     static GamePanel gp; static Player p; static int fails = 0;
 
-    static void check(String what, boolean ok) { System.out.println((ok ? "  ok   " : "  FAIL ") + what + "   [" + at() + "]"); if (!ok) fails++; }
+    static void check(String what, boolean ok) {
+        if (ok) {
+            System.out.println("  ok   " + what + "   [" + at() + "]");
+        } else {
+            System.out.println("  FAIL " + what + "   [" + at() + "]");
+            fails++;
+        }
+    }
     static String at() { return "Floor " + gp.currentRoom.floor.number + ", " + gp.currentRoom.name + ", col " + (p.solidArea.x + 8) / 32 + " row " + (p.solidArea.y + 8) / 32 + ", x=" + p.x + " cam=" + gp.cameraX(); }
     static int row() { return (p.solidArea.y + 8) / 32; }
     // Holds keys for up to n ticks; stops early when the room changes
@@ -17,7 +24,10 @@ public class Floor3Check {
         Room start = gp.currentRoom;
         gp.upPressed = keys.contains("U"); gp.downPressed = keys.contains("D"); gp.leftPressed = keys.contains("L"); gp.rightPressed = keys.contains("R");
         for (int i = 0; i < n && gp.currentRoom == start; i++) p.update();
-        gp.upPressed = gp.downPressed = gp.leftPressed = gp.rightPressed = false;
+        gp.upPressed = false;
+        gp.downPressed = false;
+        gp.leftPressed = false;
+        gp.rightPressed = false;
     }
     static void go(Floor f, String room, int col, int row) { gp.currentRoom = f.find(room); p.x = col * 32; p.y = row * 32; p.update(); }
     static boolean in(Floor f, String room) { return gp.currentRoom == f.find(room); }
@@ -96,8 +106,13 @@ public class Floor3Check {
                 && libWest.door == null && libEast.door == null);
         check("all three library screens are fixed screens", libWest.fixedScreen && libEntrance.fixedScreen && libEast.fixedScreen);
 
-        System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
+        if (fails == 0) {
+            System.out.println("ALL PASSED");
+        } else {
+            System.out.println(fails + " FAILED");
+        }
 
-        System.exit(fails == 0 ? 0 : 1);
+        if (fails > 0) System.exit(1);   // Tells run-checks.bat this check failed
+        System.exit(0);
     }
 }
