@@ -22,16 +22,19 @@ GameProd/
 │   │   ├── java/                      the game's code
 │   │   │   ├── module-info.java
 │   │   │   └── nightmare404/
-│   │   │       ├── main/      Main, GamePanel           the window, the game loop, the camera, the keys
+│   │   │       ├── main/      Main, GamePanel,          the window and the main menu, the game loop,
+│   │   │       │              Settings                  the camera, the keys, the Options
 │   │   │       ├── entity/    Player                    things that move
-│   │   │       ├── ui/        BottomUI                  what's drawn on top of the world
+│   │   │       ├── ui/        MainMenu, HealthBar,      the main menu, the health bars, and what's
+│   │   │       │              BottomUI, ...             drawn on top of the world
 │   │   │       ├── tile/      TileSet, TileMap,         the tile engine: loading, drawing, collision
 │   │   │       │              MapBuilder, Staircase
 │   │   │       ├── map/       Classroom, Hallway, ...   the map designs: what each place looks like
 │   │   │       └── world/     World, Floor, Room        the linked lists: how places connect
 │   │   └── resources/                 the game's images
 │   │       ├── characters/player/     the 12 player sprites
-│   │       └── tiles/                 classroom, stairs, library, lab, ground, quad
+│   │       ├── tiles/                 classroom, stairs, library, lab, ground, quad
+│   │       └── ui/                    the health bars: 7 frames each for the player and the monsters
 │   └── test/
 │       └── java/nightmare404/
 │           ├── checks/        play-through checks (run-checks.bat runs them)
@@ -138,9 +141,9 @@ The strictest convention starts from a web address you own, written backwards: `
 
 | Package | Classes | Its job |
 |---|---|---|
-| `nightmare404.main` | `Main`, `GamePanel` | starts the game; the window, the game loop, the camera, the keys |
+| `nightmare404.main` | `Main`, `GamePanel`, `Settings` | starts the game on the main menu and swaps the menu and the game in the window; the game loop, the camera, the keys; the Options |
 | `nightmare404.entity` | `Player`, `Monster`, `Hunter` (`TreeMonster`, `SubjectZero`, `Sapling`), `Loot`, `Clue` | the things in the rooms: the player, the monsters, what the bosses drop, the clues |
-| `nightmare404.ui` | `BottomUI`, `DialogueBox`, `QuestTracker`, `Journal`, `EndingScreen`, `Lighting` | what's drawn on top of the world |
+| `nightmare404.ui` | `MainMenu`, `HealthBar`, `BottomUI`, `DialogueBox`, `QuestTracker`, `Journal`, `EndingScreen`, `Lighting` | the main menu, every health bar, and what's drawn on top of the world |
 | `nightmare404.story` | `Story`, `Director`, `Line`, `Quest`, `Quests` | **the story**: every line of text (`Story`), when it's shown (`Director`), and the clues (`Quests`) |
 | `nightmare404.battle` | `BattleScreen`, `TypingBattle`, `LastStand`, the `*Enemies` and `*Backdrop` classes | the fights: the word battles, the typing race, and the fight on the map outside |
 | `nightmare404.tile` | `TileSet`, `TileMap`, `MapBuilder`, `Staircase` | **the tile engine**: loading tiles, building maps, drawing them, collision |

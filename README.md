@@ -6,7 +6,9 @@ Each floor's boss holds the key to the way down. Clues hidden in the side rooms 
 
 ![The quadrangle](docs/images/quadrangle/quad_ingame_bus.png)
 
-**Controls:** `W` `A` `S` `D` to walk, `Shift` to run. Walk into a door or onto the stairs to use them. `E`, `Space` or `Enter` to read on; `J` for the journal (`Esc` closes it).
+The game opens on the main menu: **Start Game**, **Continue** (back to the game you left), **Journal**, **Options** (the battles' turn timer, and flickering lights) and **Quit**. Choose with `W` / `S` or the mouse, and `Enter`.
+
+**Controls:** `W` `A` `S` `D` to walk, `Shift` to run. Walk into a door or onto the stairs to use them. `E`, `Space` or `Enter` to read on; `J` for the journal (`Esc` closes it). `Esc` goes back to the main menu; the game waits there until you pick *Continue*.
 Outside: `Space` to focus (time slows), then type a monster's word to strike it; `Space` again to move. `1`-`4` use a First Aid Kit, Old Textbook, Red Pen or Hall Pass; `Backspace` drops a word.
 
 ## Running the game
@@ -39,15 +41,15 @@ Double-click `run-checks.bat`. It plays through every floor without opening a wi
 
 ```
 src/main/java/nightmare404/   the game's code
-    main/     Main, GamePanel: the window, the game loop, the camera, the keys
+    main/     Main, GamePanel, Settings: the window and the main menu, the game loop, the camera, the keys
     entity/   Player, Monster, Loot, Clue, and the hunters outside: TreeMonster, SubjectZero, Sapling
-    ui/       BottomUI, DialogueBox, QuestTracker, Journal, EndingScreen, Lighting
+    ui/       MainMenu, HealthBar, BottomUI, DialogueBox, QuestTracker, Journal, EndingScreen, Lighting
     story/    Story (every line of text), Director (when it's shown), Quest and Quests (the clues)
     battle/   the word battles, the typing race, and LastStand (the fight on the map outside)
     tile/     the tile engine: TileSet, TileMap, MapBuilder, Staircase
     map/      the map designs: Classroom, Hallway, Stairs, Library, Lab, Office, Ground, Quadrangle
     world/    World, Floor, Room: how the places link together; Encounters: where the monsters are
-src/main/resources/           the sprites and tiles
+src/main/resources/           the sprites, the tiles, and the health bars' art (ui/)
 src/test/java/nightmare404/   checks/ (run by run-checks.bat) and debug/ (tools that save pictures)
 docs/                         the devlog and the step-by-step guides
 tools/art/                    the Python scripts that made the tiles

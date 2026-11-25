@@ -445,6 +445,32 @@ The quadrangle's building face lost its two side exits and their pillars, so the
 
 ---
 
+## 2026-11-25 — A main menu, and pixel-art health bars
+
+**Goal:** open the game on a proper main menu instead of dropping straight into Room 404, and replace every health bar (the player's and the monsters', everywhere they appear) with new pixel-art bars.
+**What happened:**
+- **The main menu** (`ui/MainMenu`): the menu design (an HTML mock-up and its Java2D port): a dark hallway of lockers, the title, and on the right the door of Room 404 with a bloody "404" that drips once, three bands of NO ENTRY tape and a swinging sign. All drawn in code, no images. It's laid out on a 1280 × 720 stage and scaled to the window; in the game's 800 × 608 window the hallway carries on above and below, so there are no black bars, and the keys sit at the bottom of the window. `W` / `S` (or the arrows, or the mouse) choose, `Enter`, `Space` or `E` picks; the chosen line says what it does underneath.
+- **What each line does** (`main/Main` now opens the window on the menu and swaps the menu and the game in it): *Start Game* makes a new `GamePanel`. *Continue* goes back to the game in progress, exactly as it was left; *Journal* opens that game's journal, and closing it comes back to the menu. Both are greyed out (and skipped by `W` / `S`) until a game has been started. *Options* swaps the list for two switches, *Quit* closes the game.
+- **Esc in the game** opens the menu, unless it has something else to do (closing the journal, or stopping focus outside). The game loop keeps running but skips its updates while the menu is up (`GamePanel.paused`), and `resume()` lets go of every key, since presses and releases while the menu was showing never reached the game.
+- **After the ending**, Enter now goes back to the menu (with nothing to continue) instead of starting again by itself.
+- **Options** (`main/Settings`): *Turn timer* and *Flicker*. `BattleScreen` already had both as switches in the code (`TURN_TIMER`, `LIGHT_FLICKER`, "false turns it off"); they're now the settings the menu changes. Flicker also covers the hallways' lights (`Lighting`) and the menu's own.
+- **The health bars** (`ui/HealthBar`, art in `src/main/resources/ui/`): 7 frames each, `hp_lead_1-7.png` for the player (a heart that drains) and `hp_enemy_1-7.png` for the monsters (a skull that fades). Frame 1 is full and frame 7 empty, each in between one segment less, so any health left shows at least one segment. `HealthBar` crops the frames to the bar (64 × 32 with space round it), scales them by whole numbers with no smoothing, and picks the frame. Used in all four places a bar was drawn: the bottom bar (the player's, ×2), the word battle and the typing race (both fighters, ×3, with the numbers beside them), and over the monsters outside (×1, under each word, see-through until you focus).
+**Problems:**
+- The menu's Java port compared the mouse's place in the window with the menu lines' boxes on the 1280 × 720 stage, so clicking only worked in a 1280 × 720 window. The mouse is now turned into a place on the stage first.
+- The port also drew the vignette over the title and the menu, so once the tape's clip was fixed (see the next problem) the words nearly vanished into the dark. The HTML design draws the words above the vignette and the flicker below it; the Java now does the same.
+- Each tape band set a clip to cut its text to the tape, then `setClip(null)`, which also threw away the clip Swing paints with. Putting the old clip back *before* undoing the rotation put it back rotated, which cut off the other two bands and the sign. The transform is undone first now.
+- The typing race slides its bars with `shown += (hp - shown) * 0.15`, which never quite gets there: 80 HP stayed at 80.000002, which rounds up to 81 and could show one segment too many. The bar snaps to the real value once it's within 0.05, and the numbers show the real health, not the sliding one.
+- The word battle's pale "damage trail" behind its bar had nothing to draw on in the new art, so `Fighter.trail` went. The bar still slides down a segment at a time, and the player's low-health warning became a red glow behind the heart bar that beats with the screen's pulse.
+**Decisions:**
+- **Continue resumes the game in this session; it isn't a save.** "Return to your last floor" across restarts needs a save file (which floor, health, supplies, keys, clues, the monsters beaten). The checkpoint `Player.respawn` uses already holds most of it, so that's the place to start.
+- **Journal from the menu opens the real journal in the game** rather than a copy drawn on the menu, so *read again* still works.
+- **Options are the two switches that already existed**, rather than new settings with nothing behind them.
+- **The menu stays at the game's size** (800 × 608). Making the window 1280 × 720 for the menu and changing it for the game would jump, and the game's screen is built on its tile grid.
+**Checks:** all 11 checks pass (542 tests), unchanged. The menu, the bars at full and low health, and the fight outside were drawn to pictures and looked at. The whole menu loop was also played with simulated key presses in a real window: Start Game, the opening scene, Esc, Continue (and walking still works), Journal, Esc back to the menu.
+**Open issues:** a save file, so *Continue* survives closing the game. The menu's fonts are Java's built-in Serif and Monospaced; the HTML design used Permanent Marker and Special Elite, which could be bundled in `src/main/resources` and loaded with `Font.createFont`.
+
+---
+
 ## Open issues and ideas
 
 - ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).
@@ -452,6 +478,6 @@ The quadrangle's building face lost its two side exits and their pillars, so the
 - Hazard tiles (toxic puddles, slime) that drain health, the first real use of the HP bar.
 - A way to open the sealed lab doors (the Security Keycard could open them too?).
 - ~~Old unused images in `res/tiles/` (outside `Classroom2` and `Stairs`) can be deleted.~~ (done: the cleanup, 2026-11-03)
-- Design the real bottom UI (art, layout, what it shows). `BottomUI` is a placeholder.
+- Design the real bottom UI (art, layout, what it shows). `BottomUI` is a placeholder, apart from the health bar (done: the pixel-art bars, 2026-11-25).
 - ~~Nothing changes `health` yet~~ (done: battles, 2026-11-15).
 - Most of the project, including the 2026-11-03 cleanup, isn't committed to git yet; commit it so the history is safe.

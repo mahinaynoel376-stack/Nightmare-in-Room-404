@@ -11,7 +11,7 @@ import nightmare404.main.GamePanel;
 import nightmare404.story.Story;
 
 // The last screen, after Subject Zero: fades to black, then one word (REMEMBERED or FORGOTTEN),
-// how many clues were found, and how to play again.
+// how many clues were found, and how to get back to the main menu.
 public class EndingScreen {
     private static final Font BIG = new Font(Font.SERIF, Font.BOLD, 64);
     private static final Font TEXT = new Font(Font.SERIF, Font.PLAIN, 20);
@@ -40,7 +40,7 @@ public class EndingScreen {
             centred(g, TEXT, PALE, Story.endingHint(remembered), 310);
             centred(g, TEXT, PALE, "Clues found: " + found + " of " + total, 350);
             if (ticks > 150 && (ticks / 30) % 2 == 0) {
-                centred(g, SMALL, PALE, "Press Enter to play again", 440);
+                centred(g, SMALL, PALE, "Press Enter to return to the main menu", 440);
             }
         }
         g.dispose();

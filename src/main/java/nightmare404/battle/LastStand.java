@@ -20,6 +20,7 @@ import nightmare404.entity.SubjectZero;
 import nightmare404.entity.TreeMonster;
 import nightmare404.main.GamePanel;
 import nightmare404.story.Story;
+import nightmare404.ui.HealthBar;
 import nightmare404.world.Room;
 
 // THE LAST STAND: the quadrangle's fight, out on the map, with no battle screen.
@@ -590,7 +591,7 @@ public class LastStand {
             String word = words.get(h);
             boolean locked = h == target;
             int w = fm.stringWidth(word) + 12, cx = h.centreX();
-            int top = h.y + 32 - h.drawnHeight() - 26;
+            int top = h.y + 32 - h.drawnHeight() - 34;   // The word, with room for its health bar under it
             int bx = cx - w / 2;
             int alpha = focused ? 225 : 150;
             g.setColor(new Color(12, 10, 10, alpha));
@@ -603,12 +604,10 @@ public class LastStand {
             g.setColor(new Color(240, 236, 226, focused ? 255 : 170));
             g.drawString(word.substring(typedHere), bx + 6 + fm.stringWidth(word.substring(0, typedHere)), top + 15);
             int max = h.enemy.maxHp();
-            if (max > 1) {                              // Its health, under the word
+            if (max > 1) {                              // Its health, under the word (see HealthBar)
                 int hp = health.getOrDefault(h, max);
-                g.setColor(new Color(40, 8, 8, alpha));
-                g.fillRect(bx, top + 22, w, 4);
-                g.setColor(new Color(200, 40, 40, alpha));
-                g.fillRect(bx, top + 22, (int) Math.round(w * (double) hp / max), 4);
+                int barW = HealthBar.width(HealthBar.Style.ENEMY, 1);
+                HealthBar.draw(g, HealthBar.Style.ENEMY, hp, max, cx - barW / 2, top + 22, 1, alpha / 255f);
             }
         }
         g.setFont(FLOAT_FONT);
