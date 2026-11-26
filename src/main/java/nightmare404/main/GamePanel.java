@@ -570,9 +570,9 @@ public class GamePanel extends JPanel implements Runnable {
         if (currentRoom.outdoors && !ended) lastStand.drawHud(g2d);
         tracker.draw(g2d);
         if (noticeTicks > 0 && !dialogue.isOpen()) drawNotice(g2d);
-        dialogue.draw(g2d, screenWidth, screenHeight - tileSize);
+        dialogue.draw(g2d, screenWidth, bottomUI.top());   // Above the ID card
 
-        // UI in the bottom row (fixed on screen, drawn after the world so nothing covers it)
+        // The bottom UI: the ID card and the backpack (fixed on screen, drawn after the world so nothing covers it)
         bottomUI.draw(g2d);
         journal.draw(g2d);
         if (ended) endingScreen.draw(g2d, endedRemembered, endedTicks, director.cluesFound(), director.cluesInAll());
@@ -623,7 +623,7 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
-    // The notice: a dark box just above the bottom bar (long lines wrap, "\n" starts a new one), fading out at the end
+    // The notice: a dark box just above the bottom UI (long lines wrap, "\n" starts a new one), fading out at the end
     private void drawNotice(Graphics2D g2d) {
         Graphics2D g = (Graphics2D) g2d.create();
         g.setComposite(AlphaComposite.SrcOver.derive(Math.min(1f, noticeTicks / 30f)));
@@ -647,7 +647,7 @@ public class GamePanel extends JPanel implements Runnable {
         for (String l : lines) w = Math.max(w, fm.stringWidth(l));
         w += 32;
         int h = 14 + 20 * lines.size();
-        int x = (screenWidth - w) / 2, y = screenHeight - tileSize - h - 12;
+        int x = (screenWidth - w) / 2, y = bottomUI.top() - h - 12;
         g.setColor(new Color(8, 6, 6, 220));
         g.fillRect(x, y, w, h);
         g.setColor(new Color(130, 18, 18));

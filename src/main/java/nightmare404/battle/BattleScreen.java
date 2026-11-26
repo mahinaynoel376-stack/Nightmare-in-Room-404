@@ -1433,7 +1433,7 @@ public class BattleScreen {
     //  Small drawings for the UI: first aid kit, locker items, attack icons
     // =====================================================================================
 
-    static class Art {
+    public static class Art {
         static final Color OUT = new Color(20, 14, 12);
 
         static Graphics2D at(Graphics2D g, double x, double y) {
@@ -1445,7 +1445,7 @@ public class BattleScreen {
 
         static void shape(Graphics2D g, Shape s, Paint fill) { g.setPaint(fill); g.fill(s); g.setColor(OUT); g.draw(s); }
 
-        static void firstAid(Graphics2D g, double cx, double cy, boolean full) {
+        public static void firstAid(Graphics2D g, double cx, double cy, boolean full) {
             Graphics2D g2 = at(g, cx, cy);
             g2.setColor(OUT);
             g2.draw(new Arc2D.Double(-9, -24, 18, 14, 0, 180, Arc2D.OPEN));
@@ -1460,7 +1460,7 @@ public class BattleScreen {
         }
 
         /** 0 = Old Textbook, 1 = Red Pen, 2 = Hall Pass */
-        static void item(Graphics2D g, int which, double cx, double cy) {
+        public static void item(Graphics2D g, int which, double cx, double cy) {
             Graphics2D g2 = at(g, cx, cy);
             switch (which) {
                 case 0 -> {
