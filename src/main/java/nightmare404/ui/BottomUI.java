@@ -54,8 +54,8 @@ public class BottomUI {
     private static final Font ID_HP = new Font(Font.SANS_SERIF, Font.BOLD, 11);
 
     // The health bar sprite: 64x32, but the drawing is only the 56x10 strip at (2, 4). Drawn twice the size.
-    private static final int HP_FRAMES = 7, HP_SEGMENTS = 6, HP_SCALE = 2;
-    private static final int HP_CROP_X = 2, HP_CROP_Y = 4, HP_CROP_W = 56, HP_CROP_H = 10;
+    private static final int HP_FRAMES = 7, HP_SEGMENTS = 6;
+    private static final int BAR_W = 56 * 2, BAR_H = 10 * 2;
 
     // The backpack
     private static final int PACK_H = 44, SLOT_W = 54, PACK_MARGIN = 12;
@@ -78,7 +78,7 @@ public class BottomUI {
         this.gp = gp;
         for (int i = 0; i < HP_FRAMES; i++) {
             BufferedImage sheet = BattleScreen.Sprites.get("/ui/hp_player_" + (i + 1), true);
-            if (sheet != null) hpFrames[i] = sheet.getSubimage(HP_CROP_X, HP_CROP_Y, HP_CROP_W, HP_CROP_H);
+            if (sheet != null) hpFrames[i] = sheet.getSubimage(2, 4, 56, 10);
         }
         // The photo: Flor's head from her walking sprite (32x64), the 26x28 square around her face
         BufferedImage body = BattleScreen.Sprites.get(Line.FLOR_FACE, true);
@@ -102,55 +102,57 @@ public class BottomUI {
         g.setColor(STRIP_EDGE);
         g.drawLine(0, stripTop, gp.screenWidth, stripTop);
 
-        Player player = gp.flor;
-        Rectangle flor = florOnScreen();
-        Graphics2D card = (Graphics2D) g.create();
-        if (flor.intersects(new Rectangle(CARD_X, top(), CARD_W, CARD_H))) {
-            card.setComposite(AlphaComposite.SrcOver.derive(BEHIND_ALPHA));
-        }
-        drawCard(card, player);
-        card.dispose();
-        drawBackpack(g, player, flor);
+        drawCard(g, gp.flor);
+        drawBackpack(g, gp.flor);
         g.dispose();
     }
 
-    // Where Flor's sprite is on the screen (it's one tile wide and two tall, standing on her x, y)
-    private Rectangle florOnScreen() {
-        Player p = gp.flor;
+    // A copy of g to draw one panel with: see-through if Flor's sprite (one tile wide, two tall,
+    // standing on her x, y) is behind the panel's x, y, w, h. Dispose it when done.
+    private Graphics2D fadeIfBehind(Graphics2D g, int x, int y, int w, int h) {
+        Graphics2D panel = (Graphics2D) g.create();
         int size = gp.tileSize;
-        return new Rectangle(p.x - gp.cameraX(), p.y - size - gp.cameraY(), size, size * 2);
+        Rectangle flor = new Rectangle(gp.flor.x - gp.cameraX(), gp.flor.y - size - gp.cameraY(), size, size * 2);
+        if (flor.intersects(x, y, w, h)) panel.setComposite(AlphaComposite.SrcOver.derive(BEHIND_ALPHA));
+        return panel;
     }
 
-    // How many of the bar's six segments are gone: 0 at full health, 6 at none. Any health at all
-    // keeps at least one segment showing, so the bar never looks empty while Flor's still standing.
-    static int segmentsLost(int health, int maxHealth) {
+    // A panel's shadow, fill and 1 px edge
+    private static void panel(Graphics2D g, int x, int y, int w, int h, Color fill, Color edge) {
+        g.setColor(new Color(0, 0, 0, 140));
+        g.fillRect(x + 3, y + 3, w, h);
+        g.setColor(fill);
+        g.fillRect(x, y, w, h);
+        g.setColor(edge);
+        g.drawRect(x, y, w - 1, h - 1);
+    }
+
+    // How many of the bar's six segments are gone: 0 at full health, 6 at none. Rounding the
+    // segments left up means any health at all keeps at least one showing.
+    private static int segmentsLost(int health, int maxHealth) {
         if (health <= 0) return HP_SEGMENTS;
-        int left = (int) Math.ceil((double) health * HP_SEGMENTS / maxHealth);
-        return HP_SEGMENTS - Math.max(1, Math.min(HP_SEGMENTS, left));
+        int left = (health * HP_SEGMENTS + maxHealth - 1) / maxHealth;
+        return HP_SEGMENTS - Math.min(HP_SEGMENTS, left);
     }
 
     // ------------------------------------------------------------------------------- the ID card
 
-    private void drawCard(Graphics2D g, Player player) {
+    private void drawCard(Graphics2D g2d, Player player) {
         int x = CARD_X, y = top();
         int lost = segmentsLost(player.health, player.maxHealth);
         boolean critical = lost >= 4;
+        Graphics2D g = fadeIfBehind(g2d, x, y, CARD_W, CARD_H);
 
-        // A shadow, the card, and a band of school red along the bottom
-        g.setColor(new Color(0, 0, 0, 140));
-        g.fillRect(x + 3, y + 3, CARD_W, CARD_H);
-        g.setColor(PAPER);
-        g.fillRect(x, y, CARD_W, CARD_H);
+        // The card, with a band of school red along the bottom
+        panel(g, x, y, CARD_W, CARD_H, PAPER, PAPER_EDGE);
         g.setColor(SCHOOL_RED);
-        g.fillRect(x, y + CARD_H - 4, CARD_W, 4);
+        g.fillRect(x + 1, y + CARD_H - 5, CARD_W - 2, 4);
         // Low on health: the card's edge pulses red
         if (critical) {
             int pulse = (int) (110 + 110 * Math.sin(gp.ticks * 0.15));
             g.setColor(new Color(200, 20, 20, Math.max(0, pulse)));
             g.drawRect(x - 1, y - 1, CARD_W + 1, CARD_H + 1);
         }
-        g.setColor(PAPER_EDGE);
-        g.drawRect(x, y, CARD_W - 1, CARD_H - 1);
 
         // The slot the lanyard clips through
         g.setColor(new Color(60, 52, 44));
@@ -184,10 +186,11 @@ public class BottomUI {
         // The health bar sprite, and the number beside it
         int hpY = y + 49;
         BufferedImage bar = hpFrames[lost];
-        if (bar != null) g.drawImage(bar, tx - 2, hpY, HP_CROP_W * HP_SCALE, HP_CROP_H * HP_SCALE, null);
+        if (bar != null) g.drawImage(bar, tx - 2, hpY, BAR_W, BAR_H, null);
         g.setFont(ID_HP);
         g.setColor(critical ? new Color(176, 20, 22) : INK);
-        g.drawString(String.valueOf(Math.max(0, player.health)), tx + HP_CROP_W * HP_SCALE + 4, hpY + 15);
+        g.drawString(String.valueOf(Math.max(0, player.health)), tx + BAR_W + 4, hpY + 15);
+        g.dispose();
     }
 
     // Flor's photo. The more of the bar is gone, the worse it looks: scratched, then stained red and
@@ -251,26 +254,16 @@ public class BottomUI {
 
     // ----------------------------------------------------------------------------- the backpack
 
-    private void drawBackpack(Graphics2D g2d, Player player, Rectangle flor) {
-        boolean hasKey = false;
+    private void drawBackpack(Graphics2D g2d, Player player) {
         String key = gp.currentRoom.floor.exitKey;
-        if (key != null && player.keys.contains(key)) hasKey = true;
-        int slots = hasKey ? 5 : 4;
-        int w = 16 + slots * SLOT_W;
+        boolean hasKey = key != null && player.keys.contains(key);
+        int w = 16 + (hasKey ? 5 : 4) * SLOT_W;
         int x = gp.screenWidth - PACK_MARGIN - w;
         int y = gp.screenHeight - PACK_H - 8;
-        Graphics2D g = (Graphics2D) g2d.create();
-        if (flor.intersects(new Rectangle(x, y - 9, w, PACK_H + 9))) {
-            g.setComposite(AlphaComposite.SrcOver.derive(BEHIND_ALPHA));
-        }
+        Graphics2D g = fadeIfBehind(g2d, x, y - 9, w, PACK_H + 9);   // (The name tab sticks up 9 px)
 
         // The bag: dark canvas with a stitched seam just inside its edge
-        g.setColor(new Color(0, 0, 0, 140));
-        g.fillRect(x + 3, y + 3, w, PACK_H);
-        g.setColor(CANVAS);
-        g.fillRect(x, y, w, PACK_H);
-        g.setColor(CANVAS_DARK);
-        g.drawRect(x, y, w - 1, PACK_H - 1);
+        panel(g, x, y, w, PACK_H, CANVAS, CANVAS_DARK);
         Graphics2D seam = (Graphics2D) g.create();
         seam.setColor(STITCH);
         seam.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[] {3f, 3f}, 0f));
@@ -304,7 +297,10 @@ public class BottomUI {
     private void drawSlot(Graphics2D g, int which, int count, int x, int cy) {
         Graphics2D icon = (Graphics2D) g.create();
         icon.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        if (count <= 0) icon.setComposite(AlphaComposite.SrcOver.derive(0.3f * alpha(g)));
+        if (count <= 0) {   // Faded, on top of however faded the backpack already is
+            AlphaComposite bag = (AlphaComposite) g.getComposite();
+            icon.setComposite(bag.derive(bag.getAlpha() * 0.3f));
+        }
         icon.translate(x + 13, cy);
         icon.scale(0.45, 0.45);
         if (which == 0) BattleScreen.Art.firstAid(icon, 0, 0, true);
@@ -322,11 +318,6 @@ public class BottomUI {
             g.setColor(GOLD);
             g.drawString(String.valueOf(which + 1), x, cy - 7);
         }
-    }
-
-    // How see-through g already draws (1 = solid), so a faded slot inside a faded backpack fades further
-    private static float alpha(Graphics2D g) {
-        return g.getComposite() instanceof AlphaComposite c ? c.getAlpha() : 1f;
     }
 
     // The key to this floor's way out, once Flor has it
