@@ -208,7 +208,7 @@ public class Player {
         Room behindDoor = doorHere == null ? null : gp.currentRoom.doorLeadsTo(gp.currentRoom.map.doorIndex(doorHere));
         if (behindDoor != null && behindDoor.outdoors && gp.currentRoom.floor.locked(keys)) {
             // The way out of the building is locked until the player has the floor's key
-            gp.showNotice(gp.currentRoom.floor.lockedNote);
+            gp.director.lockedOut(gp.currentRoom.floor);
         } else if (behindDoor != null) {
             goThroughDoor(doorHere);
         } else if (!checkStairs()) {
@@ -339,7 +339,7 @@ public class Player {
         Floor floor = gp.currentRoom.floor;
         if (floor.below != null && stairs.downZone != null && stairs.downZone.intersects(solidArea)) {
             if (floor.locked(keys)) {   // The way down is locked until the player has the floor's key
-                gp.showNotice(floor.lockedNote);
+                gp.director.lockedOut(floor);
                 return false;
             }
             arriveOnStairs(floor.below, true);

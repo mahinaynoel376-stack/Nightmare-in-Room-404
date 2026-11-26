@@ -71,6 +71,7 @@ public class World {
     public final Room start;    // Where the game begins
     public final List<Monster> monsters = new ArrayList<>();   // Every monster in the school (see Encounters)
     public SubjectZero finalBoss;   // Asleep by the quadrangle's south gate until every tree is beaten
+    public Monster firstFight;      // The crawler that drops on Flor outside Room 404 (see Encounters, Director)
 
     public World(TileSet tiles, int ts) {
         // ---------- Floor 4: the classrooms ----------

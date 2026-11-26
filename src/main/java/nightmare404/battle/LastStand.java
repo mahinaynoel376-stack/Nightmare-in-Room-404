@@ -435,6 +435,7 @@ public class LastStand {
                 eruptions.add(new Eruption(px + (int) (Math.cos(angle) * r), py + (int) (Math.sin(angle) * r)));
             }
             zero.attackPose = 30;
+            gp.director.groundCracks();                         // (The first time, Flor shouts)
         }
         for (Iterator<Eruption> it = eruptions.iterator(); it.hasNext(); ) {
             Eruption e = it.next();
@@ -463,7 +464,7 @@ public class LastStand {
             Sapling s = new Sapling(QuadrangleEnemies.SAPLING, quad, 32, gate.x, gate.y);
             saplings.add(s);
         }
-        gp.showNotice(Story.SAPLINGS, 180);
+        gp.director.saplingsCalled();
     }
 
     // ------------------------------------------------------------------------------------ the words

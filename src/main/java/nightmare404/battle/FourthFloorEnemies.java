@@ -10,6 +10,19 @@ import nightmare404.battle.BattleScreen.EnemyDef;
 public class FourthFloorEnemies {
     static final Backdrop CLASSROOM = new ClassroomBackdrop();
 
+    // ---- The first fight: it drops on Flor the first time she steps out of Room 404 (see Director) ----
+    // A weak crawler, so the first battle (with the controls explained) is a gentle one.
+
+    public static final EnemyDef FIRST_CRAWLER = new EnemyDef(
+            "Crawler",
+            "hallwaycrawler",
+            40,
+            "4F HALLWAY",
+            "It was waiting on the ceiling outside Room 404. It has been waiting there a long time.\n"
+                    + "- Janitor's logbook, last entry",
+            List.of(new Attack("Slime Splat", 5, 0, 0, 1, "The crawler launches a glob of sticky goo.")),
+            CLASSROOM);
+
     // ---- Room 402 (was 1stRoom) ----
 
     public static final EnemyDef DESK_MIMIC = new EnemyDef(

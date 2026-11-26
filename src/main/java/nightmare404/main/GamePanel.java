@@ -130,6 +130,7 @@ public class GamePanel extends JPanel implements Runnable {
 
     // Every monster beaten and every floor's key in the player's pocket: for the checks that only test walking
     public void peaceful() {
+        if (world.firstFight != null) world.firstFight.defeated = true;   // (No first fight in the hallway either)
         for (Monster m : world.monsters) {
             m.defeated = true;
             if (m.loot != null) {
@@ -405,9 +406,9 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
-    // The player touched a monster: a floor's boss has its say first (see Director), then the world
-    // pauses and its battle opens
-    private void startBattle(Monster m) {
+    // The player touched a monster (or the story started a fight: the first one, see Director): a floor's
+    // boss or a monster met for the first time has its say first, then the world pauses and its battle opens
+    public void startBattle(Monster m) {
         releaseKeys();                   // Keys let go during the battle would otherwise stay "held"
         director.beforeBattle(m, () -> {
             inBattle = true;
@@ -445,7 +446,7 @@ public class GamePanel extends JPanel implements Runnable {
         lastRoom = currentRoom;
         calm = 60;
         releaseKeys();
-        showNotice(currentRoom.outdoors ? Story.WAKE_OUTSIDE : Story.WAKE_INSIDE);
+        director.wokeUp(currentRoom.outdoors);
     }
 
     // Subject Zero is beaten and the last words are said: show the ending screen
@@ -515,7 +516,7 @@ public class GamePanel extends JPanel implements Runnable {
             director.afterWin(m);        // A boss leaves its loot where it stood
         } else {
             flor.respawn();
-            showNotice(currentRoom.outdoors ? Story.WAKE_OUTSIDE : Story.WAKE_INSIDE);
+            director.wokeUp(currentRoom.outdoors);
         }
         lastRoom = currentRoom;
         calm = 60;

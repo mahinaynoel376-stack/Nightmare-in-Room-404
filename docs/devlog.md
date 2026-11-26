@@ -471,6 +471,17 @@ The quadrangle's building face lost its two side exits and their pillars, so the
 
 ---
 
+## 2026-11-26 — Flor's new lines from the script
+
+**What changed:** the dialogue written in `docs/game-script.txt` is in the game (`story.Story`, triggered by `story.Director`):
+- **The first fight:** the first time Flor steps out of Room 404 into the hallway, she takes in the state of the place, a crawler drops from the ceiling, two tips explain the word battle, and the fight starts (`FourthFloorEnemies.FIRST_CRAWLER`: 40 HP, one weak attack). Winning: "Wow, that was insane.. At least I can somewhat fend them off.." and she decides to look for the logbook's missing pages. Lost and given up: it's still waiting the next time she comes out. It's `World.firstFight`, kept out of the room's monster list, so it's never drawn on its rounds and stays beaten once beaten. `peaceful()` (and `NO_ENEMIES`) skip it.
+- **Flor's reactions** after every clue page; walking into the library and the labs for the first time; walking into the West Stairs, the back of the library and the Containment Lab while their bosses are there; trying the locked front doors (`Director.lockedOut`, which also shows the locked note); and a few words before the first fight with the Hall Monitor, the Librarian, Specimen 7 and the Mascot (`Story.meeting`).
+- **The bosses:** a line right after each one falls (`Story.bossDown`), and more when its key is picked up.
+- **Outside:** Flor's lines on stepping out, after the first tree and halfway through them, facing Subject Zero, when it first calls its saplings, and the first time the ground cracks.
+- **The endings** each close on Flor, and the first time she wakes up after giving up she says so (`Director.wokeUp`).
+The script's typos were tidied in the game ("At least", "what's", a closing `*`), and its stage directions became narration.
+**Checks:** `QuestCheck` section 2b plays the first fight (losing it, then winning it), and the other sections check each new scene appears; `EncounterCheck` marks the first fight done, since it isn't about the story.
+
 ## Open issues and ideas
 
 - ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).

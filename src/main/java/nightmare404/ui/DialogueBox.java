@@ -109,6 +109,11 @@ public class DialogueBox {
         shown = 0;
     }
 
+    // How many lines have been opened so far (for the checks)
+    public synchronized int linesSaid() {
+        return log.size();
+    }
+
     // True if any line ever opened contains this text (for the checks)
     public synchronized boolean said(String text) {
         for (Line line : log) {

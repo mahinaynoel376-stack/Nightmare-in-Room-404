@@ -63,6 +63,11 @@ public class Encounters {
 
         // ---------- Floor 4: the classrooms ----------
         Floor f4 = world.floor4;
+        // The first fight: a weak crawler that drops on Flor the first time she steps out of Room 404
+        // (the Director starts it). It's not one of the room's monsters: it's never drawn or met on its
+        // rounds, and once beaten it stays beaten, even if the player gives up later on this floor.
+        world.firstFight = new Monster(FourthFloorEnemies.FIRST_CRAWLER, e.find(f4, "Hallway (Room 404)"), false, ts,
+                new int[] {8, 8});
         e.patrol(f4, "Room 402", FourthFloorEnemies.DESK_MIMIC, 4, 9, 19, 9);        // The middle aisle
         e.patrol(f4, "Room 402", FourthFloorEnemies.CHALK_WRAITH, 20, 6, 4, 6);      // Along the chalkboard
         e.patrol(f4, "Room 403", FourthFloorEnemies.CRAWLER, 7, 10, 21, 10);         // The middle aisle

@@ -22,6 +22,7 @@ import nightmare404.world.Room;
 public class Director {
     private final GamePanel gp;
     private final Set<String> seen = new HashSet<>();
+    private Room entered;               // The room the player was in last frame (to notice walking into one)
 
     public Director(GamePanel gp) {
         this.gp = gp;
@@ -36,10 +37,13 @@ public class Director {
     public void update() {
         if (seen.add("intro")) {
             seen.add("floor4");
+            entered = gp.currentRoom;
             play(Story.INTRO, null);
             return;
         }
         Room room = gp.currentRoom;
+        boolean walkedIn = room != entered;
+        entered = room;
         if (room.outdoors) {
             if (seen.add("outside")) {
                 play(Story.OUTSIDE, null);
@@ -49,9 +53,31 @@ public class Director {
             if (zero != null && zero.asleep() && near(zero, 3 * 32) && seen.add("breathing")) {
                 gp.showNotice(Story.BREATHING, 240);
             }
-        } else if (seen.add("floor" + room.floor.number)) {
-            play(Story.arrive(room.floor.number), null);
+        } else {
+            inside(room, walkedIn);
         }
+    }
+
+    // Inside the building: the first time on a floor, in one of its rooms, in its boss's room; and the
+    // first fight, the first time the player steps out of Room 404 into the hallway
+    private void inside(Room room, boolean walkedIn) {
+        Floor f = room.floor;
+        List<Line> scene = new ArrayList<>();
+        if (seen.add("floor" + f.number)) scene.addAll(Story.arrive(f.number));
+        if (walkedIn) {
+            boolean hallway = f.indexOf(room) >= 0;          // A hallway screen or a stairwell
+            if (!hallway && seen.add("room" + f.number)) scene.addAll(Story.firstRoom(f.number));
+            if (f.boss != null && room == f.boss.room && !f.boss.defeated && seen.add("bossRoom" + f.number)) {
+                scene.addAll(Story.bossRoom(f.number));
+            }
+            Monster first = gp.world.firstFight;
+            if (hallway && first != null && !first.defeated && first.room.floor == f) {
+                scene.addAll(seen.add("firstFight") ? Story.FIRST_FIGHT : Story.FIRST_FIGHT_AGAIN);
+                play(scene, () -> gp.startBattle(first));
+                return;
+            }
+        }
+        if (!scene.isEmpty()) play(scene, null);
     }
 
     // The player walked into a monster. A floor's boss says something first (once for each number of
@@ -62,7 +88,8 @@ public class Director {
             int found = f.quest == null ? 0 : f.quest.found(gp.flor.clues);
             play(seen.add("boss" + f.number + ":" + found) ? Story.bossBefore(f.number, found) : List.of(), fight);
         } else {
-            fight.run();
+            String name = m.enemy.name();       // Some monsters get a few words the first time they're met
+            play(seen.add("meet:" + name) ? Story.meeting(name) : List.of(), fight);
         }
     }
 
@@ -76,19 +103,49 @@ public class Director {
 
     // After a battle the player won (the monster is already marked defeated)
     public void afterWin(Monster m) {
-        if (m.boss) gp.showNotice("The " + m.enemy.name() + " falls. Something glints where it stood...");
+        if (m == gp.world.firstFight) {
+            play(Story.AFTER_FIRST_FIGHT, null);
+        } else if (m.boss) {
+            String notice = "The " + m.enemy.name() + " falls. Something glints where it stood...";
+            play(Story.bossDown(m.room.floor.number), () -> gp.showNotice(notice));
+        }
+    }
+
+    // The player tried the floor's way out (or down) without its key. The first time, Flor may say
+    // something about it; the locked note shows every time.
+    public void lockedOut(Floor f) {
+        play(seen.add("locked" + f.number) ? Story.lockedOut(f.number) : List.of(), () -> gp.showNotice(f.lockedNote));
+    }
+
+    // The player lost a battle and gave up (or went down outside): the first time, a few words
+    public void wokeUp(boolean outside) {
+        String notice = outside ? Story.WAKE_OUTSIDE : Story.WAKE_INSIDE;
+        play(seen.add("woke") ? Story.FIRST_WAKE : List.of(), () -> gp.showNotice(notice));
     }
 
     // Outside, a Hollow Oak was felled (see LastStand). When the last one goes, Subject Zero wakes.
     public void treeFelled(int heal, int left) {
         if (left > 0) {
-            gp.showNotice(Story.treeFelled(heal, left), 240);
+            int trees = gp.world.trees().size();
+            List<Line> words = left == trees - 1 && seen.add("firstTree") ? Story.FIRST_TREE
+                    : left == trees / 2 && seen.add("halfTrees") ? Story.HALF_THE_TREES : List.of();
+            play(words, () -> gp.showNotice(Story.treeFelled(heal, left), 240));
             return;
         }
         SubjectZero zero = gp.world.finalBoss;
         zero.wake();
         gp.showNotice("", 0);
         play(Story.awakening(allCluesFound()), null);
+    }
+
+    // Hurt, Subject Zero calls up its saplings (see LastStand); Flor has something to say the first time
+    public void saplingsCalled() {
+        play(seen.add("saplings") ? Story.FIRST_SAPLINGS : List.of(), () -> gp.showNotice(Story.SAPLINGS, 180));
+    }
+
+    // Subject Zero's roots crack the ground around the player for the first time
+    public void groundCracks() {
+        if (seen.add("roots")) play(Story.FIRST_ROOTS, null);
     }
 
     // Subject Zero is down: the last words, then the ending screen

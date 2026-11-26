@@ -81,6 +81,35 @@ public class QuestCheck {
         while (gp.dialogue.isOpen()) gp.dialogue.update(true);
         gp.dialogue.autoSkip = true;
 
+        System.out.println("2b. Stepping out of Room 404: the first fight");
+        Monster firstFight = w.firstFight;
+        Room hall404 = f4.find("Hallway (Room 404)");
+        check("it's a weak crawler (" + firstFight.enemy.maxHp() + " HP, " + nightmare404.battle.BattleScreen.turnSeconds(firstFight.enemy)
+                + "s a turn), not one of the hallway's own monsters", firstFight.enemy.maxHp() <= 40 && !hall404.monsters.contains(firstFight)
+                && !w.monsters.contains(firstFight));
+        started = null;
+        put(hall404, 8, 8); ticks(1);
+        check("out in the hallway, Flor sees the state of the place, and something drops on her",
+                gp.dialogue.said("reality is twisted") && gp.dialogue.said("are those.. monsters"));
+        check("...the controls are explained, and the fight starts", gp.dialogue.said("Spell words with the letters")
+                && started == firstFight);
+        gp.inBattle = false;
+        gp.endBattle(firstFight, new nightmare404.battle.BattleScreen.BattleResult(false, 0, p.kits));
+        check("losing it: back in Room 404, and Flor gets her breath back (the first time)", gp.currentRoom.name.equals("Room 404")
+                && gp.dialogue.said("I'm back here again?") && gp.notice().contains("wake up"));
+        started = null;
+        ticks(1);                                          // (A moment back in Room 404...)
+        put(hall404, 8, 8); ticks(1);                      // (...then out through the door again)
+        check("out again: it's still there, and lunges again", started == firstFight && gp.dialogue.said("still out here"));
+        gp.inBattle = false;
+        gp.endBattle(firstFight, won());
+        check("winning it: Flor catches her breath and decides to look for the logbook's pages", firstFight.defeated
+                && gp.dialogue.said("somewhat fend them off") && gp.dialogue.said("missing pages of the janitor's logbook"));
+        started = null;
+        put(f4.find("Room 404"), 12, 12); ticks(1);
+        put(hall404, 8, 8); ticks(10);
+        check("after that, the hallway is quiet", started == null);
+
         System.out.println("3. Every floor has a quest, with two clues in its side rooms");
         List<Clue> all = Quests.all(w);
         check("8 clues in all", all.size() == 8);
@@ -113,6 +142,7 @@ public class QuestCheck {
         putPx(r402, page1.x, page1.y); ticks(1);
         check("walking over the page picks it up, and the player reads it", p.clues.contains(page1.id)
                 && gp.dialogue.said("Kids keep staying late in 404"));
+        check("...and Flor reacts to it", gp.dialogue.said("That's MY classroom"));
         check("...finds a first aid kit with it (" + p.kits + "), and is told the Brute is weaker",
                 p.kits == kits + 1 && gp.notice().contains("20% weaker"));
         check("one clue: the Brute starts at 80% (72)", gp.director.foeStartHp(brute) == 72);
@@ -131,14 +161,42 @@ public class QuestCheck {
         System.out.println("5. The bosses react to what the player knows");
         Room west = f4.find("West Stairs");
         putPx(west, west.map.stairs.downFoot.x, west.map.stairs.downFoot.y); ticks(40);
+        check("walking into the West Stairs: Flor sees the chains, and something huge moves", gp.dialogue.said("Chained shut")
+                && gp.dialogue.said("Something huge shifts"));
         hold("U", 150);
         check("knowing both pages, Flor recognises the janitor before the Brute's battle", started == brute
                 && gp.dialogue.said("You're the janitor"));
         gp.inBattle = false;
         gp.endBattle(brute, won());
+        check("right after the win, a few words for the janitor", gp.dialogue.said("only trying to help us")
+                && gp.notice().contains("glints"));
         started = null; ticks(70);
         check("its key is picked up with a few words about it", p.keys.contains("West Stairwell Key")
-                && gp.dialogue.said("Now I've got the keys"));
+                && gp.dialogue.said("Now I've got the keys") && gp.dialogue.said("Down we go"));
+
+        System.out.println("5b. Scenes along the way");
+        Room libEntrance = f3.find("Library (Entrance)"), libEast = f3.find("Library (East)");
+        put(libEntrance, 12, 14); ticks(1);
+        check("Floor 3: walking into the library", gp.dialogue.said("hear my own heartbeat") && gp.dialogue.said("Nope nope nope"));
+        put(libEast, 4, 14); ticks(1);
+        check("...and into the back of it, where the whispering is", gp.dialogue.said("It's saying names"));
+        Monster librarian = null;
+        for (Monster m : libEntrance.monsters) if (m.enemy.name().equals("Librarian")) librarian = m;
+        gp.director.beforeBattle(librarian, () -> { });
+        check("meeting the Librarian: shushed", gp.dialogue.said("one bony finger to her lips"));
+        int saidBefore = gp.dialogue.linesSaid();
+        gp.director.beforeBattle(librarian, () -> { });
+        check("  (only the first time)", gp.dialogue.linesSaid() == saidBefore);
+        gp.endBattle(f3.boss, won());
+        check("beating the Whisperer: a different kind of quiet", gp.dialogue.said("different kind of quiet"));
+        Room containment = w.floor2.find("Containment Lab");
+        put(containment, 12, 14); ticks(1);
+        check("Floor 2: the first lab walked into smells, and the Containment Lab has its smashed pods",
+                gp.dialogue.said("don't touch anything green") && gp.dialogue.said("Pod 2 is empty"));
+        Room front = f1.find("Hallway (Principal's Office)");
+        put(front, 7, 10); hold("D", 120);
+        check("Floor 1: the front doors are locked, and Flor isn't happy about it", gp.currentRoom == front
+                && gp.dialogue.said("Locked?! Come on") && gp.notice().equals(f1.lockedNote));
 
         System.out.println("6. The journal");
         gp.journal.open();
@@ -253,6 +311,7 @@ public class QuestCheck {
         stand.fell(next);
         check("a felled tree: the player catches their breath (+10) and is told how many are left (" + (left - 1) + ")",
                 next.defeated && p.health == 60 && gp.notice().contains((left - 1) + " trees left"));
+        check("  the first one felled: \"One down..\"", gp.dialogue.said("One down"));
         Monster same = next;
         p.health = 0;
         gp.loseOutside();
@@ -267,6 +326,8 @@ public class QuestCheck {
         for (TreeMonster t : w.trees()) if (!t.defeated) stand.fell(t);
         check("the last tree falls: Subject Zero wakes, with a few words of its own", zero.awake() && zero.hunting()
                 && gp.dialogue.said("STAY... IN... YOUR... SEAT") && gp.dialogue.said("I remember all of them"));
+        check("  halfway through the trees, Flor saw where the roots lead; facing it, she won't sit down",
+                gp.dialogue.said("Toward the south gate") && gp.dialogue.said("I'm not sitting back down"));
 
         System.out.println("11. Subject Zero");
         p.items.hallPasses = 20;
@@ -279,7 +340,7 @@ public class QuestCheck {
         check("it comes for the player (" + (int) before + " -> " + (int) dist(zero) + " px)", dist(zero) < before);
         int eruptHp = p.health;
         for (int i = 0; i < 400 && stand.eruptions() == 0; i++) gp.update();
-        check("the ground cracks under the player: roots are coming", stand.eruptions() > 0);
+        check("the ground cracks under the player: roots are coming", stand.eruptions() > 0 && gp.dialogue.said("Move, move, MOVE!"));
         for (int i = 0; i < LastStand.ROOT_WARN + 5; i++) gp.update();
         check("stand still and they burst up under you (" + (eruptHp - p.health) + ")", eruptHp - p.health == LastStand.ROOT_DAMAGE);
         for (int i = 0; i < 400 && stand.eruptions() == 0; i++) gp.update();
@@ -296,7 +357,7 @@ public class QuestCheck {
             if (strike(zero)) hits++;
         }
         check("hurt to two thirds (" + hits + " strikes), it calls up two saplings through the gates",
-                stand.saplings().size() == 2 && gp.notice().contains("saplings"));
+                stand.saplings().size() == 2 && gp.notice().contains("saplings") && gp.dialogue.said("calling them in through the gates"));
         ticks(2);                                          // (They get their words as they come in)
         Hunter sapling = stand.saplings().get(0);
         for (Hunter s : stand.saplings()) if (dist(s) < dist(sapling)) sapling = s;   // The one in sight
@@ -308,7 +369,7 @@ public class QuestCheck {
                 && felled && sapling.defeated && stand.saplings().size() == 1);
         stand.fell(zero);
         check("Subject Zero falls: every clue found, the good ending (REMEMBERED)", gp.ended && gp.endedRemembered
-                && gp.dialogue.said("Every name is back"));
+                && gp.dialogue.said("Every name is back") && gp.dialogue.said("Not ever again"));
 
         GamePanel gp2 = new GamePanel();
         gp2.peaceful();
@@ -317,7 +378,7 @@ public class QuestCheck {
         gp2.currentRoom = gp2.world.quadrangle;
         gp2.lastStand.fell(gp2.world.finalBoss);
         check("fewer clues: the other ending (FORGOTTEN)", gp2.ended && !gp2.endedRemembered
-                && gp2.dialogue.said("Nobody can remember who used to sit there"));
+                && gp2.dialogue.said("Nobody can remember who used to sit there") && gp2.dialogue.said("Whose desk was that"));
 
         System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
         System.exit(fails == 0 ? 0 : 1);

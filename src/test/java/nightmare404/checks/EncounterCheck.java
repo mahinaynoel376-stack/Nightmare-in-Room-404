@@ -50,6 +50,7 @@ public class EncounterCheck {
     public static void main(String[] a) {
         gp = new GamePanel(); p = gp.flor;
         gp.battleStarter = m -> started = m;
+        gp.world.firstFight.defeated = true;    // The first fight, outside Room 404, is QuestCheck's
         List<Room> rooms = new ArrayList<>();
         for (Floor f = gp.world.top; f != null; f = f.below)
             for (Room r = f.head; r != null; r = r.right) {
