@@ -18,6 +18,8 @@ import nightmare404.battle.QuadrangleEnemies;
 import nightmare404.battle.TypingBattle;
 import nightmare404.battle.TypingBattle.Duel;
 import nightmare404.debug.BattleScreensDebug;
+import nightmare404.entity.Clue;
+import nightmare404.entity.Golem;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
 import nightmare404.entity.TreeMonster;
@@ -146,22 +148,35 @@ public class EncounterCheck {
         ticks(30);
         check("right after a battle the monsters give the player a moment", started == null);
 
-        System.out.println("5. The Brute stands in the middle of the stairs down, and drops the key to them");
+        System.out.println("5. The Brute sleeps on the stairs down as a boulder, wakes for the janitor's pages, and drops the key");
         Floor f4 = gp.world.floor4, f3 = gp.world.floor3, f2 = gp.world.floor2, f1 = gp.world.floor1;
         Room f4west = f4.find("West Stairs");
         check("the Brute is on Floor 4's way down (" + f4.boss.room.name + ")", f4.boss.room == f4west && f4west == f4.downStairs());
         Point foot = f4west.map.stairs.downFoot;
+        Golem golem = (Golem) f4.boss;
+        check("it starts asleep, as a boulder", golem.asleep());
         String[] sides = {"in the middle of the flight", "at its left edge", "at its right edge"};
         int[] xs = {foot.x, 5 * 32 - 8, 6 * 32 + 8};
         for (int i = 0; i < 3; i++) {
             putPx(f4west, xs[i], foot.y); ticks(40);
             hold("U", 150);
-            check("climbing " + sides[i] + ": the Brute stops the player (its battle starts)", started == f4.boss && gp.currentRoom.floor == f4);
-            gp.inBattle = false;
+            check("climbing " + sides[i] + " without the pages: the boulder blocks the way, and there's no battle",
+                    started == null && golem.asleep() && p.y > golem.y && gp.currentRoom.floor == f4
+                    && gp.notice().contains("won't budge"));
         }
         check("without its key, Floor 4's way down is locked", f4.locked(p.keys) && f4.lockedNote != null);
+        for (Clue c : f4.quest.clues) p.clues.add(c.id);      // Both of the janitor's pages
+        putPx(f4west, foot.x, foot.y); ticks(40); hold("U", 150);
+        check("with both pages, Flor reads the logbook to it, it wakes up, and its battle starts", started == f4.boss
+                && !golem.asleep() && !golem.waking() && gp.dialogue.said("Let me read you your own words"));
+        gp.endBattle(f4.boss, new BattleResult(false, 0, p.kits));
+        check("gave up against it: it's a boulder again, and the pages are lost again", golem.asleep()
+                && !f4.quest.complete(p.clues) && gp.currentRoom.name.equals("Room 404"));
+        for (Clue c : f4.quest.clues) p.clues.add(c.id);
+        started = null;
+        putPx(f4west, foot.x, foot.y); ticks(40); hold("U", 150);
+        check("  read to again, it wakes again", started == f4.boss);
         int pens = p.items.redPens;
-        putPx(f4west, foot.x, foot.y); hold("U", 150);
         gp.endBattle(f4.boss, new BattleResult(true, 80, 3));
         check("won: the Brute leaves its loot where it stood", f4.boss.defeated && !f4.boss.lootTaken
                 && gp.notice().contains("glints"));

@@ -79,17 +79,28 @@ Flor: I've got a really bad feeling about those stairs.
     way down without the key)
 
 --- Reaching the West Stairs ---
-Flor: Chained shut.. of course it is.
+Flor: The stairs down.. blocked. Of course they are.
 Flor: Okay, think. The janitor had the keys. If I find him, I find the way down.
--- something huge shifts in the dark of the stairwell --
+-- for a moment, the boulder on the stairs seems to breathe --
 Flor: ..Please don't be what I think it is.
 
-  -- Before the fight, with 0 clues found --
-  Something huge has wedged itself into the stairwell. It doesn't even look at you.
-  -- Before the fight, with 1 clue found --
-  A ring of keys hangs from the Brute's belt, half buried in rubble. Where have you seen
-    keys like that before?
-  -- Before the fight, with 2 clues found --
+--- Walking up to the boulder (without both pages) ---
+-- a huge boulder sits in the middle of the stairs down, wedged between the rails --
+-- half buried in the rock: a ring of keys --
+Flor: It won't budge.. not even a little.
+Flor: Those keys.. they look like the janitor's. Maybe his missing pages say what happened up here.
+[HOW TO PLAY] Find the janitor's two missing pages on this floor, then come back and read them to the boulder.
+>> The boulder won't budge. Logbook pages found: 1 of 2.   (every time after that)
+
+--- Reciting the logbook to the boulder (with both pages) ---
+Flor: I found your pages. All of them. Let me read you your own words.
+Flor: "Oct 3. Kids keep staying late in 404. In the morning, nobody remembers their names."
+Flor: "Oct 9. I'm staying up here tonight to see who's doing it. My keys are on my belt."
+Flor: "11:40 PM. Footsteps on the fourth floor again.. If you're reading this, don't stay late. Go home."
+-- the boulder shudders. Its cracks glow orange, and something inside the rock groans awake --
+-- the boulder splits open and the Brute stands up out of it --
+
+  -- Before the fight (always with both pages: they're what wakes it) --
   FLOR: Those keys... You're the janitor. You stayed up here to look for them.
   The Brute flinches. For a moment it looks almost human.
   -- After winning --

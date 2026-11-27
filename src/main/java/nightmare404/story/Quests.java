@@ -12,7 +12,8 @@ import nightmare404.world.World;
 // Every floor's quest and where its clues lie, like Encounters does for the monsters. Each floor has
 // two clues, in the side rooms the player could otherwise walk straight past:
 //
-//   Floor 4  The Janitor's Logbook   a torn page in Room 402, another in Room 403
+//   Floor 4  The Janitor's Logbook   a torn page in Room 402, another in Room 403 (both needed: read
+//                                    to the boulder on the stairs, they wake the Brute; see Golem)
 //   Floor 3  Overdue                 a checkout card in Library (Entrance), another in Library (West)
 //   Floor 2  Project REMEMBER        a lab report page in the Chemistry Lab, another in the Biology Lab
 //   Floor 1  Permanent Record        a staff memo in the Faculty Room, the register in the Records Room

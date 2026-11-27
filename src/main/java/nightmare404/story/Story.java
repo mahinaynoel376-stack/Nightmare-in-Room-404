@@ -98,9 +98,9 @@ public class Story {
     public static List<Line> bossRoom(int floor) {
         return switch (floor) {
             case 4 -> List.of(
-                    flor("Chained shut.. of course it is."),
+                    flor("The stairs down.. blocked. Of course they are."),
                     flor("Okay, think. The janitor had the keys. If I find him, I find the way down."),
-                    narrate("Something huge shifts in the dark of the stairwell."),
+                    narrate("For a moment, the boulder on the stairs seems to breathe."),
                     flor("..Please don't be what I think it is."));
             case 3 -> List.of(
                     flor("The whispering's coming from back there. It's getting louder.."),
@@ -111,6 +111,28 @@ public class Story {
             default -> List.of();
         };
     }
+
+    // Floor 4's way down is blocked by a boulder: the Brute, asleep (see Golem). The first time the player
+    // walks up to it without both of the janitor's missing pages:
+    public static final List<Line> BOULDER = List.of(
+            narrate("A huge boulder sits in the middle of the stairs down, wedged between the rails."),
+            narrate("Half buried in the rock: a ring of keys."),
+            flor("It won't budge.. not even a little."),
+            flor("Those keys.. they look like the janitor's. Maybe his missing pages say what happened up here."),
+            tip("Find the janitor's two missing pages on this floor, then come back and read them to the boulder."));
+
+    // Every time, after that
+    public static String boulderNotice(int found, int total) {
+        return "The boulder won't budge. Logbook pages found: " + found + " of " + total + ".";
+    }
+
+    // With both pages: Flor reads the janitor's logbook out to the boulder, and it starts to wake
+    public static final List<Line> RECITE = List.of(
+            flor("I found your pages. All of them. Let me read you your own words."),
+            flor("\"Oct 3. Kids keep staying late in 404. In the morning, nobody remembers their names.\""),
+            flor("\"Oct 9. I'm staying up here tonight to see who's doing it. My keys are on my belt.\""),
+            flor("\"11:40 PM. Footsteps on the fourth floor again.. If you're reading this, don't stay late. Go home.\""),
+            narrate("The boulder shudders. Its cracks glow orange, and something inside the rock groans awake."));
 
     // Trying the floor's way out without its key, the first time (then the locked note shows)
     public static List<Line> lockedOut(int floor) {
@@ -205,13 +227,9 @@ public class Story {
     // Before the fight. What the player says depends on how many of the floor's clues they found.
     public static List<Line> bossBefore(int floor, int found) {
         return switch (floor) {
-            case 4 -> switch (found) {
-                case 0 -> List.of(narrate("Something huge has wedged itself into the stairwell. It doesn't even look at you."));
-                case 1 -> List.of(narrate("A ring of keys hangs from the Brute's belt, half buried in rubble. "
-                        + "Where have you seen keys like that before?"));
-                default -> List.of(flor("Those keys... You're the janitor. You stayed up here to look for them."),
-                        narrate("The Brute flinches. For a moment it looks almost human."));
-            };
+            case 4 -> List.of(                   // (Its battle only comes after both pages are read to it)
+                    flor("Those keys... You're the janitor. You stayed up here to look for them."),
+                    narrate("The Brute flinches. For a moment it looks almost human."));
             case 3 -> switch (found) {
                 case 0 -> List.of(narrate("At the end of the library, something whispers. You can't make out the words."));
                 case 1 -> List.of(narrate("It's whispering names. The same few names, over and over."));

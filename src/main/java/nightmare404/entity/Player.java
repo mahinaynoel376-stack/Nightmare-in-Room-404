@@ -258,6 +258,9 @@ public class Player {
     private boolean blocked() {
         Room room = gp.currentRoom;
         if (room.map.collides(solidArea)) return true;
+        for (Monster m : room.monsters) {
+            if (m.blocks(solidArea)) return true;     // The boulder on the stairs (see Golem)
+        }
         if (solidArea.x < 0 && room.left != null) {
             return room.left.map.collides(shifted(room.left.map.widthPx()));
         }

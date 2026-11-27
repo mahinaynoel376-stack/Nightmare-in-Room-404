@@ -9,6 +9,7 @@ import java.util.Set;
 import nightmare404.battle.LastStand;
 import nightmare404.entity.Clue;
 import nightmare404.entity.Hunter;
+import nightmare404.entity.Golem;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
 import nightmare404.entity.SubjectZero;
@@ -131,8 +132,13 @@ public class QuestCheck {
             }
         }
 
-        System.out.println("4. Picking clues up weakens the floor's boss");
+        System.out.println("4. Picking clues up weakens the floor's boss (and on Floor 4, the pages wake it)");
         Monster brute = f4.boss;
+        Room stairs4 = f4.find("West Stairs");
+        putPx(stairs4, stairs4.map.stairs.downFoot.x, stairs4.map.stairs.downFoot.y); ticks(40);
+        hold("U", 150);
+        check("without the janitor's pages, the boulder on the stairs won't budge: no battle", started == null
+                && ((Golem) brute).asleep() && gp.dialogue.said("It won't budge") && gp.notice().contains("0 of 2"));
         check("with no clues the Brute starts at full health (90)", gp.director.foeStartHp(brute) == 90);
         Room r402 = f4.find("Room 402"), r403 = f4.find("Room 403");
         for (Monster m : r402.monsters) m.defeated = true;    // Nobody in the way
@@ -161,11 +167,11 @@ public class QuestCheck {
         System.out.println("5. The bosses react to what the player knows");
         Room west = f4.find("West Stairs");
         putPx(west, west.map.stairs.downFoot.x, west.map.stairs.downFoot.y); ticks(40);
-        check("walking into the West Stairs: Flor sees the chains, and something huge moves", gp.dialogue.said("Chained shut")
-                && gp.dialogue.said("Something huge shifts"));
+        check("walking into the West Stairs: the way down is blocked, and the boulder seems to breathe",
+                gp.dialogue.said("blocked. Of course they are") && gp.dialogue.said("seems to breathe"));
         hold("U", 150);
-        check("knowing both pages, Flor recognises the janitor before the Brute's battle", started == brute
-                && gp.dialogue.said("You're the janitor"));
+        check("with both pages, Flor reads them to the boulder; it wakes, she recognises the janitor, and the battle starts",
+                started == brute && gp.dialogue.said("Let me read you your own words") && gp.dialogue.said("You're the janitor"));
         gp.inBattle = false;
         gp.endBattle(brute, won());
         check("right after the win, a few words for the janitor", gp.dialogue.said("only trying to help us")

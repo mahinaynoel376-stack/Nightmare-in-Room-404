@@ -7,9 +7,11 @@ import java.util.Set;
 import nightmare404.entity.Clue;
 import nightmare404.world.Floor;
 
-// A floor's quest: find the clues in its side rooms. It's never required (the way down only needs the
-// boss's key), but every clue found BEFORE the fight takes WEAKEN_PER_CLUE of the boss's health away
-// when its battle starts, and gives some supplies. That's what makes the side rooms worth the risk.
+// A floor's quest: find the clues in its side rooms. Every clue found BEFORE the fight takes
+// WEAKEN_PER_CLUE of the boss's health away when its battle starts, and gives some supplies. That's what
+// makes the side rooms worth the risk. On Floor 4 the clues are needed: the boss sleeps as a boulder on
+// the stairs down until Flor reads it both of the janitor's pages (see Golem). On the other floors
+// they're not: the way down only needs the boss's key.
 //
 // Story-wise, each boss is someone the school forgot, and the clues are pieces of who they were:
 // remembering them weakens them.

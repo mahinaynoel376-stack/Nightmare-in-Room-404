@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 
 import nightmare404.entity.Clue;
+import nightmare404.entity.Golem;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
 import nightmare404.entity.SubjectZero;
@@ -83,6 +84,10 @@ public class Director {
     // The player walked into a monster. A floor's boss says something first (once for each number of
     // clues found, so it reacts to what the player knows); then the battle starts.
     public void beforeBattle(Monster m, Runnable fight) {
+        if (m instanceof Golem && ((Golem) m).asleep()) {
+            atTheBoulder((Golem) m);             // Still a boulder: no battle yet
+            return;
+        }
         if (m.boss && m == m.room.floor.boss) {
             Floor f = m.room.floor;
             int found = f.quest == null ? 0 : f.quest.found(gp.flor.clues);
@@ -90,6 +95,21 @@ public class Director {
         } else {
             String name = m.enemy.name();       // Some monsters get a few words the first time they're met
             play(seen.add("meet:" + name) ? Story.meeting(name) : List.of(), fight);
+        }
+    }
+
+    // The player walked up to the boulder on the stairs (the Brute, asleep: see Golem). Without the
+    // janitor's two missing pages it won't budge; with both, Flor reads the logbook out to it, and it
+    // wakes up (then walking into it starts its battle, like any boss).
+    private void atTheBoulder(Golem golem) {
+        Quest q = golem.room.floor.quest;
+        String notice = Story.boulderNotice(q.found(gp.flor.clues), q.clues.size());
+        if (q.complete(gp.flor.clues)) {
+            play(Story.RECITE, () -> golem.wake());
+        } else if (seen.add("boulder")) {
+            play(Story.BOULDER, () -> gp.showNotice(notice, 240));
+        } else {
+            gp.showNotice(notice, 240);
         }
     }
 

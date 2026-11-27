@@ -7,6 +7,7 @@ import nightmare404.battle.LibraryEnemies;
 import nightmare404.battle.LobbyEnemies;
 import nightmare404.battle.QuadrangleEnemies;
 import nightmare404.entity.Loot;
+import nightmare404.entity.Golem;
 import nightmare404.entity.Monster;
 import nightmare404.entity.SubjectZero;
 import nightmare404.entity.TreeMonster;
@@ -75,7 +76,8 @@ public class Encounters {
         e.patrol(f4, "Room 403", FourthFloorEnemies.HALL_MONITOR, 10, 6, 10, 13);    // Down the gap between the desks
         e.hallway(f4, "Hallway (Room 402)", FourthFloorEnemies.CRAWLER, 4, 10, 12, 10);
         e.hallway(f4, "Hallway (Room 403)", FourthFloorEnemies.HALL_MONITOR, 10, 9, 4, 9);
-        e.boss(f4, "West Stairs", FourthFloorEnemies.BRUTE, 5, 11, 16,               // On the stairs down, filling them
+        // On the stairs down, filling them: asleep as a boulder until Flor reads it the janitor's logbook
+        e.boss(f4, new Golem(FourthFloorEnemies.BRUTE, find(f4, "West Stairs"), ts, 5, 11), 16,
                 new Loot("West Stairwell Key", "The Brute crumbles. In the rubble: the janitor's key, tagged 4F WEST STAIRS.",
                         1, 0, 1, 0),
                 "The way down is chained shut. The janitor's key must be on this floor.");
@@ -148,7 +150,12 @@ public class Encounters {
     // two tiles). Beaten, it drops loot, whose key opens the floor's way out; lockedNote is what the
     // player reads at the locked way out without it.
     private void boss(Floor floor, String room, EnemyDef enemy, int col, int row, int shiftX, Loot loot, String lockedNote) {
-        Monster m = new Monster(enemy, find(floor, room), true, ts, new int[] {col, row}).nudge(shiftX);
+        boss(floor, new Monster(enemy, find(floor, room), true, ts, new int[] {col, row}), shiftX, loot, lockedNote);
+    }
+
+    // The same, for a boss that's its own kind of monster (the Brute is a Golem)
+    private void boss(Floor floor, Monster m, int shiftX, Loot loot, String lockedNote) {
+        m.nudge(shiftX);
         m.loot = loot;
         floor.boss = m;
         floor.exitKey = loot.key();

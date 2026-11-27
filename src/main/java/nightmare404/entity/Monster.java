@@ -33,7 +33,7 @@ public class Monster {
     public static final int GIVE_UP_RANGE = 6 * 32;     // ...and gives up when they're 6 tiles away
     private static final int GIVE_UP_STUCK = 45;        // ...or when it's been stuck this many ticks
     private static final int MAX_TRAIL = 900;           // How far back (in ticks) it remembers its way home
-    private static final int HEIGHT = 52, BOSS_HEIGHT = 72;   // Drawn size in the world, in pixels
+    protected static final int HEIGHT = 52, BOSS_HEIGHT = 72;   // Drawn size in the world, in pixels
 
     public final EnemyDef enemy;
     public final Room room;
@@ -156,9 +156,20 @@ public class Monster {
 
     // The area it grabs from: its hitbox, a little bigger; for a boss, 2 tiles wide
     private Rectangle reach() {
-        Rectangle reach = boss ? new Rectangle(x + 16 - 32, y + 8, 64, 24) : new Rectangle(solidArea);
+        Rectangle reach = body();
         reach.grow(4, 4);
         return reach;
+    }
+
+    // The space it takes up: its hitbox, or for a boss, the 2 tiles it stands across
+    protected Rectangle body() {
+        return boss ? new Rectangle(x + 16 - 32, y + 8, 64, 24) : new Rectangle(solidArea);
+    }
+
+    // True if it stands in the way of this box, so the player can't walk there. Monsters don't
+    // (walking into one starts its battle), except the boulder on the stairs: see Golem.
+    public boolean blocks(Rectangle box) {
+        return false;
     }
 
     // Moves up to `speed` pixels towards (tx, ty), across first, then down; one pixel at a time so it

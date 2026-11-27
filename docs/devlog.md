@@ -482,6 +482,13 @@ The quadrangle's building face lost its two side exits and their pillars, so the
 The script's typos were tidied in the game ("At least", "what's", a closing `*`), and its stage directions became narration.
 **Checks:** `QuestCheck` section 2b plays the first fight (losing it, then winning it), and the other sections check each new scene appears; `EncounterCheck` marks the first fight done, since it isn't about the story.
 
+## 2026-11-27 — Floor 4's quest: read the logbook to the boulder
+
+**What changed:** the Brute now sleeps as a boulder in the middle of the West Stairs (`entity.Golem`, a kind of `Monster`). The boulder blocks the stairs (`Monster.blocks`, checked in `Player.blocked`), so Floor 4's quest is no longer optional: walking up to it without both of the janitor's missing pages, Flor finds it won't budge, with a tip to find them (later, a notice counts the pages found). With both, she recites the logbook to it (`Story.RECITE`), and it wakes in a 1.5-second animation: it shakes as its cracks glow and its eyes open, splits open, and the golem stands up out of it with a hop. Then walking into it starts the battle as before, with Flor recognising the janitor. Giving up after losing to it turns it back into a boulder (and, as always, takes back the pages found since the floor began).
+**Art:** `tools/art/make_golem_boulder.py` draws `brute3_boulder`, `brute3_boulder_cracked` and `brute3_boulder_split` in the Brute's own palette and canvas; the animation ends on its usual `brute3`.
+**Note:** with both pages always found before the fight, the Brute always starts at 60% health (the clue weakening still applies).
+**Checks:** `EncounterCheck` section 5 (blocked at the middle and both edges without the pages, woken with them, back to a boulder after giving up) and `QuestCheck` sections 4-5.
+
 ## Open issues and ideas
 
 - ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).
