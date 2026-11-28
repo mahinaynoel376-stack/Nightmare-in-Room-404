@@ -31,13 +31,13 @@ public class QuadrangleEnemies {
     public static final EnemyDef SUBJECT_ZERO = new EnemyDef(
             "Subject Zero",
             "subject_zero",
-            160,
+            240,
             "QUADRANGLE",
             "Subject Zero broke the glass of pod 2 on day 40. It was the first of them. It has been forgotten the longest.\n"
                     + "- Lab report, Project REMEMBER",
             List.of(
-                    new Attack("Crushing Grip", 16, 0, 0, 3, "It closes every hand it has around you."),
-                    new Attack("Many Mouths",   12, 0, 0, 2, "Every mouth bites at once.")),
+                    new Attack("Crushing Grip", 20, 0, 0, 3, "It closes every hand it has around you."),
+                    new Attack("Many Mouths",   15, 0, 0, 2, "Every mouth bites at once.")),
             QUADRANGLE);
 
     // What Subject Zero calls up through the gates once it's hurt: a small, quick Hollow Oak

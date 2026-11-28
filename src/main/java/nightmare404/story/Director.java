@@ -6,10 +6,12 @@ import java.util.List;
 import java.util.Set;
 
 import nightmare404.entity.Clue;
-import nightmare404.entity.Golem;
+import nightmare404.entity.FirstBlob;
+import nightmare404.entity.SleepingBoss;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
 import nightmare404.entity.SubjectZero;
+import nightmare404.entity.Whisperer;
 import nightmare404.main.GamePanel;
 import nightmare404.world.Floor;
 import nightmare404.world.Room;
@@ -71,10 +73,10 @@ public class Director {
             if (f.boss != null && room == f.boss.room && !f.boss.defeated && seen.add("bossRoom" + f.number)) {
                 scene.addAll(Story.bossRoom(f.number));
             }
-            Monster first = gp.world.firstFight;
+            FirstBlob first = gp.world.firstFight;
             if (hallway && first != null && !first.defeated && first.room.floor == f) {
                 scene.addAll(seen.add("firstFight") ? Story.FIRST_FIGHT : Story.FIRST_FIGHT_AGAIN);
-                play(scene, () -> gp.startBattle(first));
+                play(scene, () -> first.drop(gp.flor));   // It drops on her; landing starts its battle
                 return;
             }
         }
@@ -84,8 +86,16 @@ public class Director {
     // The player walked into a monster. A floor's boss says something first (once for each number of
     // clues found, so it reacts to what the player knows); then the battle starts.
     public void beforeBattle(Monster m, Runnable fight) {
-        if (m instanceof Golem && ((Golem) m).asleep()) {
-            atTheBoulder((Golem) m);             // Still a boulder: no battle yet
+        if (m == gp.world.firstFight) {          // The blob has landed on her: the controls, the first time
+            play(seen.add("firstFightLanded") ? Story.FIRST_FIGHT_LANDED : List.of(), fight);
+            return;
+        }
+        if (m instanceof SleepingBoss && ((SleepingBoss) m).asleep()) {
+            wakeUp((SleepingBoss) m);            // Still asleep: no battle yet
+            return;
+        }
+        if (m instanceof Whisperer && ((Whisperer) m).intangible()) {
+            atTheWhisperer((Whisperer) m);       // Still intangible: no battle yet
             return;
         }
         if (m.boss && m == m.room.floor.boss) {
@@ -98,19 +108,45 @@ public class Director {
         }
     }
 
-    // The player walked up to the boulder on the stairs (the Brute, asleep: see Golem). Without the
-    // janitor's two missing pages it won't budge; with both, Flor reads the logbook out to it, and it
-    // wakes up (then walking into it starts its battle, like any boss).
-    private void atTheBoulder(Golem golem) {
-        Quest q = golem.room.floor.quest;
+    // The player walked up to a sleeping boss (see SleepingBoss). Test Subject X bursts out of its pod
+    // as soon as anyone comes near. The Brute, a boulder on the stairs, won't budge without both of the
+    // janitor's missing pages; with both, Flor reads the logbook out to it, and it wakes. (Then walking
+    // into it starts its battle, like any boss.)
+    private void wakeUp(SleepingBoss boss) {
+        if (!boss.needsClues) {
+            play(Story.POD, () -> boss.wake());
+            return;
+        }
+        Quest q = boss.room.floor.quest;
         String notice = Story.boulderNotice(q.found(gp.flor.clues), q.clues.size());
         if (q.complete(gp.flor.clues)) {
-            play(Story.RECITE, () -> golem.wake());
+            play(Story.RECITE, () -> boss.wake());
         } else if (seen.add("boulder")) {
             play(Story.BOULDER, () -> gp.showNotice(notice, 240));
         } else {
             gp.showNotice(notice, 240);
         }
+    }
+
+    // The player walked up to the Whisperer while she's intangible (see Whisperer). Without the three
+    // checkout cards she just keeps whispering blanks; with all three, Flor reads her the names, and she
+    // turns solid (then walking into her starts her battle).
+    private void atTheWhisperer(Whisperer whisperer) {
+        Quest q = whisperer.room.floor.quest;
+        String notice = Story.whispererNotice(q.found(gp.flor.clues), q.clues.size());
+        if (q.complete(gp.flor.clues)) {
+            play(Story.NAMES, () -> whisperer.solidify());
+        } else if (seen.add("whisperer")) {
+            play(Story.MUMBLING, () -> gp.showNotice(notice, 240));
+        } else {
+            gp.showNotice(notice, 240);
+        }
+    }
+
+    // The player walked up to the haze over Floor 3's way down (see Haze): it calls them back to the library
+    public void hazeCalls(Floor f) {
+        String notice = Story.hazeNotice(f.quest.found(gp.flor.clues), f.quest.clues.size());
+        play(seen.add("haze") ? Story.HAZE : List.of(), () -> gp.showNotice(notice, 240));
     }
 
     // How much health the monster starts its battle with: a floor's boss loses some for every clue
@@ -126,9 +162,33 @@ public class Director {
         if (m == gp.world.firstFight) {
             play(Story.AFTER_FIRST_FIGHT, null);
         } else if (m.boss) {
-            String notice = "The " + m.enemy.name() + " falls. Something glints where it stood...";
+            String notice = m.loot == null ? "The way down is clear."      // (The Brute drops nothing)
+                    : "The " + m.enemy.name() + " falls. Something glints where it stood...";
             play(Story.bossDown(m.room.floor.number), () -> gp.showNotice(notice));
+        } else if (m.loot != null) {             // A monster carrying something (the Lab Assistant's keycard)
+            gp.showNotice("The " + m.enemy.name() + " falls. Something glints where it stood...");
         }
+    }
+
+    // The player tried a locked door. The Containment Lab needs its keycard (see Encounters): the first
+    // time, a few words, and the locked note every time. The Principal's office opens once the floor's
+    // three books are found: without them he won't see Flor; with them, she recites what she's learned,
+    // and the door opens (she's given the "key", her appointment).
+    public void doorLocked(Room room) {
+        if (room.opensWhenQuestDone) {
+            Quest q = room.floor.quest;
+            if (q.complete(gp.flor.clues)) {
+                play(Story.RECITAL, () -> {
+                    gp.flor.keys.add(room.lockedWith);
+                    gp.showNotice("The office door clicks open.");
+                });
+                return;
+            }
+            String notice = Story.officeNotice(q.found(gp.flor.clues), q.clues.size());
+            play(seen.add("door:" + room.name) ? Story.doorLocked(room.name) : List.of(), () -> gp.showNotice(notice));
+            return;
+        }
+        play(seen.add("door:" + room.name) ? Story.doorLocked(room.name) : List.of(), () -> gp.showNotice(room.lockedNote));
     }
 
     // The player tried the floor's way out (or down) without its key. The first time, Flor may say
@@ -155,7 +215,7 @@ public class Director {
         SubjectZero zero = gp.world.finalBoss;
         zero.wake();
         gp.showNotice("", 0);
-        play(Story.awakening(allCluesFound()), null);
+        play(Story.awakening(allCluesFound(), gp.flor.keys.contains(SubjectZero.CALMING_ITEM)), null);
     }
 
     // Hurt, Subject Zero calls up its saplings (see LastStand); Flor has something to say the first time
@@ -168,10 +228,24 @@ public class Director {
         if (seen.add("roots")) play(Story.FIRST_ROOTS, null);
     }
 
-    // Subject Zero is down: the last words, then the ending screen
+    // Subject Zero is down: a few words, then the south gate opens and the sun comes up, and the
+    // player walks out (see Dawn)
     public void zeroBeaten() {
         boolean remembered = allCluesFound();
-        play(Story.ending(remembered), () -> gp.end(remembered));
+        play(Story.ending(remembered), () -> {
+            gp.dawn.begin(remembered);
+            gp.showNotice(Story.gateOpen(remembered), 300);
+        });
+    }
+
+    // On the way to the gate: a thought, as the sun comes up
+    public void dawnThought(boolean remembered) {
+        play(Story.dawnThought(remembered), null);
+    }
+
+    // Out through the south gate: the last words, then the ending screen
+    public void walkedOut(boolean remembered) {
+        play(Story.departure(remembered), () -> gp.end(remembered));
     }
 
     // The player walked over a clue: read it, take what's with it, and see how the boss is weakened
@@ -193,9 +267,12 @@ public class Director {
     }
 
     // The player picked up what a boss dropped
-    public void lootTaken(Monster boss) {
-        String notice = "Found: " + boss.loot.key() + "\n" + boss.loot.supplies();
-        play(Story.bossAfter(boss.room.floor.number, boss.loot.found()), () -> gp.showNotice(notice, 300));
+    public void lootTaken(Monster m) {
+        String supplies = m.loot.supplies();
+        String notice = "Found: " + m.loot.key() + (supplies.isEmpty() ? "" : "\n" + supplies);
+        List<Line> lines = m.boss ? Story.bossAfter(m.room.floor.number, m.loot.found())
+                : Story.found(m.enemy.name(), m.loot.found());
+        play(lines, () -> gp.showNotice(notice, 300));
     }
 
     // Reading a clue again from the journal

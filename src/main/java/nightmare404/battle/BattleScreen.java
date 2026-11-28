@@ -42,8 +42,7 @@ public class BattleScreen {
     // ---- Items in the lockers (bottom left) ----
     // The player clicks an item during their turn to use one up (it doesn't cost the turn).
     // Using the same item more than once in a turn stacks, up to the MAX.
-    static final double TEXTBOOK_PER_USE = 0.25;  // Old Textbook: the next enemy hit does 25% less damage
-    static final double TEXTBOOK_MAX = 0.75;      //   ...stacking up to 75% less
+    static final int TEXTBOOK_DAMAGE = 18;        // Old Textbook: thrown at the monster, 18 damage straight away
     static final double RED_PEN_PER_USE = 0.25;   // Red Pen: the player's next attack does 25% more damage
     static final double RED_PEN_MAX = 1.00;       //   ...stacking up to +100% (double damage)
     static final int HALL_PASS_PER_USE = 50;      // Hall Pass: 50% chance to dodge the next enemy attack
@@ -53,7 +52,7 @@ public class BattleScreen {
     // The player has a limited time to make their move. When it runs out, the word they were spelling
     // is dropped and the monster takes its turn. Weak monsters give plenty of time, strong ones very
     // little: it goes by the monster's health, TURN_MOST seconds for 80 HP or less (the 4th floor's),
-    // 5 seconds less for every 5 HP more, and never less than TURN_LEAST (the Principal, at 120 HP).
+    // a second less for every 4 HP more, and never less than TURN_LEAST (the Principal, at 200 HP).
     // The clock only runs on the player's turn (not while the monster attacks, nor with the menu open);
     // Shuffle and the items are free, so they don't stop it.
     // (It can be turned off on the main menu's Options: Settings.turnTimer.)
@@ -61,7 +60,7 @@ public class BattleScreen {
     static final int TICKS_PER_SECOND = 62;      // The battle's clock ticks every 16 ms
 
     public static int turnSeconds(EnemyDef enemy) {
-        return Math.max(TURN_LEAST, Math.min(TURN_MOST, TURN_MOST - (enemy.maxHp() - 80)));
+        return Math.max(TURN_LEAST, Math.min(TURN_MOST, TURN_MOST - (enemy.maxHp() - 80) / 4));
     }
 
     // ---- Atmosphere ----
@@ -307,7 +306,7 @@ public class BattleScreen {
         int kits;
         final Items items;
         int[] startItems; // item counts when the fight began (Try Again puts them back)
-        int booksActive, pensActive, passesActive; // items clicked this turn, waiting to take effect
+        int pensActive, passesActive; // items clicked this turn, waiting to take effect
 
         final ArrayDeque<Step> script = new ArrayDeque<>();
         Step step; int stepTimer;
@@ -365,7 +364,7 @@ public class BattleScreen {
             foe.max = enemy.maxHp(); foe.reset(startFoeHp);
             kits = startKits;
             if (startItems != null) { items.textbooks = startItems[0]; items.redPens = startItems[1]; items.hallPasses = startItems[2]; }
-            booksActive = pensActive = passesActive = 0;
+            pensActive = passesActive = 0;
             turnLeft = turnTicks;
             word.clear();
             for (int i = 0; i < 16; i++) newTile(i);
@@ -621,13 +620,12 @@ public class BattleScreen {
             then(0, () -> { if (hero.hp <= 0) heroDefeated(); else turnLeft = turnTicks; });   // The player's turn again: a fresh clock
         }
 
-        int enemyDamage(Attack a) { return a.damage() <= 0 ? 0 : Math.max(1, (int) Math.round(a.damage() * (1 - blockNow()))); }
+        int enemyDamage(Attack a) { return Math.max(0, a.damage()); }
 
         void enemyHits(Attack a) {
             int dodge = dodgeNow();            // Hall Passes used this turn
-            int dmg = enemyDamage(a);          // already reduced by Textbooks used this turn
-            int blocked = booksActive > 0 ? Math.max(0, a.damage() - dmg) : 0;
-            booksActive = passesActive = 0;    // they're spent on this attack
+            int dmg = enemyDamage(a);
+            passesActive = 0;                  // they're spent on this attack
             if (rng.nextInt(100) < dodge) {
                 addFloat(HERO_X - 50, 140, "Dodged!", PALE);
                 return;
@@ -635,7 +633,6 @@ public class BattleScreen {
             if (dmg > 0) {
                 hurt(hero, dmg);
                 addFloat(HERO_X - 20, 140, "-" + dmg, new Color(235, 50, 40));
-                if (blocked > 0) addFloat(HERO_X - 80, 110, "Textbook blocked " + blocked, PALE);
             }
             if (a.scratch() > 0) {
                 List<Integer> c = new ArrayList<>();
@@ -1018,8 +1015,7 @@ public class BattleScreen {
                 g.setColor(hover ? new Color(150, 30, 30) : new Color(70, 72, 70));
                 g.setStroke(new BasicStroke(2));
                 g.drawRect(cub.x, cub.y, cub.width, cub.height);
-                String active = i == 0 && booksActive > 0 ? "-" + pct(blockNow()) + "%"
-                              : i == 1 && pensActive > 0 ? "+" + pct(boostNow()) + "%"
+                String active = i == 1 && pensActive > 0 ? "+" + pct(boostNow()) + "%"
                               : i == 2 && passesActive > 0 ? dodgeNow() + "%" : null;
                 if (active != null) { // used this turn: glowing outline and its current strength
                     g.setColor(new Color(230, 40, 40, (int) (150 + 100 * Math.sin(ticks / 6.0))));
@@ -1110,28 +1106,38 @@ public class BattleScreen {
         static long pct(double fraction) { return Math.round(fraction * 100); }
 
         // Strength of the items clicked this turn (more clicks = stronger, up to the MAX in SETTINGS)
-        double blockNow() { return Math.min(TEXTBOOK_MAX, booksActive * TEXTBOOK_PER_USE); }
         double boostNow() { return Math.min(RED_PEN_MAX, pensActive * RED_PEN_PER_USE); }
         int dodgeNow()    { return Math.min(HALL_PASS_MAX, passesActive * HALL_PASS_PER_USE); }
 
-        /** Clicking a locker item uses one up. It takes effect on the next attack (yours for the pen, the enemy's for the others). */
+        /** Clicking a locker item uses one up. The textbook is thrown straight away; the pen takes effect on your
+         *  next attack, the pass on the enemy's. */
         void useItem(int i) {
             if (itemCount(i) <= 0) { showBanner("You don't have a " + ITEM_NAMES[i] + ".", 70); return; }
-            boolean maxed = i == 0 ? blockNow() >= TEXTBOOK_MAX : i == 1 ? boostNow() >= RED_PEN_MAX : dodgeNow() >= HALL_PASS_MAX;
+            boolean maxed = i == 1 ? boostNow() >= RED_PEN_MAX : i == 2 && dodgeNow() >= HALL_PASS_MAX;
             if (maxed) { showBanner("Using another won't help any more this turn.", 70); return; }
             switch (i) {
-                case 0 -> { items.textbooks--; booksActive++; showBanner("Textbook raised: the next hit does " + pct(blockNow()) + "% less damage.", 100); }
+                case 0 -> throwTextbook();
                 case 1 -> { items.redPens--; pensActive++; showBanner("Red Pen ready: your next attack does +" + pct(boostNow()) + "% damage.", 100); }
                 default -> { items.hallPasses--; passesActive++; showBanner("Hall Pass ready: " + dodgeNow() + "% chance to dodge the next attack.", 100); }
             }
         }
 
+        /** The Old Textbook: thrown at the monster, for TEXTBOOK_DAMAGE straight away */
+        void throwTextbook() {
+            items.textbooks--;
+            hero.lunge = 18;
+            hero.attackPose = 30;
+            hurt(foe, TEXTBOOK_DAMAGE);
+            addFloat(ENEMY_X - 20, 150, "-" + TEXTBOOK_DAMAGE, new Color(235, 50, 40));
+            showBanner(HERO_NAME + " hurls the textbook at the " + enemy.name() + "!", 90);
+            if (foe.hp <= 0) enemyDefeated();
+        }
+
         String itemTooltip(int i) {
-            String effect = i == 0 ? "Click to use one: the next enemy hit does " + pct(TEXTBOOK_PER_USE) + "% less damage (stacks up to " + pct(TEXTBOOK_MAX) + "%)."
+            String effect = i == 0 ? "Click to throw one at the monster: " + TEXTBOOK_DAMAGE + " damage, straight away."
                           : i == 1 ? "Click to use one: your next attack does " + pct(RED_PEN_PER_USE) + "% more damage (stacks up to +" + pct(RED_PEN_MAX) + "%)."
                           : "Click to use one: " + HALL_PASS_PER_USE + "% chance to dodge the next enemy attack (stacks up to " + HALL_PASS_MAX + "%).";
-            String active = i == 0 && booksActive > 0 ? " Active now: " + pct(blockNow()) + "% less."
-                          : i == 1 && pensActive > 0 ? " Active now: +" + pct(boostNow()) + "%."
+            String active = i == 1 && pensActive > 0 ? " Active now: +" + pct(boostNow()) + "%."
                           : i == 2 && passesActive > 0 ? " Active now: " + dodgeNow() + "% dodge." : "";
             return (itemCount(i) == 0 ? "None left. " : "") + effect + active + " Doesn't cost your turn.";
         }

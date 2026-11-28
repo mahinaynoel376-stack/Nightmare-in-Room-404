@@ -1,5 +1,6 @@
 package nightmare404.entity;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -84,6 +85,20 @@ public class Player {
     // and the legs move faster when sprinting (walk = 10 steps/s, sprint = 15 steps/s).
     public static final int WALK_ANIM_TICKS = 6;
     public static final int SPRINT_ANIM_TICKS = 4;
+    // The bad ending: walking out of the quadrangle, Flor is dizzy (see ui.Dawn): she walks slower
+    // and sways from side to side
+    public boolean dizzy;
+    public static final int DIZZY_SPEED = 3;
+
+    // Stamina: running uses it up, and she gets it back walking or standing still (faster standing).
+    // Run it all the way out and she's out of breath: no running until it's back up to half.
+    // At 60 FPS: 3 seconds of running from full; it fills up again in 6 seconds walking, 3 standing still.
+    public static final int STAMINA_MAX = 360;
+    public static final int RUN_COST = 2;            // Stamina used per frame of running
+    public static final int REST_WALKING = 1;        // Stamina back per frame, walking
+    public static final int REST_STILL = 2;          // ...and standing still
+    public int stamina = STAMINA_MAX;
+    public boolean outOfBreath;                      // Ran out: can't run until stamina is back to half
 
     public Player(GamePanel gp) {
         this.gp = gp;
@@ -156,6 +171,8 @@ public class Player {
         y = checkpointY;
         direction = 1;
         moving = false;
+        stamina = STAMINA_MAX;           // Waking up again, she's got her breath back
+        outOfBreath = false;
         syncHitbox();
     }
 
@@ -193,13 +210,24 @@ public class Player {
     public void update() {
         // 1. Read input (the last key checked decides which way the sprite faces)
         moving = gp.upPressed || gp.downPressed || gp.leftPressed || gp.rightPressed;
-        speed = gp.sprintPressed ? SPRINT_SPEED : WALK_SPEED;
-        int animTicks = gp.sprintPressed ? SPRINT_ANIM_TICKS : WALK_ANIM_TICKS;
+        boolean running = gp.sprintPressed && moving && !outOfBreath;
+        updateStamina(running);
+        speed = running ? SPRINT_SPEED : WALK_SPEED;
+        int animTicks = running ? SPRINT_ANIM_TICKS : WALK_ANIM_TICKS;
+        if (dizzy) {                     // Dizzy: slower, and too unsteady to run
+            speed = DIZZY_SPEED;
+            animTicks = WALK_ANIM_TICKS + 2;
+        }
         int dx = 0, dy = 0;
         if (gp.upPressed) { dy -= speed; direction = 0; }
         if (gp.downPressed) { dy += speed; direction = 1; }
         if (gp.leftPressed) { dx -= speed; direction = 2; }
         if (gp.rightPressed) { dx += speed; direction = 3; }
+        if (dizzy && (dx != 0 || dy != 0)) {   // ...and every step sways a little to the side
+            int sway = (int) Math.round(2 * Math.sin(gp.ticks / 18.0));
+            if (dy != 0) dx += sway;
+            else dy += sway;
+        }
 
         // 2. Move, stopping at walls and furniture. Then, if we stepped onto a door or off the
         //    side of the screen, follow the current room's link to the next room.
@@ -209,6 +237,8 @@ public class Player {
         if (behindDoor != null && behindDoor.outdoors && gp.currentRoom.floor.locked(keys)) {
             // The way out of the building is locked until the player has the floor's key
             gp.director.lockedOut(gp.currentRoom.floor);
+        } else if (behindDoor != null && behindDoor.lockedWith != null && !keys.contains(behindDoor.lockedWith)) {
+            gp.director.doorLocked(behindDoor);         // A locked room (the Containment Lab)
         } else if (behindDoor != null) {
             goThroughDoor(doorHere);
         } else if (!checkStairs()) {
@@ -229,6 +259,27 @@ public class Player {
             spriteCounter = 0;
             walkStep = 0;
         }
+    }
+
+    // Running uses stamina up; walking or standing still gets it back
+    private void updateStamina(boolean running) {
+        if (running) {
+            stamina = Math.max(0, stamina - RUN_COST);
+            if (stamina == 0) outOfBreath = true;
+        } else {
+            stamina = Math.min(STAMINA_MAX, stamina + (moving ? REST_WALKING : REST_STILL));
+            if (stamina >= STAMINA_MAX / 2) outOfBreath = false;
+        }
+    }
+
+    // A thin bar over her head showing her stamina, only while it isn't full (red while she's out of breath)
+    public void drawStamina(Graphics2D g) {
+        if (stamina >= STAMINA_MAX) return;
+        int w = 24, bx = x + (size - w) / 2, by = y - size - 6;
+        g.setColor(new Color(0, 0, 0, 160));
+        g.fillRect(bx - 1, by - 1, w + 2, 5);
+        g.setColor(outOfBreath ? new Color(200, 40, 36) : new Color(120, 200, 230));
+        g.fillRect(bx, by, w * stamina / STAMINA_MAX, 3);
     }
 
     // Moves one pixel at a time so the player stops flush against walls and furniture.
@@ -259,8 +310,9 @@ public class Player {
         Room room = gp.currentRoom;
         if (room.map.collides(solidArea)) return true;
         for (Monster m : room.monsters) {
-            if (m.blocks(solidArea)) return true;     // The boulder on the stairs (see Golem)
+            if (m.blocks(solidArea)) return true;     // A sleeping boss: the boulder, the pod (see SleepingBoss)
         }
+        if (room.haze != null && room.haze.blocks(solidArea)) return true;   // Floor 3's way down (see Haze)
         if (solidArea.x < 0 && room.left != null) {
             return room.left.map.collides(shifted(room.left.map.widthPx()));
         }

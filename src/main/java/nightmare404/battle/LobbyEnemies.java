@@ -70,7 +70,7 @@ public class LobbyEnemies {
     public static final EnemyDef PRINCIPAL = new EnemyDef(
             "Principal",
             "principal",
-            120,                                   
+            200,                                   
             "Principals Office",
             "Your permanent record is on his desk. He has been waiting a very long time to discuss it.\n"
                     + "- Janitor's logbook, last entry",

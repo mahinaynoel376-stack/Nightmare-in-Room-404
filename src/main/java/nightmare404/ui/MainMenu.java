@@ -239,7 +239,7 @@ public class MainMenu extends JPanel {
             g.setColor(DIM); g.drawString(group[group.length - 1], x + 4, y);
             x += fm.stringWidth(group[group.length - 1]) + 30;
         }
-        g.drawString("Find all 8 clues for the good ending.", 80, y + 34);
+        g.drawString("Find every clue for the good ending.", 80, y + 34);
     }
 
     private void drawDoor(Graphics2D g) {

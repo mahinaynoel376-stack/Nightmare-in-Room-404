@@ -10,13 +10,16 @@ import nightmare404.world.Room;
 import nightmare404.world.World;
 
 // Every floor's quest and where its clues lie, like Encounters does for the monsters. Each floor has
-// two clues, in the side rooms the player could otherwise walk straight past:
+// two or three clues, in the side rooms the player could otherwise walk straight past:
 //
 //   Floor 4  The Janitor's Logbook   a torn page in Room 402, another in Room 403 (both needed: read
-//                                    to the boulder on the stairs, they wake the Brute; see Golem)
-//   Floor 3  Overdue                 a checkout card in Library (Entrance), another in Library (West)
+//                                    to the boulder on the stairs, they wake the Brute; see SleepingBoss)
+//   Floor 3  Overdue                 three checkout cards: two in Library (Entrance), one in Library (West)
+//                                    (all three needed: their names make the Whisperer solid; see Whisperer)
 //   Floor 2  Project REMEMBER        a lab report page in the Chemistry Lab, another in the Biology Lab
-//   Floor 1  Permanent Record        a staff memo in the Faculty Room, the register in the Records Room
+//   Floor 1  Permanent Record        three books: the Staff Handbook (its memo tucked inside) in the
+//                                    Faculty Room, the register and the yearbook in the Records Room
+//                                    (all three needed: the Principal won't see Flor until she has them)
 //
 // Each lies at the far end of its room from the door, on a walkable tile, near the monsters' patrols:
 // the player can sneak in and out or fight. (Run QuestCheck after changing anything here.)
@@ -38,14 +41,16 @@ public class Quests {
         Quest f3 = q.quest(world.floor3, "Overdue", "Checkout cards");
         q.clue(f3, "3F-1", "Checkout card", "Library (Entrance)", 4, 13, Story.CARD_ROOM_404, 0, 1, 0, 0);
         q.clue(f3, "3F-2", "Checkout card", "Library (West)", 3, 12, Story.CARD_NIGHT_CLASS, 1, 0, 0, 0);
+        q.clue(f3, "3F-3", "Checkout card", "Library (Entrance)", 20, 9, Story.CARD_LAST_BELL, 0, 0, 1, 0);
 
         Quest f2 = q.quest(world.floor2, "Project REMEMBER", "Lab report pages");
         q.clue(f2, "2F-1", "Lab report page", "Chemistry Lab", 21, 9, Story.REPORT_PAGE_1, 0, 0, 0, 1);
         q.clue(f2, "2F-2", "Lab report page", "Biology Lab", 3, 6, Story.REPORT_PAGE_40, 1, 0, 0, 0);
 
-        Quest f1 = q.quest(world.floor1, "Permanent Record", "Records");
-        q.clue(f1, "1F-1", "Staff memo", "Faculty Room", 21, 6, Story.STAFF_MEMO, 0, 0, 1, 0);
+        Quest f1 = q.quest(world.floor1, "Permanent Record", "Books");
+        q.clue(f1, "1F-1", "Staff Handbook", "Faculty Room", 21, 6, Story.STAFF_HANDBOOK, 0, 0, 1, 0);
         q.clue(f1, "1F-2", "Attendance register", "Records Room", 3, 8, Story.REGISTER, 1, 0, 0, 0);
+        q.clue(f1, "1F-3", "Yearbook", "Records Room", 21, 8, Story.YEARBOOK, 0, 1, 0, 0);
     }
 
     private Quest quest(Floor floor, String title, String things) {

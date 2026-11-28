@@ -1,6 +1,7 @@
 package nightmare404.entity;
 
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -17,9 +18,11 @@ import nightmare404.world.Room;
 // A monster walking around a room. Touching it starts its battle (see GamePanel.update).
 //
 // A regular monster PATROLS: it walks its route (an aisle, a row of the room) back and forth. If the
-// player comes within NOTICE_RANGE it CHASES them, a bit faster, until they get GIVE_UP_RANGE away
-// (or it gets stuck behind the furniture); then it walks back the way it came and carries on its round.
-// It's slower than the player even when chasing, so a careful player can always get away.
+// player comes within NOTICE_RANGE, and it can SEE them (nothing solid in between: walls, shelves and
+// desks hide the player), it CHASES them, a bit faster, sliding along whatever's in its way. If it loses
+// sight of them, it goes to where it last saw them; if they're not there, it gives up. It also gives up
+// when they get GIVE_UP_RANGE away (or it's stuck). Then it walks back the way it came and carries on
+// its round. It's slower than the player even when chasing, so a careful player can always get away.
 // A BOSS stands guard on its spot and doesn't move. Its reach is 2 tiles wide, so standing in a
 // 2-tile gap (like the Brute in the middle of the stairs) nobody gets past without a fight.
 // When it's beaten it drops its LOOT on that spot: the key to its floor's way out, and supplies.
@@ -52,6 +55,7 @@ public class Monster {
     private int target;                     // The waypoint it's walking to
     private final ArrayDeque<Point> trail = new ArrayDeque<>();   // Where it's been while chasing
     private int stuck;
+    private int lastSeenX, lastSeenY;       // Where it last saw the player, while chasing
     protected final BufferedImage image;    // The battle sprite, scaled once to its size in the world
     protected final int phase;              // So the monsters don't all bob in step
 
@@ -110,16 +114,23 @@ public class Monster {
         int dist = player == null ? Integer.MAX_VALUE
                 : (int) Math.hypot(player.solidArea.getCenterX() - solidArea.getCenterX(),
                                    player.solidArea.getCenterY() - solidArea.getCenterY());
-        if (!chasing && dist < NOTICE_RANGE) {
+        boolean sees = dist <= GIVE_UP_RANGE && canSee(player);
+        if (sees) {
+            lastSeenX = player.x;
+            lastSeenY = player.y;
+        }
+        if (!chasing && sees && dist < NOTICE_RANGE) {
             chasing = true;
             stuck = 0;
         } else if (chasing && (dist > GIVE_UP_RANGE || stuck > GIVE_UP_STUCK)) {
             chasing = false;
+        } else if (chasing && !sees && x == lastSeenX && y == lastSeenY) {
+            chasing = false;                        // Where it last saw them, and they're not here: it gives up
         }
 
         if (chasing) {
             int oldX = x, oldY = y;
-            stepTowards(player.x, player.y, CHASE_SPEED);
+            chaseStep(lastSeenX, lastSeenY, CHASE_SPEED);   // At the player, or where it last saw them
             if (x == oldX && y == oldY) {
                 stuck++;
             } else {
@@ -167,9 +178,52 @@ public class Monster {
     }
 
     // True if it stands in the way of this box, so the player can't walk there. Monsters don't
-    // (walking into one starts its battle), except the boulder on the stairs: see Golem.
+    // (walking into one starts its battle), except a sleeping boss: see SleepingBoss.
     public boolean blocks(Rectangle box) {
         return false;
+    }
+
+    // True if nothing solid stands between this monster and the player: it looks along the line between
+    // them, a few pixels at a time, for a solid tile (a wall, a shelf, a desk...)
+    public boolean canSee(Player player) {
+        double x0 = solidArea.getCenterX(), y0 = solidArea.getCenterY();
+        double x1 = player.solidArea.getCenterX(), y1 = player.solidArea.getCenterY();
+        int steps = (int) (Math.hypot(x1 - x0, y1 - y0) / 8);
+        for (int i = 1; i < steps; i++) {
+            double t = i / (double) steps;
+            int col = (int) ((x0 + (x1 - x0) * t) / 32), row = (int) ((y0 + (y1 - y0) * t) / 32);
+            if (col < 0 || row < 0 || col >= room.map.cols || row >= room.map.rows) return false;
+            if (room.map.isSolid(col, row)) return false;
+        }
+        return true;
+    }
+
+    // Chasing: moves up to `speed` pixels towards (tx, ty), one pixel at a time. It goes the longer way
+    // first (across or down); if that's blocked it tries the other way, so it slides along whatever's in
+    // its way instead of stopping dead against it.
+    private void chaseStep(int tx, int ty, int speed) {
+        for (int i = 0; i < speed; i++) {
+            int dx = Integer.signum(tx - x), dy = Integer.signum(ty - y);
+            if (dx == 0 && dy == 0) return;
+            boolean acrossFirst = Math.abs(tx - x) >= Math.abs(ty - y);
+            boolean moved = acrossFirst ? tryStep(dx, 0) || tryStep(0, dy) : tryStep(0, dy) || tryStep(dx, 0);
+            if (!moved) return;
+        }
+    }
+
+    // One pixel, if nothing's in the way
+    private boolean tryStep(int dx, int dy) {
+        if (dx == 0 && dy == 0) return false;
+        x += dx;
+        y += dy;
+        syncHitbox();
+        if (blocked()) {
+            x -= dx;
+            y -= dy;
+            syncHitbox();
+            return false;
+        }
+        return true;
     }
 
     // Moves up to `speed` pixels towards (tx, ty), across first, then down; one pixel at a time so it
@@ -221,7 +275,8 @@ public class Monster {
         }
     }
 
-    // The dropped loot: a key glinting on the floor where the boss fell
+    // The dropped loot, glowing where the monster fell: usually a key, but the Whisperer drops three
+    // checkout cards and Test Subject X one of its tentacles (see Loot.Look)
     private void drawLoot(Graphics2D g, long ticks) {
         int cx = x + 16, cy = y + 22;
         float pulse = (float) (0.5 + 0.5 * Math.sin(ticks / 12.0));
@@ -230,6 +285,54 @@ public class Monster {
         Graphics2D k = (Graphics2D) g.create();
         k.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         k.translate(cx, cy - (int) Math.round(2 * pulse));
+        if (loot.look() == Loot.Look.CARDS) {
+            drawCards(k);
+        } else if (loot.look() == Loot.Look.TENTACLE) {
+            drawTentacle(k, ticks);
+        } else {
+            drawKey(k);
+        }
+        k.dispose();
+    }
+
+    // Three checkout cards fanned out, every name on them written in
+    private static void drawCards(Graphics2D g) {
+        for (int i = -1; i <= 1; i++) {
+            Graphics2D card = (Graphics2D) g.create();
+            card.rotate(Math.toRadians(i * 24));
+            card.setColor(new Color(60, 50, 40));
+            card.fillRect(-6, -15, 12, 17);                    // Its edge
+            card.setColor(new Color(226, 218, 196));
+            card.fillRect(-5, -14, 10, 15);                    // The card
+            card.setColor(new Color(150, 30, 30));
+            card.fillRect(-5, -14, 10, 2);                     // The red band along the top
+            card.setColor(new Color(40, 40, 90));
+            for (int line = 0; line < 3; line++) {
+                card.fillRect(-4, -10 + line * 3, 8, 1);       // The names, in blue pen
+            }
+            card.dispose();
+        }
+    }
+
+    // A tentacle, curled up on the floor, its tip still twitching
+    private static void drawTentacle(Graphics2D g, long ticks) {
+        int twitch = (int) Math.round(Math.sin(ticks / 5.0) * 2);
+        int[] xs = {-13, -7, 0, 6, 8, 5, 1 + twitch};
+        int[] ys = {5, 7, 5, 1, -5, -9, -7};
+        g.setStroke(new BasicStroke(7, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(new Color(80, 46, 40));
+        g.drawPolyline(xs, ys, xs.length);                     // Its dark edge...
+        g.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(new Color(226, 192, 160));
+        g.drawPolyline(xs, ys, xs.length);                     // ...and its pale skin
+        g.setColor(new Color(200, 110, 110));
+        for (int i = 1; i < xs.length - 1; i++) {
+            g.fillOval(xs[i] - 1, ys[i], 2, 2);                // Suckers
+        }
+    }
+
+    // A key
+    private static void drawKey(Graphics2D k) {
         k.rotate(Math.toRadians(-20));
         k.setColor(new Color(60, 40, 10));
         k.fillOval(-11, -6, 12, 12);                       // The bow (the ring)
@@ -241,7 +344,6 @@ public class Monster {
         k.fillRect(9, 1, 2, 4); k.fillRect(12, 1, 1, 3);
         k.setColor(new Color(60, 40, 10));
         k.fillOval(-7, -2, 4, 4);                          // The hole in the bow
-        k.dispose();
     }
 
     // The sprite scaled to `height` pixels tall (no wider than 1.3 times that), pixel for pixel for

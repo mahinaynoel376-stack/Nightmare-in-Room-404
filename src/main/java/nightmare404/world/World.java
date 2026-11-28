@@ -3,6 +3,7 @@ package nightmare404.world;
 import java.util.ArrayList;
 import java.util.List;
 
+import nightmare404.entity.FirstBlob;
 import nightmare404.entity.Monster;
 import nightmare404.entity.SubjectZero;
 import nightmare404.entity.TreeMonster;
@@ -71,7 +72,7 @@ public class World {
     public final Room start;    // Where the game begins
     public final List<Monster> monsters = new ArrayList<>();   // Every monster in the school (see Encounters)
     public SubjectZero finalBoss;   // Asleep by the quadrangle's south gate until every tree is beaten
-    public Monster firstFight;      // The crawler that drops on Flor outside Room 404 (see Encounters, Director)
+    public FirstBlob firstFight;    // The blob that drops on Flor outside Room 404 (see FirstBlob, Director)
 
     public World(TileSet tiles, int ts) {
         // ---------- Floor 4: the classrooms ----------

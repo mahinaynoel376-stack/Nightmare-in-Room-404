@@ -10,17 +10,18 @@ import nightmare404.battle.BattleScreen.EnemyDef;
 public class FourthFloorEnemies {
     static final Backdrop CLASSROOM = new ClassroomBackdrop();
 
-    // ---- The first fight: it drops on Flor the first time she steps out of Room 404 (see Director) ----
-    // A weak crawler, so the first battle (with the controls explained) is a gentle one.
+    // ---- The first fight: it drops on Flor the first time she steps out of Room 404 (see FirstBlob) ----
+    // A weak blob, so the first battle (with the controls explained) is a gentle one. Its pictures are
+    // made by tools/art/make_ceiling_blob.py.
 
-    public static final EnemyDef FIRST_CRAWLER = new EnemyDef(
-            "Crawler",
-            "hallwaycrawler",
+    public static final EnemyDef CEILING_BLOB = new EnemyDef(
+            "Ceiling Blob",
+            "ceiling_blob",
             40,
             "4F HALLWAY",
-            "It was waiting on the ceiling outside Room 404. It has been waiting there a long time.\n"
+            "It clung to the ceiling outside Room 404 and waited for someone to come out. It waited a long time.\n"
                     + "- Janitor's logbook, last entry",
-            List.of(new Attack("Slime Splat", 5, 0, 0, 1, "The crawler launches a glob of sticky goo.")),
+            List.of(new Attack("Goo Splat", 5, 0, 0, 1, "A cold glob of goo smacks into you.")),
             CLASSROOM);
 
     // ---- Room 402 (was 1stRoom) ----
@@ -79,7 +80,7 @@ public class FourthFloorEnemies {
     public static final EnemyDef BRUTE = new EnemyDef(
             "Brute",
             "brute3",
-            90,                                   
+            140,                                   
             "WEST STAIRS",
             "Students who stayed late in Room 404 were never marked absent. They were never marked anything at all.\n"
                     + "- Janitor's logbook, last entry",

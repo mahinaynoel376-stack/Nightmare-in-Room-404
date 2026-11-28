@@ -13,6 +13,7 @@ import nightmare404.battle.BattleScreen.BattleResult;
 import nightmare404.battle.LastStand;
 import nightmare404.battle.TypingBattle;
 import nightmare404.entity.Clue;
+import nightmare404.entity.FirstBlob;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
 import nightmare404.entity.TreeMonster;
@@ -20,11 +21,13 @@ import nightmare404.story.Director;
 import nightmare404.story.Story;
 import nightmare404.tile.TileSet;
 import nightmare404.ui.BottomUI;
+import nightmare404.ui.Dawn;
 import nightmare404.ui.DialogueBox;
 import nightmare404.ui.EndingScreen;
 import nightmare404.ui.Journal;
 import nightmare404.ui.Lighting;
 import nightmare404.ui.QuestTracker;
+import nightmare404.ui.WakeUp;
 import nightmare404.world.Room;
 import nightmare404.world.World;
 
@@ -66,12 +69,15 @@ public class GamePanel extends JPanel implements Runnable {
     public Player flor;
     BottomUI bottomUI;
 
-    // The story: the dialogue box, the Director that decides when the story happens, the journal (J),
-    // the quest tracker (top right), the fight outside, and once Subject Zero is beaten, the ending
+    // The story: the opening scene (Flor waking up at her desk), the dialogue box, the Director that
+    // decides when the story happens, the journal (J), the quest tracker (top right), the fight outside,
+    // and once Subject Zero is beaten, the walk out through the south gate at dawn, and the ending
+    public WakeUp wakeUp;
     public final DialogueBox dialogue = new DialogueBox();
     public Director director;
     public Journal journal;
     public LastStand lastStand;
+    public Dawn dawn;
     QuestTracker tracker;
     EndingScreen endingScreen;
     public volatile boolean ended;          // The game is over: the ending screen is showing
@@ -118,6 +124,8 @@ public class GamePanel extends JPanel implements Runnable {
         director = new Director(this);
         journal = new Journal(this);
         lastStand = new LastStand(this);
+        dawn = new Dawn(this);
+        wakeUp = new WakeUp(this);
         tracker = new QuestTracker(this);
         endingScreen = new EndingScreen(this);
         setupKeyBindings();
@@ -136,6 +144,14 @@ public class GamePanel extends JPanel implements Runnable {
             if (m.loot != null) {
                 m.lootTaken = true;
                 flor.keys.add(m.loot.key());
+            }
+        }
+        // ...and every locked room open (the Containment Lab, the Principal's office)
+        for (nightmare404.world.Floor f = world.top; f != null; f = f.below) {
+            for (Room r = f.head; r != null; r = r.right) {
+                for (Room behind : r.linkedRooms()) {
+                    if (behind.lockedWith != null) flor.keys.add(behind.lockedWith);
+                }
             }
         }
     }
@@ -324,6 +340,10 @@ public class GamePanel extends JPanel implements Runnable {
             if ((advance || space) && endedTicks > 150) leaveForMenu();
             return;
         }
+        if (wakeUp.playing()) {          // The opening scene: Flor waking up at her desk (E skips it)
+            wakeUp.update(advance || space);
+            return;
+        }
         if (dialogue.isOpen()) {         // The world waits while someone's talking
             upPressed = downPressed = leftPressed = rightPressed = false;
             dialogue.update(advance || space);
@@ -352,7 +372,7 @@ public class GamePanel extends JPanel implements Runnable {
         }
         director.update();               // The opening scene, or somewhere new for the first time
         if (dialogue.isOpen()) return;
-        if (outside) {                   // The fight outside: focus, type, use items
+        if (outside && !dawn.on()) {     // The fight outside: focus, type, use items
             if (space || back && lastStand.focused()) lastStand.toggleFocus();
             if (unlock) lastStand.dropTarget();
             if (item > 0) lastStand.useItem(item);
@@ -362,6 +382,17 @@ public class GamePanel extends JPanel implements Runnable {
 
         ticks++;
         if (noticeTicks > 0) noticeTicks--;
+        FirstBlob blob = world.firstFight;
+        if (blob != null && blob.falling()) {   // The first fight: the blob drops on Flor (everything waits)
+            blob.update(flor);
+            if (!blob.falling()) startBattle(blob);   // Landed: it has her
+            return;
+        }
+        if (dawn.leaving()) {            // Out through the south gate: the screen fades, then the last words
+            releaseKeys();
+            dawn.update();
+            return;
+        }
         flor.update();
         if (currentRoom != lastRoom) {   // Just walked into a room: the monsters give you a moment
             for (Monster m : lastRoom.monsters) m.chasing = false;   // The ones left behind stop chasing
@@ -370,11 +401,20 @@ public class GamePanel extends JPanel implements Runnable {
             calm = Math.max(calm, 30);
             for (Monster m : currentRoom.monsters) m.playerArrived(flor);   // (The quadrangle's trees start to stir)
         }
+        if (dawn.on() && currentRoom.outdoors) {   // After Subject Zero: the sun comes up on the way to the gate
+            dawn.update();
+            if (dialogue.isOpen() || dawn.leaving()) return;
+        }
         for (Clue clue : currentRoom.clues) {   // Walking over a clue picks it up
             if (!flor.clues.contains(clue.id) && clue.area().intersects(flor.solidArea)) {
                 director.clueFound(clue);
                 return;
             }
+        }
+        if (currentRoom.haze != null && currentRoom.haze.walkedInto(flor.solidArea)) {   // The haze on the stairs
+            releaseKeys();
+            director.hazeCalls(currentRoom.floor);
+            return;
         }
         if (calm > 0) {
             calm--;
@@ -534,6 +574,7 @@ public class GamePanel extends JPanel implements Runnable {
         int camX = cameraX();
         int camY = cameraY();
         Graphics2D view = (Graphics2D) g2d.create();
+        dawn.tilt(view, screenWidth, screenHeight - tileSize);   // (The bad ending: the world sways)
         view.translate(-camX, -camY);
         currentRoom.map.draw(view);
         drawMonsters(view, currentRoom, true);
@@ -553,29 +594,44 @@ public class GamePanel extends JPanel implements Runnable {
         for (Clue clue : currentRoom.clues) {
             if (!flor.clues.contains(clue.id)) clue.draw(view, ticks);
         }
-        if (!(currentRoom.outdoors && lastStand.hidePlayer(ticks))) flor.draw(view);   // (Blinks just after a hit)
+        if (wakeUp.playing()) {
+            wakeUp.drawFlor(view);                   // Still at her desk (the opening scene)
+        } else if (!(currentRoom.outdoors && lastStand.hidePlayer(ticks))) {   // (Blinks just after a hit)
+            dawn.drawDouble(view, flor);             // (The bad ending: seeing double)
+            flor.draw(view);
+            flor.drawStamina(view);                  // (Over her head, after running)
+        }
         drawMonsters(view, currentRoom, false);
+        if (world.firstFight != null && world.firstFight.room == currentRoom) world.firstFight.draw(view, ticks);
+        if (currentRoom.haze != null) currentRoom.haze.draw(view, ticks);
         if (currentRoom.outdoors) lastStand.drawWorld(view, camX, camY, ticks);
         view.dispose();
 
         // The light: flickering in the hallways, dimmer in the rooms (over the world, under the text and UI)
         Lighting.draw(g2d, currentRoom, flor.x + tileSize / 2 - camX, flor.y + tileSize / 4 - camY, ticks,
                 screenWidth, screenHeight - tileSize);
+        dawn.drawLight(g2d, screenWidth, screenHeight - tileSize);   // After Subject Zero: the sun coming up
 
-        // The room's name stays fixed on screen (drawn after the camera shift is undone)
-        g2d.setColor(Color.WHITE);
-        g2d.setFont(ROOM_NAME_FONT);
-        String where = currentRoom.outdoors ? "Outside" : "Floor " + currentRoom.floor.number;
-        g2d.drawString(currentRoom.name + "  |  " + where, 20, 40);
-
-        if (currentRoom.outdoors && !ended) lastStand.drawHud(g2d);
-        tracker.draw(g2d);
-        if (noticeTicks > 0 && !dialogue.isOpen()) drawNotice(g2d);
+        // The room's name, the quest tracker, the notices and the bottom bar are hidden in the opening
+        // scene, and once Flor's out through the south gate
+        boolean hud = !wakeUp.playing() && !dawn.leaving();
+        if (hud) {
+            // The room's name stays fixed on screen (drawn after the camera shift is undone)
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(ROOM_NAME_FONT);
+            String where = currentRoom.outdoors ? "Outside" : "Floor " + currentRoom.floor.number;
+            g2d.drawString(currentRoom.name + "  |  " + where, 20, 40);
+            if (currentRoom.outdoors && !ended && !dawn.on()) lastStand.drawHud(g2d);
+            tracker.draw(g2d);
+            if (noticeTicks > 0 && !dialogue.isOpen()) drawNotice(g2d);
+        }
+        dawn.drawFade(g2d, screenWidth, screenHeight);   // Out through the gate: fading out
         dialogue.draw(g2d, screenWidth, bottomUI.top());   // Above the ID card
 
         // The bottom UI: the ID card and the backpack (fixed on screen, drawn after the world so nothing covers it)
-        bottomUI.draw(g2d);
+        if (hud) bottomUI.draw(g2d);
         journal.draw(g2d);
+        if (wakeUp.playing()) wakeUp.drawOverlay(g2d, screenWidth, screenHeight);
         if (ended) endingScreen.draw(g2d, endedRemembered, endedTicks, director.cluesFound(), director.cluesInAll());
 
         // Flushes graphic pipeline (prevents stutter on non-Windows OS)
@@ -613,6 +669,7 @@ public class GamePanel extends JPanel implements Runnable {
         g.translate(offsetX, 0);
         neighbour.map.draw(g);
         for (Monster m : neighbour.monsters) m.draw(g, ticks);
+        if (neighbour.haze != null) neighbour.haze.draw(g, ticks);
         g.dispose();
     }
 

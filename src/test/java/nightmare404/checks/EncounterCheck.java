@@ -19,10 +19,13 @@ import nightmare404.battle.TypingBattle;
 import nightmare404.battle.TypingBattle.Duel;
 import nightmare404.debug.BattleScreensDebug;
 import nightmare404.entity.Clue;
-import nightmare404.entity.Golem;
+import nightmare404.entity.SleepingBoss;
+import nightmare404.entity.SubjectZero;
+import nightmare404.entity.Haze;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
 import nightmare404.entity.TreeMonster;
+import nightmare404.entity.Whisperer;
 import nightmare404.main.GamePanel;
 import nightmare404.map.Quadrangle;
 import nightmare404.tile.TileMap;
@@ -132,6 +135,25 @@ public class EncounterCheck {
         check("close by, it notices and comes after the player", started == mimic);
         check("touching it starts its battle (the world pauses)", gp.inBattle);
 
+        System.out.println("3b. Monsters can't see through walls, shelves or desks");
+        gp.inBattle = false;                                // (Out of the Desk Mimic's battle for a moment)
+        Room stacks = gp.world.floor3.find("Library (West)");
+        Monster shelfWorm = stacks.monsters.get(0);         // A Bookworm, along the aisle on row 10
+        List<Monster> others = new ArrayList<>();
+        for (Monster m : stacks.monsters) if (m != shelfWorm && !m.defeated) { others.add(m); m.defeated = true; }
+        shelfWorm.reset();
+        put(stacks, 5, 8);                                  // 2 tiles away, a row of shelves in between
+        boolean hidden = !shelfWorm.canSee(p);
+        started = null; ticks(90);
+        check("2 tiles away but behind a row of shelves: the Bookworm doesn't see the player",
+                hidden && !shelfWorm.chasing && started == null);
+        shelfWorm.reset();
+        put(stacks, 7, 10); started = null; ticks(90);     // In the open, in its aisle
+        check("in the open, in its aisle: it sees the player and comes after them", started == shelfWorm);
+        gp.inBattle = false;
+        shelfWorm.reset();
+        for (Monster m : others) { m.defeated = false; m.reset(); }
+
         System.out.println("4. After a battle");
         gp.endBattle(mimic, new BattleResult(true, 63, 2));
         check("won: the Desk Mimic is gone for good", mimic.defeated);
@@ -148,12 +170,12 @@ public class EncounterCheck {
         ticks(30);
         check("right after a battle the monsters give the player a moment", started == null);
 
-        System.out.println("5. The Brute sleeps on the stairs down as a boulder, wakes for the janitor's pages, and drops the key");
+        System.out.println("5. The Brute sleeps on the stairs down as a boulder, wakes for the janitor's pages, and beaten, clears the way");
         Floor f4 = gp.world.floor4, f3 = gp.world.floor3, f2 = gp.world.floor2, f1 = gp.world.floor1;
         Room f4west = f4.find("West Stairs");
         check("the Brute is on Floor 4's way down (" + f4.boss.room.name + ")", f4.boss.room == f4west && f4west == f4.downStairs());
         Point foot = f4west.map.stairs.downFoot;
-        Golem golem = (Golem) f4.boss;
+        SleepingBoss golem = (SleepingBoss) f4.boss;
         check("it starts asleep, as a boulder", golem.asleep());
         String[] sides = {"in the middle of the flight", "at its left edge", "at its right edge"};
         int[] xs = {foot.x, 5 * 32 - 8, 6 * 32 + 8};
@@ -164,7 +186,7 @@ public class EncounterCheck {
                     started == null && golem.asleep() && p.y > golem.y && gp.currentRoom.floor == f4
                     && gp.notice().contains("won't budge"));
         }
-        check("without its key, Floor 4's way down is locked", f4.locked(p.keys) && f4.lockedNote != null);
+        check("while it's there, Floor 4's way down is shut", f4.locked(p.keys) && f4.lockedNote != null);
         for (Clue c : f4.quest.clues) p.clues.add(c.id);      // Both of the janitor's pages
         putPx(f4west, foot.x, foot.y); ticks(40); hold("U", 150);
         check("with both pages, Flor reads the logbook to it, it wakes up, and its battle starts", started == f4.boss
@@ -176,15 +198,11 @@ public class EncounterCheck {
         started = null;
         putPx(f4west, foot.x, foot.y); ticks(40); hold("U", 150);
         check("  read to again, it wakes again", started == f4.boss);
-        int pens = p.items.redPens;
         gp.endBattle(f4.boss, new BattleResult(true, 80, 3));
-        check("won: the Brute leaves its loot where it stood", f4.boss.defeated && !f4.boss.lootTaken
-                && gp.notice().contains("glints"));
-        started = null; ticks(70);
-        check("standing on it picks it up: the West Stairwell Key", p.keys.contains("West Stairwell Key") && f4.boss.lootTaken);
-        check("...and supplies: +1 kit (4), +1 Red Pen (" + p.items.redPens + ")", p.kits == 4 && p.items.redPens == pens + 1);
-        check("...and the player reads what they found", gp.dialogue.said("janitor's key"));
-        check("with the key, the way down is open", !f4.locked(p.keys));
+        check("won: it drops nothing, and Flor sees the way down is clear", f4.boss.defeated && f4.boss.loot == null
+                && gp.dialogue.said("The stairs down are clear") && gp.notice().contains("way down is clear"));
+        check("the way down is open, with no key", !f4.locked(p.keys) && p.keys.isEmpty());
+        started = null;
         hold("U", 40);                           // Long enough to climb the flight, not to come back up
         check("the stairs take the player down to Floor 3", gp.currentRoom.floor == f3);
         check("arriving on a new floor moves the checkpoint there", p.checkpointRoom == gp.currentRoom);
@@ -194,49 +212,101 @@ public class EncounterCheck {
         Monster librarian = libEntrance.monsters.get(0), undead = libEntrance.monsters.get(1);
         librarian.defeated = true;               // Beaten before the player (last) came onto Floor 3...
         p.setCheckpoint();                       // ...as if they'd gone back up and come down again
-        int textbooks = p.items.textbooks, passes = p.items.hallPasses;
-        pens = p.items.redPens;
+        int arrivedKits = p.kits, textbooks = p.items.textbooks, passes = p.items.hallPasses, pens = p.items.redPens;
         gp.endBattle(undead, new BattleResult(true, 55, 2));
+        Whisperer whisperer = (Whisperer) f3.boss;
+        Haze haze = f3.find("East Stairs").haze;
         putPx(f3.boss.room, f3.boss.x, f3.boss.y); started = null; ticks(100);   // After the grace period
-        check("the Whisperer: walking up to it starts its battle", started == f3.boss);
+        check("the Whisperer, without the checkout cards: intangible, mumbling blanks, no battle", started == null
+                && whisperer.intangible() && gp.dialogue.said("blacked out") && gp.notice().contains("Checkout cards found: 0 of 3"));
+        for (Clue c : f3.quest.clues) p.clues.add(c.id);      // All three checkout cards
+        put(f3.boss.room, 4, 14); ticks(5);                    // Away from her...
+        putPx(f3.boss.room, f3.boss.x, f3.boss.y); ticks(150); // ...and back with the cards
+        check("with all three cards, Flor reads her the names, she turns solid, and her battle starts", started == f3.boss
+                && !whisperer.intangible() && !whisperer.solidifying() && gp.dialogue.said("I'll read every name with you"));
+        check("  while she's there, a haze covers the east stairs", haze.active());
         gp.endBattle(f3.boss, new BattleResult(true, 40, 1));
+        check("won: the haze over the east stairs clears", !haze.active() && gp.dialogue.said("haze over the stairs thins"));
         started = null; ticks(70);
-        check("won: it drops the East Stairwell Key, +1 kit, +1 Textbook, +1 Hall Pass",
-                p.keys.contains("East Stairwell Key") && p.kits == 2 && p.items.textbooks == textbooks + 1 && p.items.hallPasses == passes + 1);
+        check("she drops the three checkout cards, every name filled in, +1 kit, +1 Textbook, +1 Hall Pass",
+                p.keys.contains("The three checkout cards") && gp.dialogue.said("every name, written out in full")
+                && p.kits == 2 && p.items.textbooks == textbooks + 1 && p.items.hallPasses == passes + 1);
         Monster worm = libWest.monsters.get(0);
         put(libWest, 10, 12);
         gp.endBattle(worm, new BattleResult(false, 0, 0));
         check("gave up: back at the foot of the stairs the player came down", gp.currentRoom == f3.upStairs()
                 && p.x == p.checkpointX && p.y == p.checkpointY);
         check("gave up: health exactly as it was on arrival (80, not full: " + p.health + ")", p.health == 80);
-        check("gave up: kits and items as on arrival (4 kits)", p.kits == 4 && p.items.textbooks == textbooks
-                && p.items.redPens == pens && p.items.hallPasses == passes);
-        check("gave up: the East Stairwell Key is gone, the West one kept",
-                !p.keys.contains("East Stairwell Key") && p.keys.contains("West Stairwell Key"));
-        check("gave up: the monsters beaten since (the Undead, the Whisperer) are back, with the key",
-                !undead.defeated && !f3.boss.defeated && !f3.boss.lootTaken);
+        check("gave up: kits and items as on arrival (" + arrivedKits + " kits)", p.kits == arrivedKits
+                && p.items.textbooks == textbooks && p.items.redPens == pens && p.items.hallPasses == passes);
+        check("gave up: the cards she dropped are gone, and so are the checkout cards found since",
+                !p.keys.contains("The three checkout cards") && f3.quest.found(p.clues) == 0);
+        check("gave up: the monsters beaten since (the Undead, the Whisperer) are back; she's intangible again, the haze is back",
+                !undead.defeated && !f3.boss.defeated && !f3.boss.lootTaken && whisperer.intangible() && haze.active());
         check("gave up: the Librarian, beaten before, stays beaten", librarian.defeated);
-        check("gave up: the floor above stays as it was (the Brute stays beaten)", f4.boss.defeated && f4.boss.lootTaken);
+        check("gave up: the floor above stays as it was (the Brute stays beaten)", f4.boss.defeated);
 
-        System.out.println("7. Every floor's way out is locked until the player has the key its boss drops");
+        System.out.println("7. Every floor's way out stays shut until its boss is beaten (or the player has the key it drops)");
         Room f3east = f3.find("East Stairs");
-        putPx(f3east, f3east.map.stairs.downFoot.x, f3east.map.stairs.downFoot.y); hold("U", 200);
-        check("Floor 3: without the East Stairwell Key, the east stairs don't take you down", gp.currentRoom.floor == f3
-                && gp.notice().equals(f3.lockedNote));
-        takeBossKey(f3, "East Stairwell Key");
-        putPx(f3east, f3east.map.stairs.downFoot.x, f3east.map.stairs.downFoot.y); hold("U", 60);
-        check("Floor 3: with it, they do", gp.currentRoom.floor == f2);
+        Point f3foot = f3east.map.stairs.downFoot;
+        putPx(f3east, f3foot.x, f3foot.y); hold("U", 200);
+        check("Floor 3: with the Whisperer still there, the haze won't let the player onto the east stairs",
+                gp.currentRoom.floor == f3 && p.y >= f3foot.y - 16 && gp.notice().contains("haze won't let you through")
+                && gp.dialogue.said("It wants me to go back to the library"));
+        for (Clue c : f3.quest.clues) p.clues.add(c.id);
+        putPx(f3.boss.room, f3.boss.x, f3.boss.y); started = null; ticks(150);
+        boolean fought = started == f3.boss;
+        gp.endBattle(f3.boss, new BattleResult(true, p.health, p.kits));
+        check("Floor 3: with the cards the Whisperer turns solid and is beaten, and the haze is gone", fought && !haze.active());
+        putPx(f3east, f3foot.x, f3foot.y); hold("U", 60);
+        check("Floor 3: then the east stairs take you down", gp.currentRoom.floor == f2);
+        check("Floor 2: no lockdown, the way down is open from the start", !f2.locked(p.keys));
+        Room contHall = f2.find("Hallway (Containment Lab)"), containment = f2.find("Containment Lab");
+        Rectangle cdoor = null;
+        for (int i = 0; i < contHall.map.doorCount(); i++) if (contHall.doorLeadsTo(i) == containment) cdoor = contHall.map.door(i);
+        putPx(contHall, cdoor.x + 8, cdoor.y + 64); hold("U", 60);
+        check("Floor 2: the Containment Lab is locked without its keycard", gp.currentRoom == contHall
+                && gp.notice().equals(containment.lockedNote) && gp.dialogue.said("keycard reader"));
+        Room chemistry = f2.find("Chemistry Lab");
+        Monster assistant = null;
+        for (Monster m : chemistry.monsters) {
+            if (m.enemy.name().equals("Lab Assistant")) assistant = m; else m.defeated = true;
+        }
+        check("the Lab Assistant carries it", assistant.loot != null && assistant.loot.key().equals("Containment Keycard"));
+        gp.endBattle(assistant, new BattleResult(true, p.health, p.kits));
+        check("  beaten, it drops it", assistant.defeated && gp.notice().contains("glints"));
+        putPx(chemistry, assistant.x, assistant.y); started = null; ticks(80);
+        check("  picked up: the keycard, and Flor wonders whether to open that door", p.keys.contains("Containment Keycard")
+                && gp.dialogue.said("Do I really want to open that door"));
+        putPx(contHall, cdoor.x + 8, cdoor.y + 64); hold("U", 60);
+        check("with the keycard, the Containment Lab opens", gp.currentRoom == containment);
+        SleepingBoss specimen = (SleepingBoss) f2.boss;
+        check("Test Subject X is still asleep in its pod, which blocks the way", specimen.asleep()
+                && specimen.blocks(new Rectangle(specimen.x + 8, specimen.y + 16, 16, 16)));
+        putPx(containment, specimen.x, specimen.y + 64); started = null; hold("U", 200);
+        check("walking up to the pod: it bursts out, and its battle starts", started == f2.boss && !specimen.asleep()
+                && gp.dialogue.said("The glass cracks"));
+        gp.endBattle(f2.boss, new BattleResult(true, p.health, p.kits));
+        started = null; ticks(80);
+        check("beaten, it leaves one of its tentacles: its brother Subject Zero's calm-down", p.keys.contains(SubjectZero.CALMING_ITEM)
+                && gp.dialogue.said("Subject Zero is X's brother"));
         Room f2down = f2.downStairs();
-        putPx(f2down, f2down.map.stairs.downFoot.x, f2down.map.stairs.downFoot.y); hold("U", 200);
-        check("Floor 2: without the Security Keycard, the west stairs stay in lockdown", gp.currentRoom.floor == f2
-                && gp.notice().equals(f2.lockedNote));
-        takeBossKey(f2, "Security Keycard");
         putPx(f2down, f2down.map.stairs.downFoot.x, f2down.map.stairs.downFoot.y); hold("U", 60);
-        check("Floor 2: with it, they open", gp.currentRoom.floor == f1);
+        check("Floor 2: down the west stairs", gp.currentRoom.floor == f1);
         Room hall = f1.find("Hallway (Principal's Office)");
         put(hall, 7, 10); hold("D", 120);
         check("Floor 1: without the Master Key, the main entrance stays shut", gp.currentRoom == hall
                 && gp.notice().equals(f1.lockedNote));
+        Room office = f1.find("Principal's Office");
+        Rectangle odoor = null;
+        for (int i = 0; i < hall.map.doorCount(); i++) if (odoor == null && hall.doorLeadsTo(i) == office) odoor = hall.map.door(i);
+        putPx(hall, odoor.x + 8, odoor.y + 64); hold("U", 60);
+        check("Floor 1: the Principal won't see Flor without the floor's three books", gp.currentRoom == hall
+                && gp.dialogue.said("I do not see students without an appointment") && gp.notice().contains("Books found: 0 of 3"));
+        for (Clue c : f1.quest.clues) p.clues.add(c.id);
+        putPx(hall, odoor.x + 8, odoor.y + 64); hold("U", 60);
+        check("Floor 1: with all three, Flor recites what she's learned, and the office door opens", gp.currentRoom == office
+                && gp.dialogue.said("Is that smart enough for you"));
         takeBossKey(f1, "Master Key");
         put(hall, 7, 10); hold("D", 120);
         check("Floor 1: with it, it leads outside", gp.currentRoom == gp.world.quadrangle);
@@ -325,10 +395,9 @@ public class EncounterCheck {
         while (d.state == Duel.State.TYPING) d.tick();
         check("time runs out: the tree hits back (10)", hp - d.heroHp == 10);
         toTyping(d);
-        check("an Old Textbook halves the next hit", d.useTextbook() && items.textbooks == 0);
-        hp = d.heroHp;
-        while (d.state == Duel.State.TYPING) d.tick();
-        check("  (5 instead of 10)", hp - d.heroHp == 5 && !d.textbookReady);
+        foe = d.foeHp;
+        check("an Old Textbook is thrown at the tree: 15 damage straight away", d.useTextbook() && items.textbooks == 0
+                && foe - d.foeHp == 15);
         toTyping(d);
         hp = d.heroHp;
         check("a First Aid Kit heals 30 (no more than full)", d.useKit() && d.heroHp == Math.min(100, hp + 30) && d.kits == 1);

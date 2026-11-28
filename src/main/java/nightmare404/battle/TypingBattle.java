@@ -26,7 +26,7 @@ import nightmare404.ui.HealthBar;
 //   STREAK (words in a row without a mistake). Run out of time and the monster hits you.
 //   A wrong key costs a little time and breaks the streak. As the monster weakens, its words get
 //   longer and the timer shorter.
-//   The number keys use what you carry: 1 First Aid Kit (heals), 2 Old Textbook (halves the next
+//   The number keys use what you carry: 1 First Aid Kit (heals), 2 Old Textbook (thrown: damage now
 //   hit), 3 Red Pen (doubles the next word), 4 Hall Pass (skips the word without being hit).
 //
 // The rules are in Duel, which draws nothing (so the checks can play a whole fight); TypingPanel
@@ -48,7 +48,7 @@ public class TypingBattle {
     static final double STREAK_BONUS = 0.10;       // +10% for each word in a row without a mistake...
     static final int STREAK_MAX = 5;               // ...up to +50%
     static final double RED_PEN = 2.0;             // A Red Pen doubles the next word
-    static final double TEXTBOOK = 0.5;            // An Old Textbook halves the next hit
+    static final int TEXTBOOK_DAMAGE = 15;         // An Old Textbook, thrown at the monster, hurts it this much
 
     // Shows the fight in the game's window, in place of whatever is there, and calls whenDone with
     // the result when the player wins, or loses and gives up. Items are used up in place.
@@ -117,7 +117,7 @@ public class TypingBattle {
         public int typed;                       // How many letters of the word are typed
         public int timeLeft, timeMax;           // In frames
         public int streak;                      // Words in a row without a mistake
-        public boolean textbookReady, redPenReady;
+        public boolean redPenReady;
         public State state;
         public final List<Event> events = new ArrayList<>();   // Since the screen last looked (it clears them)
 
@@ -146,7 +146,7 @@ public class TypingBattle {
             items.redPens = startItems[1];
             items.hallPasses = startItems[2];
             streak = 0;
-            textbookReady = redPenReady = false;
+            redPenReady = false;
             word = "";
             typed = 0;
             timeLeft = timeMax = 0;
@@ -203,11 +203,13 @@ public class TypingBattle {
             return true;
         }
 
+        // Thrown at the monster: it hurts it straight away
         public boolean useTextbook() {
-            if (items.textbooks <= 0 || textbookReady || !fighting()) return false;
+            if (items.textbooks <= 0 || !fighting()) return false;
             items.textbooks--;
-            textbookReady = true;
-            events.add(new Event(Kind.ITEM, 0, "Old Textbook: the next hit is halved."));
+            foeHp = Math.max(0, foeHp - TEXTBOOK_DAMAGE);
+            events.add(new Event(Kind.FOE_HIT, TEXTBOOK_DAMAGE, "TEXTBOOK!"));
+            if (foeHp <= 0) pause(AFTER_WORD);
             return true;
         }
 
@@ -255,10 +257,6 @@ public class TypingBattle {
                 events.add(new Event(Kind.FOE_HEALED, foeHp - before, attack.name() + ": " + attack.desc()));
             } else {
                 int damage = attack.damage();
-                if (textbookReady) {
-                    damage = (int) Math.round(damage * TEXTBOOK);
-                    textbookReady = false;
-                }
                 heroHp = Math.max(0, heroHp - damage);
                 events.add(new Event(Kind.HERO_HIT, damage, attack.name() + ": " + attack.desc()));
             }
@@ -626,7 +624,6 @@ public class TypingBattle {
             List<String> notes = new ArrayList<>();
             if (duel.streak > 1) notes.add("STREAK x" + duel.streak + " (+" + (int) Math.round(100 * STREAK_BONUS * Math.min(duel.streak, STREAK_MAX)) + "%)");
             if (duel.redPenReady) notes.add("RED PEN READY: x2");
-            if (duel.textbookReady) notes.add("TEXTBOOK UP: next hit halved");
             String line = String.join("   ", notes);
             shadow(g, line, 400 - g.getFontMetrics().stringWidth(line) / 2, by + 126, new Color(230, 200, 110));
         }

@@ -29,9 +29,10 @@ public class Story {
             paper("Janitor's logbook, last entry", "11:40 PM. Footsteps on the fourth floor again. Going up to check "
                     + "Room 404. If you're reading this, don't stay late. Go home."),
             think("Too late for that. I need to get out of here: down the stairs and out the front doors."),
-            tip("W A S D to walk, Shift to run. E, Space or Enter to read on. J opens your journal."),
+            tip("W A S D to walk, Shift to run (only for a few seconds: then you're out of breath and have to walk). "
+                    + "E, Space or Enter to read on. J opens your journal."),
             tip("Each floor has clues hidden in its side rooms. Every clue you find before the floor's boss fight "
-                    + "takes 20% off the boss's health. The boss holds the key to the way down."));
+                    + "takes 20% off the boss's health. The boss stands between you and the way down."));
 
     // ---------------------------------------------------------------- the first fight, in the hallway
 
@@ -40,15 +41,19 @@ public class Story {
     public static final List<Line> FIRST_FIGHT = List.of(
             flor("The whole place is a mess.. and reality is twisted."),
             flor("And what is that, are those.. monsters?!"),
-            narrate("Something drops from the ceiling and lunges at you!"),
+            narrate("Something cold drips onto your shoulder. You look up."));
+
+    // Lost that first fight and came back out: it's still up there
+    public static final List<Line> FIRST_FIGHT_AGAIN = List.of(
+            narrate("Something drips from the ceiling again. It's still up there, waiting."));
+
+    // The blob has dropped on her (see FirstBlob): the first time, how to fight
+    public static final List<Line> FIRST_FIGHT_LANDED = List.of(
+            narrate("A blob of black goo splats onto the floor beside you, and lunges!"),
             tip("A fight! Spell words with the letters on the grid: click them, or type them. ENTER (or ATTACK) "
                     + "strikes. Longer words hit much harder."),
             tip("Each turn has a clock: when it runs out, the monster strikes first. SCRAMBLE swaps your letters "
                     + "but costs your turn; shuffling and using your items are free."));
-
-    // Lost that first fight and came back out: it's still there
-    public static final List<Line> FIRST_FIGHT_AGAIN = List.of(
-            narrate("The crawler is still out here, waiting. It lunges again!"));
 
     public static final List<Line> AFTER_FIRST_FIGHT = List.of(
             flor("Wow, that was insane.. *panting* At least I can somewhat fend them off.."),
@@ -62,7 +67,7 @@ public class Story {
             case 3 -> List.of(
                     narrate("Floor 3. The library's big double doors stand open, and from somewhere inside comes a whisper."),
                     think("The way down must be at the other end of the building."),
-                    tip("This floor's clues: two old checkout cards, somewhere in the library."));
+                    tip("This floor's clues: three old checkout cards, somewhere in the library."));
             case 2 -> List.of(
                     narrate("Floor 2. A crooked LABORATORY sign. The air smells of chemicals, and of something rotten."),
                     narrate("A trail of slime and bloody footprints leads out of the Containment Lab and away down the hall."),
@@ -73,7 +78,8 @@ public class Story {
                     flor("I can see outside! The quad, the gates.. I'm so close!"),
                     flor("So why does it feel like the building doesn't want me to leave?"),
                     think("The front doors are in the middle of the hall. Almost there."),
-                    tip("This floor's clues: a staff memo in the Faculty Room, and a register in the Records Room."));
+                    tip("This floor's clues: three books. A staff handbook in the Faculty Room, a register and a "
+                            + "yearbook in the Records Room."));
             default -> List.of();
         };
     }
@@ -106,13 +112,61 @@ public class Story {
                     flor("The whispering's coming from back there. It's getting louder.."),
                     flor("It sounds like.. names? It's saying names."));
             case 2 -> List.of(
-                    flor("The pods are all smashed. There's glass everywhere."),
-                    flor("Pod 2 is empty.. but something's still in here. I can hear it breathing."));
+                    flor("Every pod is smashed but one. There's glass everywhere."),
+                    flor("Pod 2 is empty.. but that last pod.. something's floating in it."));
             default -> List.of();
         };
     }
 
-    // Floor 4's way down is blocked by a boulder: the Brute, asleep (see Golem). The first time the player
+    // Floor 2: the Containment Lab is locked (its keycard is on the Lab Assistant). The first time the
+    // player tries its door:
+    public static List<Line> doorLocked(String room) {
+        if (room.equals("Principal's Office")) return PRINCIPAL_WONT_SEE_YOU;
+        if (!room.equals("Containment Lab")) return List.of();
+        return List.of(
+                narrate("The Containment Lab's door won't open. A keycard reader beside it blinks red: LAB STAFF ONLY."),
+                flor("Lab staff.. that thing in the lab coat, back in the Chemistry Lab?"),
+                tip("You don't have to go in: the stairs down are open. But whatever's inside might help you later."));
+    }
+
+    // Floor 1: the Principal's office is locked until Flor has found the floor's three books (see
+    // Director.doorLocked). The first time she tries the door, the intercom:
+    public static final List<Line> PRINCIPAL_WONT_SEE_YOU = List.of(
+            narrate("The Principal's door is locked. Beside it, an old intercom crackles into life."),
+            say("Principal", "principal", "I do not see students without an appointment. Come back when you have "
+                    + "something worth my time."),
+            flor("..Did he just call me dumb?"),
+            tip("Find the three books on this floor, then come back and show the Principal you've done your homework."));
+
+    // Every time, after that
+    public static String officeNotice(int found, int total) {
+        return "The Principal will not see you. Books found: " + found + " of " + total + ".";
+    }
+
+    // With all three books: Flor tells him what she's learned, and the door opens
+    public static final List<Line> RECITAL = List.of(
+            flor("I've done my homework. All of it."),
+            flor("Rule 12: no student stays after midnight. Your memo: strike them from the register."),
+            flor("Your yearbook: scratch them out. I know exactly what you did. Is that smart enough for you?"),
+            narrate("The intercom goes silent. Then the office door clicks open."),
+            say("Principal", "principal", "...Sit. Down."));
+
+    // Picking up what an ordinary monster dropped: what it was, then what Flor makes of it
+    public static List<Line> found(String monster, String found) {
+        if (!monster.equals("Lab Assistant")) return List.of(narrate(found));
+        return List.of(
+                narrate(found),
+                flor("A keycard.. CONTAINMENT. That's where all that slime came from."),
+                flor("Do I really want to open that door?"));
+    }
+
+    // Test Subject X, still sealed in the last whole pod (see SleepingBoss). Walking up to it wakes it:
+    public static final List<Line> POD = List.of(
+            narrate("Something floats in the last whole pod, curled up in green liquid. A label on the glass: SUBJECT X."),
+            flor("It's.. asleep. Okay. Nobody panic. I'll just back away sl-"),
+            narrate("Its mouth opens. The glass cracks."));
+
+    // Floor 4's way down is blocked by a boulder: the Brute, asleep (see SleepingBoss). The first time the player
     // walks up to it without both of the janitor's missing pages:
     public static final List<Line> BOULDER = List.of(
             narrate("A huge boulder sits in the middle of the stairs down, wedged between the rails."),
@@ -133,6 +187,39 @@ public class Story {
             flor("\"Oct 9. I'm staying up here tonight to see who's doing it. My keys are on my belt.\""),
             flor("\"11:40 PM. Footsteps on the fourth floor again.. If you're reading this, don't stay late. Go home.\""),
             narrate("The boulder shudders. Its cracks glow orange, and something inside the rock groans awake."));
+
+    // Floor 3's way down (the east stairs) is lost in a haze until the Whisperer is beaten (see Haze).
+    // The first time the player walks up to it:
+    public static final List<Line> HAZE = List.of(
+            narrate("A thick grey haze hangs over the stairs down. It's freezing, and it pushes you back."),
+            narrate("From somewhere back in the library: whispering. It sounds like it's calling you."),
+            flor("..It wants me to go back to the library?"));
+
+    // Every time, after that
+    public static String hazeNotice(int found, int total) {
+        return "The haze won't let you through. Back in the library, something keeps whispering. "
+                + "Checkout cards found: " + found + " of " + total + ".";
+    }
+
+    // The Whisperer, still intangible (see Whisperer), the first time the player walks up to her
+    public static final List<Line> MUMBLING = List.of(
+            narrate("The Whisperer drifts between the last shelves, barely there. Your hand passes right through her."),
+            say("Whisperer", "whisperer", "...______, Oct 2... ______, Oct 5... don't let them go... ______..."),
+            flor("She's reading out names.. but they're all blacked out. She can't remember them either."),
+            flor("The head librarian.. still reading them, so they won't be lost for good."),
+            tip("Find the three checkout cards in the library. Their names will fill in her blanks."));
+
+    // Every time, after that
+    public static String whispererNotice(int found, int total) {
+        return "She keeps whispering names you can't make out. Checkout cards found: " + found + " of " + total + ".";
+    }
+
+    // With all three cards: Flor reads the names out to her, and she turns solid
+    public static final List<Line> NAMES = List.of(
+            flor("I found the cards. All three. You don't have to read them alone any more."),
+            flor("Oct 2, Oct 5, Oct 8. Night Class. The Last Bell. I'll read every name with you."),
+            narrate("Flor reads the names out, one by one. The whispering falters, then stops."),
+            narrate("The Whisperer turns to face you, and for the first time, she looks solid."));
 
     // Trying the floor's way out without its key, the first time (then the locked note shows)
     public static List<Line> lockedOut(int floor) {
@@ -193,6 +280,12 @@ public class Story {
             flor("Someone kept saying these names so they wouldn't be lost. *reads them under her breath*"),
             flor("There. Now I'll remember them too."));
 
+    public static final List<Line> CARD_LAST_BELL = List.of(
+            paper("Checkout card: The Last Bell", "Borrowed by: ______, ______ and ______, the night of the last bell. "
+                    + "Returned: never. In the margin, in shaky pencil: I KEEP READING THEM SO THEY STAY."),
+            flor("\"I keep reading them so they stay..\" The librarian wrote this."),
+            flor("She's been reading their names out loud this whole time. So nobody forgets them."));
+
     public static final List<Line> REPORT_PAGE_1 = List.of(
             paper("Project REMEMBER, page 1", "What the school forgets, we keep. Two volunteers, both students "
                     + "who stayed late. Subject X: calm. Subject Zero, the first: restless, and growing."),
@@ -205,9 +298,11 @@ public class Story {
             flor("It broke out and went outside.. to the trees?"),
             flor("\"X keeps asking us its name.\" *swallows* That's the saddest thing I've ever read."));
 
-    public static final List<Line> STAFF_MEMO = List.of(
-            paper("Memo to all staff", "Students still in the building after midnight are to be struck from the "
-                    + "register. Do not discuss them. Do not look for them. Do not remember them. - The Principal"),
+    public static final List<Line> STAFF_HANDBOOK = List.of(
+            paper("Staff Handbook, Rule 12", "No student is to remain in the building after midnight. Students who do "
+                    + "will be dealt with by the Principal, personally."),
+            paper("Memo to all staff (tucked inside)", "Students still in the building after midnight are to be struck "
+                    + "from the register. Do not discuss them. Do not look for them. Do not remember them. - The Principal"),
             flor("\"Do not remember them.\" The Principal ORDERED it?!"),
             flor("They didn't just forget those students.. they made themselves forget."));
     public static final List<Line> REGISTER = List.of(
@@ -216,6 +311,12 @@ public class Story {
             flor("That's me. I'm next."),
             flor("No no no.. I'm not fading. I'm right here. My name is Flor!"),
             flor("*grips the register tight* I'm getting out of here before the L goes too."));
+
+    public static final List<Line> YEARBOOK = List.of(
+            paper("Yearbook: Room 404", "Every face in the class photo has been scratched out with a pen. One page is "
+                    + "half torn out. On it: a photo of you, half rubbed away. FLOR, CLASS OF ____."),
+            flor("That's.. me. Half of me."),
+            flor("He's not just forgetting them.. he's grading them out of existence."));
 
     // Picking a clue up again (after giving up undid finding it): no need to read it all again
     public static List<Line> clueAgain(String title) {
@@ -230,25 +331,19 @@ public class Story {
             case 4 -> List.of(                   // (Its battle only comes after both pages are read to it)
                     flor("Those keys... You're the janitor. You stayed up here to look for them."),
                     narrate("The Brute flinches. For a moment it looks almost human."));
-            case 3 -> switch (found) {
-                case 0 -> List.of(narrate("At the end of the library, something whispers. You can't make out the words."));
-                case 1 -> List.of(narrate("It's whispering names. The same few names, over and over."));
-                default -> List.of(flor("Those are the names from the checkout cards. I know them now, too. "
-                        + "You don't have to keep them all by yourself."), narrate("The whispering falters."));
-            };
+            case 3 -> List.of(                   // (Her battle only comes after the cards' names are read to her)
+                    flor("I know their names now, too. You can let them rest."),
+                    narrate("The Whisperer shrieks, and every shelf in the library rattles."));
             case 2 -> switch (found) {
                 case 0 -> List.of(narrate("Something stirs among the pods. It is very, very hungry."));
                 case 1 -> List.of(narrate("Test Subject X. A scrap of a student ID is still stuck to what's left of its sleeve."));
                 default -> List.of(flor("They called you X because they forgot your name. I'm sorry."),
                         narrate("Subject X hesitates. Its mouth closes, just for a moment."));
             };
-            case 1 -> switch (found) {
-                case 0 -> List.of(say("Principal", "principal", "Your permanent record is on my desk. Sit down. This won't take long."));
-                case 1 -> List.of(narrate("The Principal is striking names out of a register. One of them is yours."),
-                        say("Principal", "principal", "Sit. Down."));
-                default -> List.of(flor("You struck them all out. Everyone who stayed late. You're not striking me out."),
-                        narrate("The Principal's pen snaps in half."));
-            };
+            case 1 -> List.of(                   // (He only sees her once she's found all three books)
+                    say("Principal", "principal", "Your permanent record is on my desk. Since you're so clever, let's discuss it."),
+                    flor("You struck them all out. Everyone who stayed late. You're not striking me out."),
+                    narrate("The Principal's pen snaps in half."));
             default -> List.of();
         };
     }
@@ -256,10 +351,14 @@ public class Story {
     // Right after beating the boss (before its loot is picked up)
     public static List<Line> bossDown(int floor) {
         return switch (floor) {
-            case 4 -> List.of(
+            case 4 -> List.of(                   // (It drops nothing: beating it clears the way)
                     flor("*panting* It just.. fell apart. Like it was made out of the stairs."),
-                    flor("I'm sorry. I think you were only trying to help us."));
-            case 3 -> List.of(flor("It's quiet again. But a different kind of quiet.. lighter."));
+                    flor("I'm sorry. I think you were only trying to help us."),
+                    narrate("The rubble settles and rolls aside. The stairs down are clear."),
+                    flor("Okay. Down we go. Don't look back, Flor."));
+            case 3 -> List.of(
+                    flor("It's quiet again. But a different kind of quiet.. lighter."),
+                    narrate("Far off at the east end of the floor, the haze over the stairs thins and drifts away."));
             case 2 -> List.of(flor("*catching her breath* It didn't want to hurt me at first.. it just looked lost."));
             case 1 -> List.of(flor("*panting* Detention's over, sir."));
             default -> List.of();
@@ -269,17 +368,14 @@ public class Story {
     // Picking up what the boss dropped: what it was (the loot's own text), then what Flor makes of it
     public static List<Line> bossAfter(int floor, String found) {
         List<Line> after = switch (floor) {
-            case 4 -> List.of(
-                    think("The janitor stayed late to help them. Now I've got the keys."),
-                    flor("Okay. Down we go. Don't look back, Flor."));
             case 3 -> List.of(
-                    think("It was holding on to their names. I'll hold on to them now."),
-                    flor("A key hidden inside a book. Who even does that?"),
+                    think("She was holding on to their names. I'll hold on to them now."),
+                    flor("Every name.. finally written down where nobody can rub it out."),
                     flor("The east stairs.. the OTHER end of the building. Great. *sigh*"));
             case 2 -> List.of(
                     think("Pod 2 is still empty. Whatever Subject Zero is, it's outside."),
-                    flor("LOCKDOWN OVERRIDE. Finally, something in this school that works for me."),
-                    flor("One more floor. Just one more."));
+                    flor("Its brother.. Subject Zero is X's brother?"),
+                    flor("If some part of it still remembers him.. maybe this will calm it down."));
             default -> List.of(
                     think("The Master Key. The front doors are right there."),
                     flor("The Master Key.. this is it. Time to get out of here."));
@@ -332,8 +428,9 @@ public class Story {
     }
 
     // When the last tree falls
-    public static List<Line> awakening(boolean rememberedEveryone) {
-        return List.of(
+    // calmed: the player has Subject X's tentacle (see SubjectZero.CALMING_ITEM)
+    public static List<Line> awakening(boolean rememberedEveryone, boolean calmed) {
+        List<Line> lines = new java.util.ArrayList<>(List.of(
                 narrate("The last tree falls. Every root in the quadrangle goes still."),
                 narrate("By the south gate, the heap of dead leaves sits up. Every root you cut leads back to it."),
                 say("Subject Zero", "subject_zero", "...STAY... IN... YOUR... SEAT..."),
@@ -341,29 +438,69 @@ public class Story {
                 rememberedEveryone ? flor("I remember all of them. And I'll remember you.")
                         : flor("Nobody's forgetting me tonight."),
                 flor("So you're the first one.. the one everybody forgot the longest."),
-                flor("*grips her pen* I'm not sitting back down. Not for you, not for anyone."),
-                tip("Subject Zero's words are longer. When the ground cracks around you, get out of the way: "
-                        + "SPACE to stop focusing, then run."));
+                flor("*grips her pen* I'm not sitting back down. Not for you, not for anyone.")));
+        if (calmed) {
+            lines.add(flor("Wait.. I've got something of your brother's."));
+            lines.add(narrate("Flor holds up Subject X's tentacle. Subject Zero freezes, and every root in the "
+                    + "quadrangle goes slack."));
+            lines.add(narrate("It still comes for you. But slower now, as if some part of it is trying to remember."));
+        }
+        lines.add(tip("Subject Zero's words are longer. When the ground cracks around you, get out of the way: "
+                + "SPACE to stop focusing, then run."));
+        return lines;
     }
 
     // ---------------------------------------------------------------- the end
 
-    // After Subject Zero. Finding all 8 clues is the good ending.
+    // After Subject Zero. Finding every clue is the good ending. It comes in three parts: these words
+    // as it falls; then the south gate opens and the player walks out as the sun comes up (a thought on
+    // the way, dawnThought); then, through the gate, the last words (departure) and the ending screen.
     public static List<Line> ending(boolean remembered) {
         if (remembered) {
             return List.of(
                     narrate("Subject Zero comes apart into roots, dead leaves and old paper: pages from the register, "
                             + "and every name on them is still there."),
                     flor("I remember them. The janitor. The names on the cards. Subject X. All of them."),
-                    narrate("The sky over the south gate turns grey, then gold. Inside, the clock in Room 404 finally ticks over."),
+                    narrate("Somewhere a padlock drops. The chain on the south gate falls away, and over the wall "
+                            + "the sky is turning grey."),
+                    think("It's over. I can go home."));
+        }
+        return List.of(
+                narrate("Subject Zero comes apart into roots and dead leaves. The chain on the south gate falls away."),
+                flor("I'm out. I'm actually out."),
+                narrate("Dawn comes, but the sky over the wall is red. Your head is pounding, and the ground "
+                        + "won't keep still."),
+                think("Just.. get to the gate."));
+    }
+
+    // The notice as the south gate opens
+    public static String gateOpen(boolean remembered) {
+        return remembered ? "The south gate is open. Walk out into the morning."
+                : "The south gate is open. Your head is spinning.. get to the gate.";
+    }
+
+    // Halfway to the gate, as the sun comes up
+    public static List<Line> dawnThought(boolean remembered) {
+        if (remembered) {
+            return List.of(narrate("The sky over the south gate turns gold. The stumps, the dead leaves, the broken "
+                    + "fence: in the light, it's just a courtyard again."));
+        }
+        return List.of(flor("*sways* Why does it feel like I'm leaving someone behind.."));
+    }
+
+    // Out through the south gate: the last words before the ending screen
+    public static List<Line> departure(boolean remembered) {
+        if (remembered) {
+            return List.of(
+                    narrate("You step out through the south gate into the morning. Behind you, the clock in "
+                            + "Room 404 finally ticks over."),
                     narrate("On Monday the register for Room 404 is full. Every name is back. Yours too."),
                     flor("The janitor. The names on the cards. Subject X.. I'll say them every day if I have to."),
                     flor("Nobody gets forgotten. Not tonight. Not ever again."));
         }
         return List.of(
-                narrate("Subject Zero comes apart into roots and dead leaves. The chain on the south gate falls away."),
-                flor("I'm out. I'm actually out."),
-                narrate("Dawn comes. You walk home and sleep through the whole day."),
+                narrate("You stumble out through the south gate. You don't remember the walk home. "
+                        + "You sleep through the whole day."),
                 narrate("On Monday, your seat in Room 404 is gone. Nobody can remember who used to sit there."),
                 flor("Did I.. forget something? Someone?"),
                 flor("*stares at the empty seat in Room 404* Whose desk was that.."));
@@ -376,7 +513,7 @@ public class Story {
 
     public static String endingHint(boolean remembered) {
         return remembered ? "You found every clue, and nobody was forgotten."
-                : "Find all 8 clues to remember everyone.";
+                : "Find every clue to remember everyone.";
     }
 
     // Waking up after losing, the first time (the notice below shows every time)

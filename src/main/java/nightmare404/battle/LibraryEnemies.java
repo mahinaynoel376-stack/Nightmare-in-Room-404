@@ -66,7 +66,7 @@ public class LibraryEnemies {
     public static final EnemyDef WHISPERER = new EnemyDef(
             "Whisperer",
             "whisperer",
-            100,                                   
+            160,                                   
             "Library",
             "The silence was comforting, until it started whispering back.\n"
                     + "- Janitor's logbook, last entry",

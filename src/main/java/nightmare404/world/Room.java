@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import nightmare404.entity.Clue;
+import nightmare404.entity.Haze;
 import nightmare404.entity.Monster;
 import nightmare404.tile.TileMap;
 
@@ -41,6 +42,18 @@ public class Room {
 
     // The clues lying in this room (see story.Quests); a found one stays in the list (Player.clues says which)
     public final List<Clue> clues = new ArrayList<>();
+
+    // A haze over this stairwell's way down, or null (Floor 3's east stairs: see Haze)
+    public Haze haze;
+
+    // The key needed to get into this room, or null; and what the player reads at its door without it
+    // (the Containment Lab: see Encounters)
+    public String lockedWith;
+    public String lockedNote;
+
+    // True if there's no key to find: the door opens once the floor's clues are all found and Flor has
+    // shown it (the Principal's office: the Director gives her lockedWith then). See Director.doorLocked.
+    public boolean opensWhenQuestDone;
 
     // true for places outside the building (the quadrangle): the screen says "Outside", not a floor number
     public boolean outdoors = false;

@@ -22,6 +22,7 @@ public class Floor {
     public Floor below;     // The floor reached by going down the stairs (null = none yet)
     public Monster boss;    // This floor's boss (see Encounters), or null
     public String exitKey;  // The key to this floor's way down (or out), which the boss drops, or null
+    public boolean openWhenBossBeaten;   // ...or no key: the way down opens once the boss is beaten (Floors 4 and 3)
     public String lockedNote;   // What the player reads at the locked way out without it
     public Quest quest;         // The clues hidden in this floor's side rooms (see story.Quests), or null
 
@@ -31,6 +32,7 @@ public class Floor {
 
     // True if this floor's way down (or out) is still locked for someone carrying these keys
     public boolean locked(java.util.Set<String> keys) {
+        if (openWhenBossBeaten) return boss != null && !boss.defeated;
         return exitKey != null && !keys.contains(exitKey);
     }
 

@@ -67,7 +67,7 @@ public class LaboratoryEnemies {
     public static final EnemyDef TESTSUBJECTX = new EnemyDef(
             "Test Subject X",
             "LabExperiment",
-            100,                                   
+            170,                                   
             "Containment Lab",
             "Students who entered the laboratory after dark were never recorded as missing. Their names simply disappeared from the attendance sheet.\n"
                     + "- Janitor's logbook, last entry",

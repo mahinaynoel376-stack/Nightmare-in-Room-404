@@ -35,12 +35,12 @@ import nightmare404.world.Room;
 //   don't (TileSet.isShootThrough), and anything right next to you is cleared, so you can strike out
 //   from behind the book barricade, the bus or the court's fence. The quadrangle's strongholds matter.
 //   A monster that reaches you hits you, knocks you back and breaks your focus. It reels for a moment.
-//   Keys 1-4 use what you carry: a First Aid Kit, an Old Textbook (halves the next hit), a Red Pen
+//   Keys 1-4 use what you carry: a First Aid Kit, an Old Textbook (thrown at the nearest monster), a Red Pen
 //   (doubles the next strike), a Hall Pass (everything out here stands still for 3 seconds).
 //
 //   When the last tree falls, SUBJECT ZERO wakes by the south gate (story.Director) and comes for you.
 //   Its words are longer. Every few seconds the ground cracks round you (a warning), then roots burst
-//   up: get out of the way. Hurt, it calls up SAPLINGS through the gates, twice.
+//   up: get out of the way. Hurt, it calls up SAPLINGS through the gates, twice, three at a time.
 //
 //   Every monster felled out here saves your progress; going down brings you back to the main entrance
 //   with the trees beaten so far still beaten (see GamePanel.loseOutside).
@@ -63,7 +63,7 @@ public class LastStand {
     static final double STREAK_BONUS = 0.10;           // +10% for each word in a row without a mistake...
     static final int STREAK_MAX = 5;                   // ...up to +50%
     static final double RED_PEN = 2.0;
-    static final double TEXTBOOK = 0.5;
+    public static final int TEXTBOOK_DAMAGE = 30;      // An Old Textbook, thrown at the nearest monster in sight
     static final int STRIKE_SPEED = 12;                // Pixels per tick
     public static final int CLEAR_DISTANCE = 52;       // Strikes fly over anything this close to the player (the tile beside you)
 
@@ -76,11 +76,14 @@ public class LastStand {
     static final int HALL_PASS = 180;                  // Ticks everything stands still
 
     // ---- Subject Zero ----
-    static final int ROOT_EVERY = 200;                 // Ticks between its root attacks (faster as it weakens)
+    public static final int ROOT_EVERY = 170;          // Ticks between its root attacks (faster as it weakens)...
+    public static final double CALM_ROOTS = 1.7;       // ...this many times longer if the player has its brother's tentacle
     public static final int ROOT_WARN = 75;            // The ground cracks this long before the roots burst...
     static final int ROOT_BURST = 16;                  // ...and they stay up this long
     static final int ROOT_RADIUS = 24;
-    public static final int ROOT_DAMAGE = 12;
+    public static final int ROOT_DAMAGE = 15;
+    static final int ROOTS_AROUND = 3;                 // How many more eruptions round the player (more as it weakens)
+    public static final int SAPLINGS_PER_WAVE = 3;     // Called up through the gates, one at each
     static final Point[] GATES = {new Point(1, 17), new Point(48, 10), new Point(27, 34)};   // Just inside each
 
     private static final Font WORD_FONT = new Font(Font.MONOSPACED, Font.BOLD, 15);
@@ -122,7 +125,7 @@ public class LastStand {
     private Hunter target;                  // The monster whose word is being typed (null: none yet)
     private int typed;                      // How many letters of its word are typed
     public int streak;
-    public boolean redPenReady, textbookReady;
+    public boolean redPenReady;
     private int hurt, freeze, mistakeFlash, rootTimer = ROOT_EVERY, saplingWaves;
     private double clock;                   // Slow motion: the world moves one step each time this reaches 1
     private long now;                       // Frames since the player came out (for the floating text)
@@ -228,11 +231,18 @@ public class LastStand {
                 p.health = Math.min(p.maxHealth, p.health + BattleScreen.KIT_HEAL);
                 say(p.x + 16, p.y - 40, "+" + (p.health - before) + " HP", TYPED);
             }
-            case 2 -> {
-                if (p.items.textbooks <= 0 || textbookReady) return;
+            case 2 -> {                                // Thrown at the nearest monster in sight
+                if (p.items.textbooks <= 0) return;
+                Hunter nearest = null;
+                for (Hunter h : foesInView()) {
+                    if (nearest == null || distance(h) < distance(nearest)) nearest = h;
+                }
+                if (nearest == null) {
+                    gp.showNotice("Nothing in sight to throw it at.", 90);
+                    return;
+                }
                 p.items.textbooks--;
-                textbookReady = true;
-                gp.showNotice("Old Textbook: the next hit is halved.", 120);
+                strikes.add(new Strike(p.x + 16, p.y, nearest, TEXTBOOK_DAMAGE, "BOOK", "TEXTBOOK!"));
             }
             case 3 -> {
                 if (p.items.redPens <= 0 || redPenReady) return;
@@ -259,9 +269,9 @@ public class LastStand {
         focus = FOCUS_MAX;
         dropTarget();
         streak = 0;
-        redPenReady = textbookReady = false;
+        redPenReady = false;
         hurt = freeze = mistakeFlash = saplingWaves = 0;
-        rootTimer = ROOT_EVERY;
+        rootTimer = rootEvery();
         clock = 0;
         strikes.clear();
         eruptions.clear();
@@ -344,10 +354,6 @@ public class LastStand {
 
     private void hit(int damage, double fromX, double fromY) {
         Player p = gp.flor;
-        if (textbookReady) {
-            damage = (int) Math.round(damage * TEXTBOOK);
-            textbookReady = false;
-        }
         p.health = Math.max(0, p.health - damage);
         hurt = HURT_TICKS;
         streak = 0;
@@ -420,16 +426,23 @@ public class LastStand {
         }
     }
 
+    // Ticks between Subject Zero's root attacks (before it weakens): longer if the player has Subject X's
+    // tentacle (see SubjectZero.CALMING_ITEM)
+    public int rootEvery() {
+        boolean calmed = gp.flor.keys.contains(SubjectZero.CALMING_ITEM);
+        return (int) Math.round(ROOT_EVERY * (calmed ? CALM_ROOTS : 1));
+    }
+
     // Subject Zero's roots: every few seconds the ground cracks under and around the player; a moment
     // later roots burst up there
     private void roots(SubjectZero zero) {
         Player p = gp.flor;
         if (freeze == 0 && --rootTimer <= 0) {
             double weakness = 1 - (double) health.getOrDefault(zero, zero.enemy.maxHp()) / zero.enemy.maxHp();
-            rootTimer = (int) Math.round(ROOT_EVERY * (1 - 0.4 * weakness));
+            rootTimer = (int) Math.round(rootEvery() * (1 - 0.4 * weakness));
             int px = (int) p.solidArea.getCenterX(), py = (int) p.solidArea.getCenterY();
             eruptions.add(new Eruption(px, py));                 // Right where the player stands...
-            int more = 2 + (int) Math.round(weakness * 2);       // ...and round about
+            int more = ROOTS_AROUND + (int) Math.round(weakness * 2);   // ...and round about
             for (int i = 0; i < more; i++) {
                 double angle = random.nextDouble() * Math.PI * 2, r = 44 + random.nextInt(44);
                 eruptions.add(new Eruption(px + (int) (Math.cos(angle) * r), py + (int) (Math.sin(angle) * r)));
@@ -459,7 +472,7 @@ public class LastStand {
         double left = (double) health.getOrDefault(zero, zero.enemy.maxHp()) / zero.enemy.maxHp();
         if (!(saplingWaves == 0 && left <= 2 / 3.0 || saplingWaves == 1 && left <= 1 / 3.0)) return;
         saplingWaves++;
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < SAPLINGS_PER_WAVE; i++) {
             Point gate = GATES[(saplingWaves + i) % GATES.length];
             Sapling s = new Sapling(QuadrangleEnemies.SAPLING, quad, 32, gate.x, gate.y);
             saplings.add(s);
@@ -678,7 +691,6 @@ public class LastStand {
         g.drawString(label, middle - labelW / 2, y + 26);
         StringBuilder ready = new StringBuilder();
         if (redPenReady) ready.append("RED PEN READY   ");
-        if (textbookReady) ready.append("TEXTBOOK UP   ");
         if (freeze > 0) ready.append("HALL PASS");
         if (ready.length() > 0) {
             g.setColor(GOLD);

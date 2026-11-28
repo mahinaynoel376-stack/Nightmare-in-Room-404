@@ -489,6 +489,77 @@ The script's typos were tidied in the game ("At least", "what's", a closing `*`)
 **Note:** with both pages always found before the fight, the Brute always starts at 60% health (the clue weakening still applies).
 **Checks:** `EncounterCheck` section 5 (blocked at the middle and both edges without the pages, woken with them, back to a boulder after giving up) and `QuestCheck` sections 4-5.
 
+## 2026-11-27 — No key from the Brute; Floor 3's quest: the haze and the Whisperer's names
+
+**Floor 4:** the Brute drops nothing now. Beating it clears the way down (`Floor.openWhenBossBeaten`, set by `Encounters.bossInTheWay`), with a few words from Flor: the rubble rolls aside, "The stairs down are clear", and "Down we go".
+**Floor 3:**
+- **The haze** (`entity.Haze`, on the East Stairs room): grey clouds drift over the east stairs, the way down, while the Whisperer is there. The player can't step onto them; walking up to it, whispering from the library calls Flor back (then a notice counts the checkout cards found). It clears the moment she's beaten.
+- **The Whisperer** (`entity.Whisperer`): the head librarian, still reading out the forgotten students' names, but they're blacked out. Until Flor has all three checkout cards she's intangible: a see-through, shimmering sprite (`whisperer_intangible.png`, made by `tools/art/make_whisperer_intangible.py`) floating at the end of the library, with blanked-out names drifting up from her. The player walks straight through her. With all three cards, Flor reads her the names, she turns solid over a second (the see-through picture fades into the solid one), and walking into her starts the fight.
+- **A third checkout card**, "The Last Bell", in Library (Entrance) by the far shelves: "I KEEP READING THEM SO THEY STAY". 9 clues in all now.
+- Beaten, she drops **the three checkout cards with every name filled in** (with the same supplies as before) instead of a key.
+- Giving up after losing to her makes her intangible again and brings the haze back (and, as always, the cards found since the floor began).
+**Other:** a boss's weakening from clues now stops at 40% (`Quest.MOST_WEAKENING`), so three cards weaken the Whisperer as much as two pages weaken the Brute. The intro's tip, the main menu and the ending no longer say "8 clues".
+**Checks:** `EncounterCheck` sections 5-7 and `QuestCheck` sections 3 and 5b.
+
+## 2026-11-27 — Floor 2's optional quest: the Containment Lab, the pod, and a tentacle
+
+**What changed:**
+- **The drops look like what they are** (`Loot.Look`, drawn in `Monster.drawLoot`): the Whisperer leaves three fanned checkout cards with the names written in, instead of a key; Test Subject X leaves a curled, twitching tentacle. Keys still look like keys.
+- **No stair lock on Floor 2:** its way down is open from the start. Test Subject X is now optional (`Encounters.optionalBoss`).
+- **The Containment Lab is locked** (`Room.lockedWith`, checked in `Player`): the first time, Flor reads the keycard reader and a tip says it's optional, but might help later. The keycard is on the **Lab Assistant** in the Chemistry Lab: beaten, it drops it, and Flor wonders whether to open that door.
+- **Test Subject X is still sealed in the last whole pod**, in the middle of the lab. `Golem` became `SleepingBoss`, used by both the Brute (a boulder, wakes for the pages) and Test Subject X (a pod, wakes when walked up to). The pod blocks the way; walking up to it, it opens its mouth, the glass cracks, shatters, and it bursts out (new frames from `tools/art/make_specimen_pod.py`, on its own sprite and canvas, in the lab pod tile's colours). Then its battle.
+- **It drops Subject X's tentacle**, tagged SUBJECT X. SIBLING: SUBJECT ZERO. With it, **Subject Zero is calmer**: it hunts at half speed (1 px a frame instead of 2: `SubjectZero.CALM_SPEED`) and its roots come 1.7 times less often (every 340 frames instead of 200: `LastStand.CALM_ROOTS`), and when it wakes Flor holds the tentacle up to it. Without it (Test Subject X left alone), the last fight is the full, harder one.
+**Checks:** `EncounterCheck` section 7 (Floor 2's open stairs, the locked lab, the keycard, the pod, the tentacle) and `QuestCheck` section 11 (Subject Zero with and without the tentacle).
+
+## 2026-11-27 — Floor 1's quest: the strict Principal
+
+**What changed:** the Principal doesn't see students who haven't done their homework. His office is locked (`Room.opensWhenQuestDone`): the first time Flor tries the door, the intercom crackles ("I do not see students without an appointment"), Flor: "..Did he just call me dumb?", and a tip to find the floor's three books; after that, a notice counts them. The quest "Permanent Record" is now three books: the **Staff Handbook** in the Faculty Room (Rule 12, with the old staff memo tucked inside), the **Attendance Register** in the Records Room (unchanged), and a new **Yearbook** in the Records Room, every face in Room 404's photo scratched out and Flor's own half rubbed away. With all three, Flor recites what she's learned at his door ("Is that smart enough for you?"), the intercom goes silent, the door clicks open ("...Sit. Down."), and she's given her "appointment" (the room's key, `Director.doorLocked`). The fight and the Master Key are as before, with a new line from him first. 10 clues in all now. `peaceful()` (and `NO_ENEMIES`) also opens the locked rooms.
+**Note:** all three books are needed, so (with the 40% cap) the Principal always starts at 60% health, like the Brute and the Whisperer.
+**Checks:** `EncounterCheck` section 7 (the door without the books, then with them) and `QuestCheck` (10 clues, the yearbook).
+
+## 2026-11-27 — Tougher bosses, a throwing textbook, a more dangerous Subject Zero
+
+**Bosses:** more health. The Brute 90 → 140, the Whisperer 100 → 160, Test Subject X 100 → 170, the Principal 120 → 200, Subject Zero 160 → 240. (With all their clues found, the first three that need them start at 60%: 84, 96 and 120.)
+**The turn timer** goes by health, so its slope is gentler now: a second less for every 4 HP over 80 (it was one per HP), so the bosses don't all drop to the 15-second minimum. Bosses: Brute 30 s, Whisperer 25 s, Test Subject X 23 s, Principal 15 s. The ordinary monsters get a little more time than before (42-45 s).
+**The Old Textbook is an attack now:** in the word battle it's thrown at the monster for 18 damage straight away (it doesn't cost the turn); outside it's thrown like a strike at the nearest monster in sight ("BOOK", 30 damage); in the typing race, 15. It no longer blocks hits.
+**Subject Zero is more threatening:** it hunts at 2.5 px a frame (was 2; with Subject X's tentacle, 1.5), its roots come every 170 frames (was 200; with the tentacle, 289), hit for 15 (was 12) and crack the ground in more places, it calls 3 saplings a wave (was 2), and its grabs hit for 20 and 15 (were 16 and 12).
+**Checks:** the numbers in `QuestCheck` and `EncounterCheck` follow.
+
+## 2026-11-27 — Monsters that can't see through walls, and the Ceiling Blob
+
+**Sight and chasing** (`Monster.canSee`, `Monster.chaseStep`): a monster only notices the player if nothing solid stands between them (walls, shelves, desks, lab benches: any solid tile on the line between them, checked every 8 px). While chasing, it heads for where it last saw the player; if it gets there and can't see them, it gives up and goes back to its round. Chasing slides along obstacles (the longer way first, the other way if that's blocked) instead of stopping dead against them. Patrols are unchanged. The quadrangle's hunters still always know where the player is (they're the roots).
+**The first fight** has its own monster now, the **Ceiling Blob** (`FourthFloorEnemies.CEILING_BLOB`, pictures by `tools/art/make_ceiling_blob.py`: an inky purple blob with three pale eyes, standing, lunging and squashed). It's `entity.FirstBlob`: after Flor's lines, something drips on her, and you see it drop, on a strand of goo from the ceiling, its shadow growing, landing beside her with a splat and a squash (`DROP_TICKS`, 0.6 s, while the world waits), then the controls are explained and the fight starts. Lost, it's back up there next time.
+**Checks:** `EncounterCheck` 3b (a Bookworm doesn't see the player behind a row of shelves 2 tiles away, but does in the open aisle); `QuestCheck` 2b (the drop, then the fight).
+
+## 2026-11-28 — The objective bar as a note, with a clue counter
+
+**Goal:** count the clues in the objective bar, and make it look like a note instead of a dark box.
+**What happened:** `ui/QuestTracker` now draws a scrap of lined paper taped up in the top-right corner, a little crooked: cream paper with a shadow, blue ruled lines, a red margin, a folded-down corner and a strip of tape. The quest title is written at the top and underlined. Below it is a checklist of the floor's clues, "???" until found, then the clue's name with a red tick. If the floor's boss is still standing, a red line says how much weaker it will be ("Brute: 20% weaker"). The new last line is "Clues found: 3 / 10", counting every clue in the school (`Director.cluesFound()` / `cluesInAll()`). Outside, the checklist is "Fell the trees: 2 of 6", then "Beat Subject Zero".
+**Decisions:** the ink is the same blue pen as the name on the student ID card, so the HUD reads as Flor's own notes. Each line on the note is a small `Row` (text, plus a checkbox that's either unticked, ticked or absent). The note grows with the number of lines, so floors with 2 or 3 clues both fit.
+**Checks:** all 11 pass. Screenshots rendered for Floor 4 (0 and 1 clues), Floor 3 and the quadrangle.
+
+## 2026-11-28 — Waking up at the desk, and walking out at dawn
+
+**Goal:** an opening scene where the game starts in the dark and Flor gradually wakes up at her desk; and an ending that doesn't stop dead when Subject Zero falls. Good ending: the sun comes up and everything brightens. Bad ending: a red dawn, and Flor feels dizzy walking to the exit.
+**What happened:**
+- **The opening** (`ui/WakeUp`): black, with "...tick." fading in and out twice. Her eyes open a crack and shut again (black eyelids closing from the top and bottom, with soft edges), then open properly on Room 404, still dark, lightening as her eyes get used to it. Flor is asleep at her desk (row 11, column 12, right below where the game starts), breathing, with z's drifting up. She stirs, sits up with her eyes shut, opens them, looks back over her shoulder, stands, steps into the aisle and turns round. Then `Story.INTRO` plays as before. It lasts about 12 seconds, and E, Enter or Space skips it (but not in the first half second, in case the Enter from the menu is still held). The room name, quest note and bottom bar are hidden until it's over.
+- **New sprites** (`tools/art/make_desk_wakeup.py`): 6 frames of 64 × 64 covering her chair, her desk and the row above them: asleep ×2 (breathing), stirring, sitting up with eyes shut, eyes open, and looking back. They're built from her own walking sprites (head, jacket, trousers, and the back of her head for when her face is in her arms), so she matches when she gets up. Standing up uses her normal walking frames.
+- **The ending** (`ui/Dawn`): when Subject Zero falls, a few lines play (`Story.ending`). Then the padlock drops and the south gate's two fence tiles are cleared, and the player walks there themselves.
+  - Good: over 15 seconds the light goes grey, then gold, brightest from the south, with five slow rays of sunlight. Halfway, a line about the courtyard in the light.
+  - Bad: a red wash, a red glow from the south, and the edges of the screen throbbing dark red. The view tilts and sways: the world is drawn rotated by up to 1.4°, a little enlarged so the corners stay covered. A faint second Flor drifts beside her. She's dizzy (`Player.dizzy`): speed 3 instead of 4, no running, and each step sways sideways. Halfway: "Why does it feel like I'm leaving someone behind.."
+  - Walking into the gate fades the screen (to morning light, or to dark red). Then the last words play (`Story.departure`), then the ending screen as before. The quest note adds "Walk out the south gate".
+- The ending's lines are split into three parts (`ending`, `dawnThought`, `departure`). Every line the user wrote is kept; a few were added for the gate and the walk.
+**Problems:** the first version of the eyelids left a thin band of light in the middle even when "shut", because the two soft edges met at the middle. Fixed by letting each lid's solid black reach the middle when closed. The first sleeping frame used her side-on head turned face-down, which left a strip of face showing; it now uses the back of her head, with her face hidden in her arms.
+**Decisions:** the dawn is walked, not watched, so the player sees it happen around them. Space doesn't start focusing during the walk: there's nothing left to fight, and the hidden focus bar would have frozen her in place. Both scenes are skipped without a screen, so the checks run as before; the screenshot tools call `wakeUp.start()`.
+**Checks:** `QuestCheck` now walks out through the gate for both endings, checking that the gate opens, the sun comes up, the gold line plays on the way, and dizzy Flor walks 3 px a frame. New checks: the opening plays before anything is said, ends with Flor in the aisle and the story starting, and E skips it. All 11 checks pass.
+
+## 2026-11-28 — A limit on running
+
+**Goal:** stop the player sprinting everywhere.
+**What happened:** `Player` has stamina (360). Running uses 2 a frame, so 3 seconds from full. Walking gets back 1 a frame, and standing still 2. Run it all the way out and she's out of breath: Shift does nothing until stamina is back to half (1.5 seconds standing still, 3 walking). Holding Shift while standing still uses nothing. Giving up after a lost fight puts it back to full. A thin bar over her head shows it whenever it isn't full: blue, or red while she's out of breath. The controls tip in the intro now says running only lasts a few seconds.
+**Decisions:** the bar is over her head rather than on the ID card. The card has no room left under the health bar, and the bar is only there when it matters, right where the player is looking. Out of breath, she can't run again until half full (not the moment stamina starts coming back), so running out has a real cost.
+**Checks:** `QuestCheck` checks running speed and that it uses stamina; that she's out of breath after 3 seconds and can only walk, even holding Shift; and that she gets her breath back standing still. All 11 checks pass.
+
 ## Open issues and ideas
 
 - ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).

@@ -21,7 +21,13 @@ import nightmare404.world.Room;
 //         makes the ground erupt with roots around the player.
 // Going down to it outside puts it back by the gate, still awake.
 public class SubjectZero extends Hunter {
-    public static final int HUNT_SPEED = 2;          // Pixels per tick (the trees hunt at 3, the player walks at 4)
+    public static final double HUNT_SPEED = 2.5;     // Pixels per tick (the trees hunt at 3, the player walks at 4)...
+    public static final double CALM_SPEED = 1.5;     // ...or this, if the player has its brother's tentacle:
+
+    // What Test Subject X leaves when it's beaten (see Encounters): one of its tentacles, with its DNA in
+    // it. Subject Zero is X's brother; with it, Subject Zero half remembers him, and calms down: it hunts
+    // at CALM_SPEED, and its roots come less often (see LastStand.rootEvery).
+    public static final String CALMING_ITEM = "Subject X's tentacle";
     private static final int SIZE = 110;             // How tall it's drawn awake
 
     private final BufferedImage sleeping, attackImage, hurtImage;
@@ -71,12 +77,22 @@ public class SubjectZero extends Hunter {
         chasing = awake;
     }
 
+    private double stride;                           // Part-pixels carried from tick to tick (to move 2.5 a tick)
+
+    // How fast it hunts this player: slower if they have its brother's tentacle
+    public static double speed(Player player) {
+        return player.keys.contains(CALMING_ITEM) ? CALM_SPEED : HUNT_SPEED;
+    }
+
     @Override
     public void update(Player player) {
         if (attackPose > 0) attackPose--;
         if (hurtPose > 0) hurtPose--;
         if (!hunting() || player == null) return;
-        hunt(player, HUNT_SPEED);
+        stride += speed(player);                     // 2.5: 2 pixels one tick, 3 the next
+        int pixels = (int) stride;
+        stride -= pixels;
+        hunt(player, pixels);
     }
 
     @Override
