@@ -23,8 +23,10 @@ Run every command from the **project folder** (`GameProd`). Each script **overwr
 | `make_ground_tiles.py` | the 31 ground-floor tiles | the ground sheet |
 | `make_quad_tiles.py` | the 46 quadrangle tiles **and** the ground floor's 3 grass tiles | the quad sheet |
 | `make_quad_maps.py` | the quadrangle's layout (not images) | nothing |
+| `make_zero_rising.py` | Subject Zero rising out of its heap when the last tree falls (`battle/subject_zero_rise_1..3.png`) | its heap and its awake sprite |
+| `make_fences_court.py` | the quadrangle's fences (see-through; the side fences as an upright line, corner posts), the side gates, the main gate (brick pillars, iron leaves, chained; and open), and the basketball court: 154 painted tiles and two 2 x 2 hoops. Run it **after** `make_quad_tiles.py` | the asphalt tile |
 | `make_quest_art.py` | Subject Zero, the final boss: awake, striking and hurt (`battle/subject_zero*.png`), and asleep as a heap of leaves | Test Subject X's battle sprites |
-| `make_desk_wakeup.py` | Flor waking up at her desk for the opening scene (`characters/player/desk_*.png`, 6 frames of 64 × 64): asleep and breathing, stirring, sitting up with her eyes shut, then open, looking back | her walking sprites |
+| `make_desk_wakeup.py` | Kai waking up at his desk for the opening scene (`characters/player/desk_*.png`, 6 frames of 64 × 64): asleep and breathing, stirring, sitting up with her eyes shut, then open, looking back | her walking sprites |
 | `make_treant.py` | the Hollow Oak's 3 battle sprites (`battle/treant*.png`): the quadrangle's tree with eyes, a mouth, arms and roots | the tree tiles in `tiles/props` |
 
 ```bat
@@ -37,6 +39,8 @@ python tools/art/make_ground_tiles.py  docs/images/floor1-ground/ground_sheet.pn
 python tools/art/make_quad_tiles.py    docs/images/quadrangle/quad_sheet.png src/main/resources/tiles/quad src/main/resources/tiles/ground quad_preview.png
 python tools/art/make_treant.py
 python tools/art/make_desk_wakeup.py   desk_preview.png
+python tools/art/make_zero_rising.py   rising_preview.png
+python tools/art/make_fences_court.py  court_preview.png
 python tools/art/make_quest_art.py     src/main/resources quest_preview.png
 ```
 

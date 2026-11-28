@@ -44,7 +44,7 @@ public class Floor2Check {
     }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.kai;
         Floor f4 = gp.world.floor4, f3 = gp.world.floor3, f2 = gp.world.floor2;
 
         System.out.println("1. Floors are linked: 4 <-> 3 <-> 2");

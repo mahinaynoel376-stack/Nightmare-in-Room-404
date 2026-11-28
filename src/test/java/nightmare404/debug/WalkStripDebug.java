@@ -22,7 +22,7 @@ public class WalkStripDebug {
     public static void main(String[] args) throws IOException {
         String outPath = args.length > 0 ? args[0] : "down_walk_strip.png";
         GamePanel gp = new GamePanel();
-        Player player = gp.flor;
+        Player player = gp.kai;
         int ts = gp.tileSize;
         int top = 0;                   // Space above the sprite (the health bar used to be drawn here)
         int frameH = top + ts * 2;     // Sprite is 1 tile wide, 2 tiles tall

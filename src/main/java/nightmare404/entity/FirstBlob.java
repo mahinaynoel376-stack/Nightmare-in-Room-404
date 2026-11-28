@@ -6,13 +6,13 @@ import java.awt.Graphics2D;
 import nightmare404.battle.BattleScreen.EnemyDef;
 import nightmare404.world.Room;
 
-// The first monster Flor meets: a blob of goo that drops on her from the ceiling the first time she
+// The first monster Kai meets: a blob of goo that drops on him from the ceiling the first time he
 // steps out of Room 404 (story.Director starts it; Encounters makes it). It isn't one of the
 // hallway's monsters: it never walks a round, and once beaten it stays beaten.
 //
 // drop(player) starts it falling beside the player. While it falls (DROP_TICKS long) the world waits
 // (see GamePanel.update): a strand of goo comes down from the ceiling, its shadow grows on the floor,
-// it lands with a splat and squashes flat for a moment. Then it has her: its battle starts.
+// it lands with a splat and squashes flat for a moment. Then it has him: its battle starts.
 // The pictures are made by tools/art/make_ceiling_blob.py.
 public class FirstBlob extends Monster {
     public static final int DROP_TICKS = 36;    // 0.6 seconds...

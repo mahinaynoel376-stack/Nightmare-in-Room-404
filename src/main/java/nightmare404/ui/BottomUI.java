@@ -17,11 +17,11 @@ import nightmare404.entity.Player;
 import nightmare404.main.GamePanel;
 import nightmare404.story.Line;
 
-// The bottom UI: Flor's student ID card (bottom left) and her backpack (bottom right).
+// The bottom UI: Kai's student ID card (bottom left) and his backpack (bottom right).
 //
 //   ┌──────────────────────────┐
 //   │ ┌────┐ STUDENT ID  #404  │                 ┌─ BACKPACK ─────────────────┐
-//   │ │face│ NAME: Flor        │                 │  + ×3  📕 ×1  🖊 ×1  🎫 ×1   │
+//   │ │face│ NAME: Kai        │                 │  + ×3  📕 ×1  🖊 ×1  🎫 ×1   │
 //   │ └────┘ ♥▰▰▰▰▰▰  100      │                 └────────────────────────────┘
 //   └──────────────────────────┘
 //
@@ -29,7 +29,7 @@ import nightmare404.story.Line;
 // because every map is 18 rows tall. They're taller than that row, so they stick up over the bottom
 // of the world a little; top() says how high, so the dialogue box and notices sit above them.
 //
-// When Flor walks behind the card or the backpack, it fades so she (and any door there) can be seen.
+// When Kai walks behind the card or the backpack, it fades so he (and any door there) can be seen.
 //
 // The health bar is a 7-frame sprite (src/main/resources/ui/hp_player_1..7.png): frame 1 is all six
 // segments full, frame 7 is empty. The photo on the card gets more beaten up as the segments go.
@@ -68,7 +68,7 @@ public class BottomUI {
     private static final Font PACK_TITLE = new Font(Font.SERIF, Font.BOLD, 11);
     private static final Font COUNT = new Font(Font.SANS_SERIF, Font.BOLD, 13);
     private static final Font HOTKEY = new Font(Font.SANS_SERIF, Font.BOLD, 9);
-    private static final float BEHIND_ALPHA = 0.3f;   // How see-through a panel gets with Flor behind it
+    private static final float BEHIND_ALPHA = 0.3f;   // How see-through a panel gets with Kai behind it
 
     private final GamePanel gp;
     private final BufferedImage[] hpFrames = new BufferedImage[HP_FRAMES];
@@ -80,8 +80,8 @@ public class BottomUI {
             BufferedImage sheet = BattleScreen.Sprites.get("/ui/hp_player_" + (i + 1), true);
             if (sheet != null) hpFrames[i] = sheet.getSubimage(2, 4, 56, 10);
         }
-        // The photo: Flor's head from her walking sprite (32x64), the 26x28 square around her face
-        BufferedImage body = BattleScreen.Sprites.get(Line.FLOR_FACE, true);
+        // The photo: Kai's head from his walking sprite (32x64), the 26x28 square around his face
+        BufferedImage body = BattleScreen.Sprites.get(Line.KAI_FACE, true);
         face = body == null ? null : body.getSubimage(3, 0, 26, 28);
     }
 
@@ -102,18 +102,18 @@ public class BottomUI {
         g.setColor(STRIP_EDGE);
         g.drawLine(0, stripTop, gp.screenWidth, stripTop);
 
-        drawCard(g, gp.flor);
-        drawBackpack(g, gp.flor);
+        drawCard(g, gp.kai);
+        drawBackpack(g, gp.kai);
         g.dispose();
     }
 
-    // A copy of g to draw one panel with: see-through if Flor's sprite (one tile wide, two tall,
-    // standing on her x, y) is behind the panel's x, y, w, h. Dispose it when done.
+    // A copy of g to draw one panel with: see-through if Kai's sprite (one tile wide, two tall,
+    // standing on his x, y) is behind the panel's x, y, w, h. Dispose it when done.
     private Graphics2D fadeIfBehind(Graphics2D g, int x, int y, int w, int h) {
         Graphics2D panel = (Graphics2D) g.create();
         int size = gp.tileSize;
-        Rectangle flor = new Rectangle(gp.flor.x - gp.cameraX(), gp.flor.y - size - gp.cameraY(), size, size * 2);
-        if (flor.intersects(x, y, w, h)) panel.setComposite(AlphaComposite.SrcOver.derive(BEHIND_ALPHA));
+        Rectangle kai = new Rectangle(gp.kai.x - gp.cameraX(), gp.kai.y - size - gp.cameraY(), size, size * 2);
+        if (kai.intersects(x, y, w, h)) panel.setComposite(AlphaComposite.SrcOver.derive(BEHIND_ALPHA));
         return panel;
     }
 
@@ -181,7 +181,7 @@ public class BottomUI {
         g.drawLine(nameX - 2, y + 43, right, y + 43);
         g.setFont(ID_NAME);
         g.setColor(new Color(30, 40, 92));          // Written in blue pen
-        g.drawString(Line.FLOR, nameX + 2, y + 41);
+        g.drawString(Line.KAI, nameX + 2, y + 41);
 
         // The health bar sprite, and the number beside it
         int hpY = y + 49;
@@ -193,14 +193,14 @@ public class BottomUI {
         g.dispose();
     }
 
-    // Flor's photo. The more of the bar is gone, the worse it looks: scratched, then stained red and
+    // Kai's photo. The more of the bar is gone, the worse it looks: scratched, then stained red and
     // flickering, and with no health left it's only static.
     private void drawPhoto(Graphics2D g, int x, int y, int lost) {
         Graphics2D p = (Graphics2D) g.create();
         p.clipRect(x, y, PHOTO_W, PHOTO_H);
         p.setColor(PHOTO_BACK);
         p.fillRect(x, y, PHOTO_W, PHOTO_H);
-        p.setColor(new Color(126, 140, 160));      // A darker floor line behind her, like a school photo
+        p.setColor(new Color(126, 140, 160));      // A darker floor line behind him, like a school photo
         p.fillRect(x, y + PHOTO_H - 14, PHOTO_W, 14);
 
         if (lost >= HP_SEGMENTS) {
@@ -320,7 +320,7 @@ public class BottomUI {
         }
     }
 
-    // The key to this floor's way out, once Flor has it
+    // The key to this floor's way out, once Kai has it
     private static void drawKeySlot(Graphics2D g, int x, int cy) {
         Graphics2D k = (Graphics2D) g.create();
         k.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

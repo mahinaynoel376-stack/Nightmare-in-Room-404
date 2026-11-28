@@ -22,7 +22,7 @@ public class PerfDebug { public static void main(String[] a) throws Exception {
     BufferedImage frame = new BufferedImage(800, 608, BufferedImage.TYPE_INT_RGB);
     String[] where = {"Room 404 (no scrolling)", "Hallway mid-scroll (2 maps drawn)"};
     for (int s = 0; s < 2; s++) {
-        if (s == 1) { gp.currentRoom = gp.world.floor4.find("Hallway (Room 403)"); gp.flor.x = 700; gp.flor.y = 9*32; }
+        if (s == 1) { gp.currentRoom = gp.world.floor4.find("Hallway (Room 403)"); gp.kai.x = 700; gp.kai.y = 9*32; }
         for (int i = 0; i < 300; i++) { Graphics2D g = frame.createGraphics(); gp.paint(g); g.dispose(); }   // warm up
         int n = 1000; long st = System.nanoTime();
         for (int i = 0; i < n; i++) { Graphics2D g = frame.createGraphics(); gp.paint(g); g.dispose(); }

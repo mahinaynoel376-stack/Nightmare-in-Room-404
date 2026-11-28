@@ -17,7 +17,7 @@ import nightmare404.world.World;
 
 // The objective, as a note taped up in the top-right corner: a scrap of lined paper, a little crooked,
 // written in pen. On it: this floor's quest, a checklist of its clues (ticked off in red as they're
-// found, "???" until then), how much weaker the boss will be, and how many clues Flor has found in the
+// found, "???" until then), how much weaker the boss will be, and how many clues Kai has found in the
 // whole school (all of them is the good ending). Outside, it's the trees still standing instead.
 public class QuestTracker {
     private static final Font TITLE = new Font(Font.SERIF, Font.BOLD, 14);
@@ -60,11 +60,11 @@ public class QuestTracker {
             if (quest == null) return;
             title = quest.title;
             for (Clue c : quest.clues) {
-                boolean found = gp.flor.clues.contains(c.id);
+                boolean found = gp.kai.clues.contains(c.id);
                 rows.add(new Row(found ? c.title : "???", found));
             }
-            if (floor.boss != null && !floor.boss.defeated && quest.found(gp.flor.clues) > 0) {
-                rows.add(new Row(floor.boss.enemy.name() + ": " + Math.round(quest.weakening(gp.flor.clues) * 100)
+            if (floor.boss != null && !floor.boss.defeated && quest.found(gp.kai.clues) > 0) {
+                rows.add(new Row(floor.boss.enemy.name() + ": " + Math.round(quest.weakening(gp.kai.clues) * 100)
                         + "% weaker", null));
             }
         }

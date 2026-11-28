@@ -76,7 +76,7 @@ public class Director {
             FirstBlob first = gp.world.firstFight;
             if (hallway && first != null && !first.defeated && first.room.floor == f) {
                 scene.addAll(seen.add("firstFight") ? Story.FIRST_FIGHT : Story.FIRST_FIGHT_AGAIN);
-                play(scene, () -> first.drop(gp.flor));   // It drops on her; landing starts its battle
+                play(scene, () -> first.drop(gp.kai));   // It drops on him; landing starts its battle
                 return;
             }
         }
@@ -86,7 +86,7 @@ public class Director {
     // The player walked into a monster. A floor's boss says something first (once for each number of
     // clues found, so it reacts to what the player knows); then the battle starts.
     public void beforeBattle(Monster m, Runnable fight) {
-        if (m == gp.world.firstFight) {          // The blob has landed on her: the controls, the first time
+        if (m == gp.world.firstFight) {          // The blob has landed on him: the controls, the first time
             play(seen.add("firstFightLanded") ? Story.FIRST_FIGHT_LANDED : List.of(), fight);
             return;
         }
@@ -100,7 +100,7 @@ public class Director {
         }
         if (m.boss && m == m.room.floor.boss) {
             Floor f = m.room.floor;
-            int found = f.quest == null ? 0 : f.quest.found(gp.flor.clues);
+            int found = f.quest == null ? 0 : f.quest.found(gp.kai.clues);
             play(seen.add("boss" + f.number + ":" + found) ? Story.bossBefore(f.number, found) : List.of(), fight);
         } else {
             String name = m.enemy.name();       // Some monsters get a few words the first time they're met
@@ -110,7 +110,7 @@ public class Director {
 
     // The player walked up to a sleeping boss (see SleepingBoss). Test Subject X bursts out of its pod
     // as soon as anyone comes near. The Brute, a boulder on the stairs, won't budge without both of the
-    // janitor's missing pages; with both, Flor reads the logbook out to it, and it wakes. (Then walking
+    // janitor's missing pages; with both, Kai reads the logbook out to it, and it wakes. (Then walking
     // into it starts its battle, like any boss.)
     private void wakeUp(SleepingBoss boss) {
         if (!boss.needsClues) {
@@ -118,8 +118,8 @@ public class Director {
             return;
         }
         Quest q = boss.room.floor.quest;
-        String notice = Story.boulderNotice(q.found(gp.flor.clues), q.clues.size());
-        if (q.complete(gp.flor.clues)) {
+        String notice = Story.boulderNotice(q.found(gp.kai.clues), q.clues.size());
+        if (q.complete(gp.kai.clues)) {
             play(Story.RECITE, () -> boss.wake());
         } else if (seen.add("boulder")) {
             play(Story.BOULDER, () -> gp.showNotice(notice, 240));
@@ -129,12 +129,12 @@ public class Director {
     }
 
     // The player walked up to the Whisperer while she's intangible (see Whisperer). Without the three
-    // checkout cards she just keeps whispering blanks; with all three, Flor reads her the names, and she
+    // checkout cards she just keeps whispering blanks; with all three, Kai reads her the names, and she
     // turns solid (then walking into her starts her battle).
     private void atTheWhisperer(Whisperer whisperer) {
         Quest q = whisperer.room.floor.quest;
-        String notice = Story.whispererNotice(q.found(gp.flor.clues), q.clues.size());
-        if (q.complete(gp.flor.clues)) {
+        String notice = Story.whispererNotice(q.found(gp.kai.clues), q.clues.size());
+        if (q.complete(gp.kai.clues)) {
             play(Story.NAMES, () -> whisperer.solidify());
         } else if (seen.add("whisperer")) {
             play(Story.MUMBLING, () -> gp.showNotice(notice, 240));
@@ -145,7 +145,7 @@ public class Director {
 
     // The player walked up to the haze over Floor 3's way down (see Haze): it calls them back to the library
     public void hazeCalls(Floor f) {
-        String notice = Story.hazeNotice(f.quest.found(gp.flor.clues), f.quest.clues.size());
+        String notice = Story.hazeNotice(f.quest.found(gp.kai.clues), f.quest.clues.size());
         play(seen.add("haze") ? Story.HAZE : List.of(), () -> gp.showNotice(notice, 240));
     }
 
@@ -153,7 +153,7 @@ public class Director {
     // found on its floor (see Quest)
     public int foeStartHp(Monster m) {
         Floor f = m.room.floor;
-        if (m == f.boss && f.quest != null) return f.quest.bossStartHp(gp.flor.clues);
+        if (m == f.boss && f.quest != null) return f.quest.bossStartHp(gp.kai.clues);
         return m.enemy.maxHp();
     }
 
@@ -172,26 +172,26 @@ public class Director {
 
     // The player tried a locked door. The Containment Lab needs its keycard (see Encounters): the first
     // time, a few words, and the locked note every time. The Principal's office opens once the floor's
-    // three books are found: without them he won't see Flor; with them, she recites what she's learned,
-    // and the door opens (she's given the "key", her appointment).
+    // three books are found: without them he won't see Kai; with them, he recites what he's learned,
+    // and the door opens (he's given the "key", his appointment).
     public void doorLocked(Room room) {
         if (room.opensWhenQuestDone) {
             Quest q = room.floor.quest;
-            if (q.complete(gp.flor.clues)) {
+            if (q.complete(gp.kai.clues)) {
                 play(Story.RECITAL, () -> {
-                    gp.flor.keys.add(room.lockedWith);
+                    gp.kai.keys.add(room.lockedWith);
                     gp.showNotice("The office door clicks open.");
                 });
                 return;
             }
-            String notice = Story.officeNotice(q.found(gp.flor.clues), q.clues.size());
+            String notice = Story.officeNotice(q.found(gp.kai.clues), q.clues.size());
             play(seen.add("door:" + room.name) ? Story.doorLocked(room.name) : List.of(), () -> gp.showNotice(notice));
             return;
         }
         play(seen.add("door:" + room.name) ? Story.doorLocked(room.name) : List.of(), () -> gp.showNotice(room.lockedNote));
     }
 
-    // The player tried the floor's way out (or down) without its key. The first time, Flor may say
+    // The player tried the floor's way out (or down) without its key. The first time, Kai may say
     // something about it; the locked note shows every time.
     public void lockedOut(Floor f) {
         play(seen.add("locked" + f.number) ? Story.lockedOut(f.number) : List.of(), () -> gp.showNotice(f.lockedNote));
@@ -213,12 +213,18 @@ public class Director {
             return;
         }
         SubjectZero zero = gp.world.finalBoss;
-        zero.wake();
         gp.showNotice("", 0);
-        play(Story.awakening(allCluesFound(), gp.flor.keys.contains(SubjectZero.CALMING_ITEM)), null);
+        gp.watch(zero.centreX(), zero.centreY() - 30);   // The camera goes over to it...
+        zero.rise();                                      // ...and it rises (then zeroRose)
     }
 
-    // Hurt, Subject Zero calls up its saplings (see LastStand); Flor has something to say the first time
+    // Subject Zero has risen (GamePanel tells us): its words, with the camera still on it, then the
+    // camera goes back to the player and the fight starts
+    public void zeroRose() {
+        play(Story.awakening(allCluesFound(), gp.kai.keys.contains(SubjectZero.CALMING_ITEM)), gp::stopWatching);
+    }
+
+    // Hurt, Subject Zero calls up its saplings (see LastStand); Kai has something to say the first time
     public void saplingsCalled() {
         play(seen.add("saplings") ? Story.FIRST_SAPLINGS : List.of(), () -> gp.showNotice(Story.SAPLINGS, 180));
     }
@@ -250,7 +256,7 @@ public class Director {
 
     // The player walked over a clue: read it, take what's with it, and see how the boss is weakened
     public void clueFound(Clue clue) {
-        Player p = gp.flor;
+        Player p = gp.kai;
         p.clues.add(clue.id);
         p.addSupplies(clue.supplies);
         List<Line> lines = new ArrayList<>(seen.add("clue:" + clue.id) ? clue.pages : Story.clueAgain(clue.title));
@@ -283,7 +289,7 @@ public class Director {
     public int cluesFound() {
         int n = 0;
         for (Clue c : Quests.all(gp.world)) {
-            if (gp.flor.clues.contains(c.id)) n++;
+            if (gp.kai.clues.contains(c.id)) n++;
         }
         return n;
     }
@@ -297,8 +303,8 @@ public class Director {
     }
 
     private boolean near(Monster m, int distance) {
-        return Math.hypot(gp.flor.solidArea.getCenterX() - m.solidArea.getCenterX(),
-                gp.flor.solidArea.getCenterY() - m.solidArea.getCenterY()) < distance;
+        return Math.hypot(gp.kai.solidArea.getCenterX() - m.solidArea.getCenterX(),
+                gp.kai.solidArea.getCenterY() - m.solidArea.getCenterY()) < distance;
     }
 
     private void play(List<Line> lines, Runnable then) {

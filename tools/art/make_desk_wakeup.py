@@ -1,16 +1,16 @@
-# Flor waking up at her desk in Room 404, for the opening scene (see ui/WakeUp.java). Every frame is
-# made from her own walking sprites (characters/player/*.png): her head, her jacket and her trousers,
-# moved, leaned and turned, so she looks the same as when she gets up and walks.
+# Kai waking up at his desk in Room 404, for the opening scene (see ui/WakeUp.java). Every frame is
+# made from his own walking sprites (characters/player/*.png): his head, his jacket and his trousers,
+# moved, leaned and turned, so he looks the same as when he gets up and walks.
 #
-# Each frame is 64 x 64: the left half covers her chair's tile, the right half her desk's tile (the
+# Each frame is 64 x 64: the left half covers his chair's tile, the right half his desk's tile (the
 # chair faces right, at the desk), and the top half is the row above them. The game draws the frame
 # over the chair and desk tiles, so they aren't in it.
-#   desk_sleep_1.png   slumped over the desk, face down on her arms
+#   desk_sleep_1.png   slumped over the desk, face down on his arms
 #   desk_sleep_2.png   the same, breathing in (head and back a pixel higher)
-#   desk_stir.png      lifting her head, still half on the desk
+#   desk_stir.png      lifting his head, still half on the desk
 #   desk_drowsy.png    sitting up, eyes shut
 #   desk_awake.png     sitting up, eyes open
-#   desk_look_back.png sitting up, looking back over her shoulder at the empty room
+#   desk_look_back.png sitting up, looking back over his shoulder at the empty room
 #
 # Usage: python tools/art/make_desk_wakeup.py [preview.png]   (from the project folder)
 import sys
@@ -23,7 +23,7 @@ right = Image.open(PLAYER + 'right_idle.png').convert('RGBA')
 left = Image.open(PLAYER + 'left_idle.png').convert('RGBA')
 back = Image.open(PLAYER + 'up_idle.png').convert('RGBA')
 
-# Her colours (taken from the sprites)
+# His colours (taken from the sprites)
 SLEEVE = (122, 126, 136, 255)
 SLEEVE_DARK = (88, 92, 104, 255)
 OUTLINE = (28, 29, 37, 255)
@@ -45,7 +45,7 @@ def head(sprite):          # Hair and face (rows 0-23)
 def body(sprite):          # Jacket, arm and hand (rows 24-45)
     return sprite.crop((0, 24, 32, 46))
 
-# Her eyes shut: the open eye on the side-facing sprite (rows 17-19, columns 20-23) becomes skin with
+# His eyes shut: the open eye on the side-facing sprite (rows 17-19, columns 20-23) becomes skin with
 # a dark line for the closed lid
 def eyes_shut(h):
     h = h.copy()
@@ -57,7 +57,7 @@ def eyes_shut(h):
     px[20, 19] = SKIN
     return h
 
-# Her legs, sitting: thigh along the seat, shin down in front of it, shoe on the floor.
+# His legs, sitting: thigh along the seat, shin down in front of it, shoe on the floor.
 # (hipX, hipY) is where the thigh starts.
 def seated_legs(frame, hip_x, hip_y):
     d = ImageDraw.Draw(frame)
@@ -80,11 +80,11 @@ def seated_legs(frame, hip_x, hip_y):
 def sitting(h):
     frame = Image.new('RGBA', (64, 64))
     frame.alpha_composite(body(right), (7, 29))
-    seated_legs(frame, 19, 46)              # Her near leg is in front of her jacket
+    seated_legs(frame, 19, 46)              # His near leg is in front of his jacket
     frame.alpha_composite(h, (7, 5))
     return frame
 
-# Her arms folded on the desk top (the desk's top face is x 38-58, y 39-51 in the frame)
+# His arms folded on the desk top (the desk's top face is x 38-58, y 39-51 in the frame)
 def folded_arms(frame, x, y):
     d = ImageDraw.Draw(frame)
     d.rounded_rectangle((x, y, x + 20, y + 8), radius=3, fill=SLEEVE, outline=OUTLINE)
@@ -93,7 +93,7 @@ def folded_arms(frame, x, y):
     d.rectangle((x + 19, y + 2, x + 22, y + 5), fill=SKIN, outline=OUTLINE)   # A hand peeking out
     d.line((x + 20, y + 5, x + 21, y + 5), fill=SKIN_DARK)
 
-# Her back leaning forward: the jacket squashed and slanted, so the shoulders move `lean` pixels
+# His back leaning forward: the jacket squashed and slanted, so the shoulders move `lean` pixels
 # forward from the hips (at the frame's (hipX, 50)), and the top of the back is at `top`
 def leaning_body(lean, top):
     src = body(right)                       # 32 x 22
@@ -108,7 +108,7 @@ def leaning_body(lean, top):
                 out.putpixel((sx + shift, top + oy), p)
     return out
 
-# Her back hunched over the desk: the jacket from her hips up to her shoulders, curving forward.
+# His back hunched over the desk: the jacket from his hips up to his shoulders, curving forward.
 # lift = 1 raises it a pixel (breathing in).
 def hunched_back(frame, lift):
     d = ImageDraw.Draw(frame)
@@ -116,22 +116,22 @@ def hunched_back(frame, lift):
     back_line = [(15, 51), (15, 45 + up), (18, 40 + up), (23, 36 + up), (30, 34 + up), (35, 37 + up),
                  (33, 43), (26, 48), (22, 52)]
     d.polygon(back_line, fill=SLEEVE, outline=OUTLINE)
-    d.line([(16, 46 + up), (19, 41 + up), (24, 37 + up)], fill=(205, 210, 216, 255))   # Light on her back
-    d.line([(20, 51), (26, 47), (32, 43)], fill=SLEEVE_DARK)                            # Her side, in shadow
-    d.line([(29, 35 + up), (33, 37 + up)], fill=(52, 68, 112, 255))                     # Her collar
+    d.line([(16, 46 + up), (19, 41 + up), (24, 37 + up)], fill=(205, 210, 216, 255))   # Light on his back
+    d.line([(20, 51), (26, 47), (32, 43)], fill=SLEEVE_DARK)                            # His side, in shadow
+    d.line([(29, 35 + up), (33, 37 + up)], fill=(52, 68, 112, 255))                     # His collar
 
-# Asleep: face down on her folded arms, so all that shows of her head is the back of it, her hair.
-# breath = 1 lifts her head and back a pixel.
+# Asleep: face down on his folded arms, so all that shows of his head is the back of it, his hair.
+# breath = 1 lifts his head and back a pixel.
 def asleep(breath):
     frame = Image.new('RGBA', (64, 64))
     hunched_back(frame, breath)
     seated_legs(frame, 17, 46)
-    hair = back.crop((4, 0, 31, 22))                    # The back of her head (all hair)
+    hair = back.crop((4, 0, 31, 22))                    # The back of his head (all hair)
     frame.alpha_composite(hair, (27, 19 - breath))
-    folded_arms(frame, 33, 39)                          # Her face is buried in her arms
+    folded_arms(frame, 33, 39)                          # His face is buried in his arms
     return frame
 
-# Stirring: her back half up, her head lifted off her arms, drooping forward, eyes still shut
+# Stirring: his back half up, his head lifted off his arms, drooping forward, eyes still shut
 def stirring():
     frame = Image.new('RGBA', (64, 64))
     frame.alpha_composite(leaning_body(6, 32))

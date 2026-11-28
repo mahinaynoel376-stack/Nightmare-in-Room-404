@@ -27,7 +27,7 @@ public class BattleScreen {
     
 
     // ---- The player ----
-    static final String HERO_NAME = "Flor";     
+    static final String HERO_NAME = "Kai";     
     static final String HERO_SPRITE = "/characters/player/down_idle";   // The game's own player sprite    
     public static final int HERO_MAX_HP = 100;          
 

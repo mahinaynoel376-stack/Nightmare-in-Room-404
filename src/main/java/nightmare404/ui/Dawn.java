@@ -12,17 +12,18 @@ import nightmare404.entity.Player;
 import nightmare404.main.GamePanel;
 import nightmare404.map.Quadrangle;
 import nightmare404.tile.TileMap;
+import nightmare404.tile.TileSet;
 
 // After Subject Zero: the walk out. The chain on the south gate falls away, and the player walks to
 // it while the sun comes up. Walking out through the gate fades the screen out, then the last words
 // (Director.walkedOut), then the ending screen.
 //   Every clue found (the good ending): the sky over the south gate turns grey, then gold, and the
 //   quadrangle brightens, with long rays of sunlight coming up from the south.
-//   Some missing (the bad ending): the dawn is red, and Flor is dizzy. The view tilts back and forth,
-//   she sees double, the edges of the screen throb dark red, and she walks slowly, swaying (Player.dizzy).
+//   Some missing (the bad ending): the dawn is red, and Kai is dizzy. The view tilts back and forth,
+//   he sees double, the edges of the screen throb dark red, and he walks slowly, swaying (Player.dizzy).
 public class Dawn {
     public static final int SUNRISE = 900;          // Frames for the sun to come all the way up (15 s)
-    public static final int THOUGHT = 420;          // Flor has a thought on the way, 7 s in
+    public static final int THOUGHT = 420;          // Kai has a thought on the way, 7 s in
     public static final int FADE = 120;             // Frames to fade out, once through the gate
     // The south gate: 2 tiles wide, in the fence along the bottom of the quadrangle
     public static final int GATE_COL = 24, GATE_ROW = Quadrangle.HEIGHT - 1;
@@ -44,9 +45,9 @@ public class Dawn {
         ticks = 0;
         leaving = -1;
         TileMap quad = gp.world.quadrangle.map;
-        quad.setTile(TileMap.LAYER_OBJECTS, GATE_COL, GATE_ROW, TileMap.EMPTY);
-        quad.setTile(TileMap.LAYER_OBJECTS, GATE_COL + 1, GATE_ROW, TileMap.EMPTY);
-        gp.flor.dizzy = !remembered;
+        quad.setTile(TileMap.LAYER_OBJECTS, GATE_COL, GATE_ROW, TileSet.GATE_OPEN_L);   // The gate swings open
+        quad.setTile(TileMap.LAYER_OBJECTS, GATE_COL + 1, GATE_ROW, TileSet.GATE_OPEN_R);
+        gp.kai.dizzy = !remembered;
     }
 
     public boolean on() {
@@ -74,9 +75,9 @@ public class Dawn {
             return;
         }
         if (ticks == THOUGHT) gp.director.dawnThought(remembered);
-        if (gate().intersects(gp.flor.solidArea)) {
+        if (gate().intersects(gp.kai.solidArea)) {
             leaving = 0;
-            gp.flor.dizzy = false;
+            gp.kai.dizzy = false;
         }
     }
 
@@ -85,7 +86,7 @@ public class Dawn {
         return Math.min(1f, ticks / (float) SUNRISE);
     }
 
-    // How dizzy Flor is: it comes on over the first two seconds (the bad ending only)
+    // How dizzy Kai is: it comes on over the first two seconds (the bad ending only)
     private float dizziness() {
         return remembered ? 0 : Math.min(1f, ticks / 120f);
     }
@@ -102,13 +103,13 @@ public class Dawn {
         view.translate(-width / 2.0, -height / 2.0);
     }
 
-    // The bad ending: Flor seeing double, a faint second Flor drifting beside her (drawn in the world)
-    public void drawDouble(Graphics2D view, Player flor) {
+    // The bad ending: Kai seeing double, a faint second Kai drifting beside him (drawn in the world)
+    public void drawDouble(Graphics2D view, Player kai) {
         if (!on || remembered || !gp.currentRoom.outdoors) return;
         Graphics2D g = (Graphics2D) view.create();
         g.setComposite(AlphaComposite.SrcOver.derive(0.35f * dizziness()));
         g.translate(6 * Math.sin(ticks / 27.0), 0);
-        flor.draw(g);
+        kai.draw(g);
         g.dispose();
     }
 

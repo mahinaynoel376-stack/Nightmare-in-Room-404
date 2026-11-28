@@ -186,8 +186,11 @@ for y in range(32):
             p[x, y] = (190, 190, 178, 255)
 made['paint_line'] = line
 
+# The fences and hoops are drawn by make_fences_court.py now (see there): don't overwrite them
+REDRAWN = ('fence_h', 'fence_v', 'gate_v', 'hoop_n', 'hoop_s')
 for name, im in made.items():
-    im.save(f'{out}/{name}.png')
+    if name not in REDRAWN:
+        im.save(f'{out}/{name}.png')
 for name, im in ground.items():
     im.save(f'{ground_out}/{name}.png')
 

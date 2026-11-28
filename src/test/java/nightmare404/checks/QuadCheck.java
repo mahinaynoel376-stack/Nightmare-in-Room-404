@@ -28,7 +28,7 @@ public class QuadCheck {
     static boolean inQuad() { return gp.currentRoom == gp.world.quadrangle; }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.kai;
         Room quad = gp.world.quadrangle, exit = gp.world.groundExit;
         TileMap m = quad.map;
 
@@ -105,13 +105,18 @@ public class QuadCheck {
         quad(29, 6); walk("D", 30);
         check("its back is open towards the building", row() >= 7);
 
-        System.out.println("6. Stronghold 3: the cage (court cols 32-45, rows 22-32; gate at cols 33-34)");
+        System.out.println("6. Stronghold 3: the cage (court cols 32-45, rows 22-32; gate at cols 38-39)");
         quad(40, 19); walk("D", 200);
         check("the fence stops you from outside", row() == 20);
         quad(40, 26); walk("U", 200);
         check("...and from inside", row() == 22);
-        quad(33, 24); walk("U", 200);
-        check("the gate (cols 33-34) is the way in and out", row() <= 20);
+        quad(38, 24); walk("U", 200);
+        check("the gate (cols 38-39, the middle of its top) is the way in and out", row() <= 20);
+        check("the court is painted inside, with a hoop at each end: its base solid, its ring up in the air",
+                m.tileAt(TileMap.LAYER_FLOOR, 32, 22) == TileSet.COURT_FIRST
+                && m.tileAt(TileMap.LAYER_OBJECTS, 32, 27) == TileSet.HOOP_W_BASE && m.isSolid(32, 27)
+                && m.tileAt(TileMap.LAYER_OBJECTS, 33, 26) == TileSet.HOOP_W_RING && !m.isSolid(33, 26)
+                && m.tileAt(TileMap.LAYER_OBJECTS, 45, 27) == TileSet.HOOP_E_BASE && m.isSolid(45, 27));
         TileSet ts = gp.tiles;
         check("the fence blocks walking but not shots", ts.isSolid(TileSet.FENCE_H) && ts.isShootThrough(TileSet.FENCE_H)
                 && ts.isShootThrough(TileSet.FENCE_V) && !ts.isShootThrough(TileSet.TREE_FIRST + 2) && !ts.isShootThrough(TileSet.BUS_FIRST + 11)
@@ -126,7 +131,7 @@ public class QuadCheck {
         check("south fence (behind the trees)", row() <= 34);
         for (Point g : Quadrangle.SPAWN_GATES) {
             int id = m.tileAt(TileMap.LAYER_OBJECTS, g.x, g.y);
-            check("spawn gate at (" + g.x + "," + g.y + ") is a locked gate in the fence", (id == TileSet.GATE_H || id == TileSet.GATE_V) && m.isSolid(g.x, g.y));
+            check("spawn gate at (" + g.x + "," + g.y + ") is a locked gate in the fence", (id == TileSet.GATE_L || id == TileSet.GATE_V) && m.isSolid(g.x, g.y));
         }
 
         System.out.println("8. Stronghold data");

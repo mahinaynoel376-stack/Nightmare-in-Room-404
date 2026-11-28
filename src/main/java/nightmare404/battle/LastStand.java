@@ -207,7 +207,7 @@ public class LastStand {
 
     // The word's typed: it flies at the monster, which gets a new word straight away
     private void launch() {
-        Player p = gp.flor;
+        Player p = gp.kai;
         String word = words.get(target);
         double damage = word.length() * DAMAGE_PER_LETTER * (1 + STREAK_BONUS * Math.min(streak, STREAK_MAX))
                 * (redPenReady ? RED_PEN : 1);
@@ -222,7 +222,7 @@ public class LastStand {
 
     // Keys 1-4: a First Aid Kit, an Old Textbook, a Red Pen, a Hall Pass
     public synchronized void useItem(int n) {
-        Player p = gp.flor;
+        Player p = gp.kai;
         switch (n) {
             case 1 -> {
                 if (p.kits <= 0 || p.health >= p.maxHealth) return;
@@ -311,7 +311,7 @@ public class LastStand {
 
     // One step of the world out here
     private void step(Room quad) {
-        Player p = gp.flor;
+        Player p = gp.kai;
         if (freeze > 0) freeze--;
         List<Hunter> all = new ArrayList<>();
         for (Monster m : quad.monsters) {
@@ -353,7 +353,7 @@ public class LastStand {
     }
 
     private void hit(int damage, double fromX, double fromY) {
-        Player p = gp.flor;
+        Player p = gp.kai;
         p.health = Math.max(0, p.health - damage);
         hurt = HURT_TICKS;
         streak = 0;
@@ -412,7 +412,7 @@ public class LastStand {
             say(h.centreX(), h.centreY(), "snap", PALE);
             return;
         }
-        Player p = gp.flor;
+        Player p = gp.kai;
         if (h instanceof TreeMonster) {
             p.health = Math.min(p.maxHealth, p.health + TREE_HEAL);
             p.saveProgress();
@@ -429,14 +429,14 @@ public class LastStand {
     // Ticks between Subject Zero's root attacks (before it weakens): longer if the player has Subject X's
     // tentacle (see SubjectZero.CALMING_ITEM)
     public int rootEvery() {
-        boolean calmed = gp.flor.keys.contains(SubjectZero.CALMING_ITEM);
+        boolean calmed = gp.kai.keys.contains(SubjectZero.CALMING_ITEM);
         return (int) Math.round(ROOT_EVERY * (calmed ? CALM_ROOTS : 1));
     }
 
     // Subject Zero's roots: every few seconds the ground cracks under and around the player; a moment
     // later roots burst up there
     private void roots(SubjectZero zero) {
-        Player p = gp.flor;
+        Player p = gp.kai;
         if (freeze == 0 && --rootTimer <= 0) {
             double weakness = 1 - (double) health.getOrDefault(zero, zero.enemy.maxHp()) / zero.enemy.maxHp();
             rootTimer = (int) Math.round(rootEvery() * (1 - 0.4 * weakness));
@@ -448,7 +448,7 @@ public class LastStand {
                 eruptions.add(new Eruption(px + (int) (Math.cos(angle) * r), py + (int) (Math.sin(angle) * r)));
             }
             zero.attackPose = 30;
-            gp.director.groundCracks();                         // (The first time, Flor shouts)
+            gp.director.groundCracks();                         // (The first time, Kai shouts)
         }
         for (Iterator<Eruption> it = eruptions.iterator(); it.hasNext(); ) {
             Eruption e = it.next();
@@ -559,7 +559,7 @@ public class LastStand {
     }
 
     private double distance(Hunter h) {
-        return Math.hypot(h.centreX() - gp.flor.solidArea.getCenterX(), h.centreY() - gp.flor.solidArea.getCenterY());
+        return Math.hypot(h.centreX() - gp.kai.solidArea.getCenterX(), h.centreY() - gp.kai.solidArea.getCenterY());
     }
 
     private static Attack pickAttack(EnemyDef enemy) {

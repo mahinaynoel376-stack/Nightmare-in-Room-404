@@ -21,12 +21,12 @@ import nightmare404.map.Quadrangle;
 // and some supplies for the battles ahead:
 //
 //   Floor 4  BOSS the Brute, standing in the middle of the West Stairs down: no getting past it.
-//            Asleep as a boulder until Flor reads it the janitor's pages; beaten, it clears the way down.
-//   Floor 3  BOSS the Whisperer, in Library (East): intangible until Flor brings her the three checkout
+//            Asleep as a boulder until Kai reads it the janitor's pages; beaten, it clears the way down.
+//   Floor 3  BOSS the Whisperer, in Library (East): intangible until Kai brings her the three checkout
 //            cards; beaten, she drops them with every name filled in, and the haze over the east stairs clears.
 //   Floor 2  BOSS Test Subject X, in the Containment Lab. Drops a Security Keycard (the lab's
 //            lockdown has shut the west stairwell).
-//   Floor 1  BOSS the Principal, behind his counter, in an office that stays locked until Flor has found
+//   Floor 1  BOSS the Principal, behind his counter, in an office that stays locked until Kai has found
 //            the floor's three books. Drops the Master Key to the front doors.
 //
 // Most hallway screens have ONE monster too, walking up and down the corridor. Not the one in front
@@ -72,7 +72,7 @@ public class Encounters {
 
         // ---------- Floor 4: the classrooms ----------
         Floor f4 = world.floor4;
-        // The first fight: a blob that drops on Flor from the ceiling the first time she steps out of
+        // The first fight: a blob that drops on Kai from the ceiling the first time he steps out of
         // Room 404 (the Director starts it; see FirstBlob). It's not one of the room's monsters: it never
         // walks a round, and once beaten it stays beaten, even if the player gives up later on this floor.
         world.firstFight = new FirstBlob(FourthFloorEnemies.CEILING_BLOB, e.find(f4, "Hallway (Room 404)"), ts);
@@ -83,7 +83,7 @@ public class Encounters {
         e.patrol(f4, "Room 403", FourthFloorEnemies.HALL_MONITOR, 10, 6, 10, 13);    // Down the gap between the desks
         e.hallway(f4, "Hallway (Room 402)", FourthFloorEnemies.CRAWLER, 4, 10, 12, 10);
         e.hallway(f4, "Hallway (Room 403)", FourthFloorEnemies.HALL_MONITOR, 10, 9, 4, 9);
-        // On the stairs down, filling them: asleep as a boulder until Flor reads it the janitor's logbook.
+        // On the stairs down, filling them: asleep as a boulder until Kai reads it the janitor's logbook.
         // It drops nothing: beating it clears the way down.
         e.bossInTheWay(f4, new SleepingBoss(FourthFloorEnemies.BRUTE, find(f4, "West Stairs"), ts, 5, 11, "_boulder", true), 16, null,
                 "The boulder blocks the way down.");
@@ -97,7 +97,7 @@ public class Encounters {
         e.patrol(f3, "Library (West)", LibraryEnemies.PAPERGOLEM, 4, 6, 20, 6);
         e.hallway(f3, "Hallway (Library West)", LibraryEnemies.UNDEAD, 5, 9, 12, 9);
         e.hallway(f3, "Hallway (Library East)", LibraryEnemies.BOOKWORM, 12, 10, 4, 10);
-        // At the far end of the library, still reading out the names, too faint to touch until Flor brings
+        // At the far end of the library, still reading out the names, too faint to touch until Kai brings
         // her the three checkout cards (see Whisperer). Beaten, she drops the cards with every name filled
         // in, and the haze over the east stairs (the way down) clears.
         e.bossInTheWay(f3, new Whisperer(LibraryEnemies.WHISPERER, find(f3, "Library (East)"), ts, 19, 11), 0,
@@ -139,8 +139,8 @@ public class Encounters {
         e.patrol(f1, "Records Room", LobbyEnemies.MASCOT, 4, 12, 13, 12);
         e.hallway(f1, "Hallway (Faculty Room)", LobbyEnemies.SHADOWSTALKER, 12, 10, 4, 10);
         e.hallway(f1, "Hallway (Records Room)", LobbyEnemies.SUBSTITUTE, 6, 9, 12, 9);
-        // He doesn't see students who haven't done their homework: his office is locked until Flor has
-        // found the floor's three books and shown him she knows what he did (see Director.doorLocked)
+        // He doesn't see students who haven't done their homework: his office is locked until Kai has
+        // found the floor's three books and shown he knows what the Principal did (see Director.doorLocked)
         Room office = find(f1, "Principal's Office");
         office.lockedWith = APPOINTMENT;
         office.opensWhenQuestDone = true;

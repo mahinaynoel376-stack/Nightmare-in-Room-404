@@ -52,7 +52,7 @@ public class QuestCheck {
     static nightmare404.battle.BattleScreen.BattleResult won() { return new nightmare404.battle.BattleScreen.BattleResult(true, p.health, p.kits); }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); p = gp.flor; w = gp.world; stand = gp.lastStand;
+        gp = new GamePanel(); p = gp.kai; w = gp.world; stand = gp.lastStand;
         gp.battleStarter = m -> started = m;
         Floor f4 = w.floor4, f3 = w.floor3, f1 = w.floor1;
 
@@ -65,7 +65,7 @@ public class QuestCheck {
         DialogueBox box = new DialogueBox();
         box.autoSkip = false;
         boolean[] done = {false};
-        box.open(List.of(Line.narrate("First line."), Line.flor("Second.")), () -> done[0] = true);
+        box.open(List.of(Line.narrate("First line."), Line.kai("Second.")), () -> done[0] = true);
         check("a conversation opens", box.isOpen());
         box.update(true);
         check("a key press right as it opens doesn't skip anything", box.isOpen() && !done[0]);
@@ -92,19 +92,19 @@ public class QuestCheck {
                 && !w.monsters.contains(firstFight));
         started = null;
         put(hall404, 8, 8); ticks(1);
-        check("out in the hallway, Flor sees the state of the place, and something drips on her",
+        check("out in the hallway, Kai sees the state of the place, and something drips on him",
                 gp.dialogue.said("reality is twisted") && gp.dialogue.said("are those.. monsters") && gp.dialogue.said("drips onto your shoulder"));
-        check("the blob drops from the ceiling beside her (the world waits while it falls)", firstFight.falling()
+        check("the blob drops from the ceiling beside him (the world waits while it falls)", firstFight.falling()
                 && Math.abs(firstFight.x - p.x) <= 28 && firstFight.y == p.y && started == null);
         int beforeDrop = p.x;
         gp.rightPressed = true;
         ticks(nightmare404.entity.FirstBlob.DROP_TICKS + 5);
         gp.rightPressed = false;
-        check("it lands: the controls are explained, and the fight starts (and Flor couldn't walk off meanwhile)",
+        check("it lands: the controls are explained, and the fight starts (and Kai couldn't walk off meanwhile)",
                 !firstFight.falling() && gp.dialogue.said("Spell words with the letters") && started == firstFight && p.x == beforeDrop);
         gp.inBattle = false;
         gp.endBattle(firstFight, new nightmare404.battle.BattleScreen.BattleResult(false, 0, p.kits));
-        check("losing it: back in Room 404, and Flor gets her breath back (the first time)", gp.currentRoom.name.equals("Room 404")
+        check("losing it: back in Room 404, and Kai gets his breath back (the first time)", gp.currentRoom.name.equals("Room 404")
                 && gp.dialogue.said("I'm back here again?") && gp.notice().contains("wake up"));
         started = null;
         ticks(1);                                          // (A moment back in Room 404...)
@@ -112,7 +112,7 @@ public class QuestCheck {
         check("out again: it's still up there, and drops again", started == firstFight && gp.dialogue.said("still up there"));
         gp.inBattle = false;
         gp.endBattle(firstFight, won());
-        check("winning it: Flor catches her breath and decides to look for the logbook's pages", firstFight.defeated
+        check("winning it: Kai catches his breath and decides to look for the logbook's pages", firstFight.defeated
                 && gp.dialogue.said("somewhat fend them off") && gp.dialogue.said("missing pages of the janitor's logbook"));
         started = null;
         put(f4.find("Room 404"), 12, 12); ticks(1);
@@ -157,7 +157,7 @@ public class QuestCheck {
         putPx(r402, page1.x, page1.y); ticks(1);
         check("walking over the page picks it up, and the player reads it", p.clues.contains(page1.id)
                 && gp.dialogue.said("Kids keep staying late in 404"));
-        check("...and Flor reacts to it", gp.dialogue.said("That's MY classroom"));
+        check("...and Kai reacts to it", gp.dialogue.said("That's MY classroom"));
         check("...finds a first aid kit with it (" + p.kits + "), and is told the Brute is weaker",
                 p.kits == kits + 1 && gp.notice().contains("20% weaker"));
         check("one clue: the Brute starts at 80% (" + gp.director.foeStartHp(brute) + ")",
@@ -181,7 +181,7 @@ public class QuestCheck {
         check("walking into the West Stairs: the way down is blocked, and the boulder seems to breathe",
                 gp.dialogue.said("blocked. Of course they are") && gp.dialogue.said("seems to breathe"));
         hold("U", 150);
-        check("with both pages, Flor reads them to the boulder; it wakes, she recognises the janitor, and the battle starts",
+        check("with both pages, Kai reads them to the boulder; it wakes, he recognises the janitor, and the battle starts",
                 started == brute && gp.dialogue.said("Let me read you your own words") && gp.dialogue.said("You're the janitor"));
         gp.inBattle = false;
         gp.endBattle(brute, won());
@@ -204,7 +204,7 @@ public class QuestCheck {
                 p.clues.contains("3F-3") && gp.dialogue.said("I KEEP READING THEM SO THEY STAY"));
         Room eastStairs = f3.find("East Stairs");
         putPx(eastStairs, eastStairs.map.stairs.downFoot.x, eastStairs.map.stairs.downFoot.y); hold("U", 60);
-        check("the haze over the east stairs calls Flor back to the library", gp.dialogue.said("It wants me to go back to the library"));
+        check("the haze over the east stairs calls Kai back to the library", gp.dialogue.said("It wants me to go back to the library"));
         gp.director.beforeBattle(f3.boss, () -> { });
         check("the Whisperer, intangible, whispers blacked-out names", gp.dialogue.said("they're all blacked out")
                 && ((nightmare404.entity.Whisperer) f3.boss).intangible());
@@ -224,12 +224,12 @@ public class QuestCheck {
                 gp.dialogue.said("don't touch anything green") && gp.dialogue.said("something's floating in it"));
         Room front = f1.find("Hallway (Principal's Office)");
         put(front, 7, 10); hold("D", 120);
-        check("Floor 1: the front doors are locked, and Flor isn't happy about it", gp.currentRoom == front
+        check("Floor 1: the front doors are locked, and Kai isn't happy about it", gp.currentRoom == front
                 && gp.dialogue.said("Locked?! Come on") && gp.notice().equals(f1.lockedNote));
         Clue yearbook = null;
         for (Clue c : f1.quest.clues) if (c.id.equals("1F-3")) yearbook = c;
         putPx(yearbook.room, yearbook.x, yearbook.y); ticks(1);
-        check("Floor 1's yearbook: Flor's own photo, half rubbed away", p.clues.contains("1F-3")
+        check("Floor 1's yearbook: Kai's own photo, half rubbed away", p.clues.contains("1F-3")
                 && gp.dialogue.said("grading them out of existence"));
 
         System.out.println("6. The journal");
@@ -251,8 +251,9 @@ public class QuestCheck {
                 && gp.dialogue.said("tears itself out of the earth") && gp.dialogue.said("SPACE to focus"));
         check("going outside moves the checkpoint to the main entrance", p.checkpointRoom == quad);
         SubjectZero zero = w.finalBoss;
-        check("Subject Zero sleeps by the south gate, and can't be struck or grab anyone", zero.asleep()
-                && !zero.hunting() && zero.room == quad && zero.y / 32 >= 33 && quad.monsters.contains(zero));
+        check("Subject Zero sleeps up the path from the south gate, and can't be struck or grab anyone", zero.asleep()
+                && !zero.hunting() && zero.room == quad && zero.y / 32 == nightmare404.map.Quadrangle.ZERO_ROW
+                && quad.monsters.contains(zero));
         TreeMonster first = null;
         for (int i = 0; i < 600 && first == null; i++) {
             gp.update();
@@ -359,9 +360,15 @@ public class QuestCheck {
                 && gp.notice().contains("breathing") && stand.lastHitBy != zero);
         for (Clue c : all) p.clues.add(c.id);              // (Every clue found: the good ending, later)
         for (TreeMonster t : w.trees()) if (!t.defeated) stand.fell(t);
+        check("the last tree falls: the camera goes over to Subject Zero, and it starts to rise",
+                gp.watching() && zero.rising() && !zero.awake());
+        int risen = 0;
+        for (; risen < 600 && (!zero.awake() || gp.watching()); risen++) gp.update();
+        check("  it rises out of its heap and wakes, then the camera comes back (" + risen + " frames)",
+                zero.awake() && !gp.watching() && gp.cameraY() == Math.max(0, Math.min(p.y + 16 - 288, quad.map.heightPx() - 576)));
         check("the last tree falls: Subject Zero wakes, with a few words of its own", zero.awake() && zero.hunting()
                 && gp.dialogue.said("STAY... IN... YOUR... SEAT") && gp.dialogue.said("I remember all of them"));
-        check("  halfway through the trees, Flor saw where the roots lead; facing it, she won't sit down",
+        check("  halfway through the trees, Kai saw where the roots lead; facing it, he won't sit down",
                 gp.dialogue.said("Toward the south gate") && gp.dialogue.said("I'm not sitting back down"));
 
         System.out.println("11. Subject Zero");
@@ -372,7 +379,7 @@ public class QuestCheck {
         check("  with it, it's calmer: speed " + SubjectZero.speed(p) + ", roots every " + stand.rootEvery() + " frames",
                 SubjectZero.speed(p) < SubjectZero.HUNT_SPEED && stand.rootEvery() > LastStand.ROOT_EVERY);
         p.keys.remove(SubjectZero.CALMING_ITEM);
-        check("  and when it wakes, Flor holds the tentacle up to it (only if she has it)",
+        check("  and when it wakes, Kai holds the tentacle up to it (only if he has it)",
                 nightmare404.story.Story.awakening(true, true).stream().anyMatch(l -> l.text().contains("something of your brother's"))
                 && nightmare404.story.Story.awakening(true, false).stream().noneMatch(l -> l.text().contains("brother")));
         p.items.hallPasses = 20;
@@ -395,7 +402,8 @@ public class QuestCheck {
         put(quad, p.x / 32 + 4, p.y / 32);                 // Out of the way
         for (int i = 0; i < LastStand.ROOT_WARN + 5; i++) gp.update();
         check("get out of the way and they miss", p.health == dodgeHp && stand.eruptions() == 0);
-        put(quad, zero.x / 32 + 1, zero.y / 32 - 6);       // Close enough to see it, to strike it
+        put(quad, zero.x / 32 + 1, zero.y / 32 + 5);       // Close enough to see it, to strike it (south of it: the
+                                                           // Book Barricade is just north of where it has got to)
         int hits = 0;
         for (int i = 0; i < 12 && stand.saplings().isEmpty() && !zero.defeated; i++) {
             if (!stand.frozen()) stand.useItem(4);         // Hold it still while the test types
@@ -428,16 +436,16 @@ public class QuestCheck {
         gp2.world.finalBoss.wake();
         gp2.currentRoom = gp2.world.quadrangle;
         gp2.lastStand.fell(gp2.world.finalBoss);
-        check("fewer clues: a red dawn, and Flor is dizzy", gp2.dawn.on() && !gp2.ended && gp2.flor.dizzy
+        check("fewer clues: a red dawn, and Kai is dizzy", gp2.dawn.on() && !gp2.ended && gp2.kai.dizzy
                 && gp2.dialogue.said("the sky over the wall is red"));
-        gp2.flor.x = 24 * 32; gp2.flor.y = 20 * 32; gp2.flor.update();
+        gp2.kai.x = 24 * 32; gp2.kai.y = 20 * 32; gp2.kai.update();
         gp2.update();                                      // (Arriving outside: the scenes for that)
-        int startY = gp2.flor.y;
+        int startY = gp2.kai.y;
         gp2.downPressed = true;
         for (int i = 0; i < 20; i++) gp2.update();
         gp2.downPressed = false;
-        check("dizzy, she walks slower (" + (gp2.flor.y - startY) + " px in 20 frames)",
-                gp2.flor.y - startY == 20 * Player.DIZZY_SPEED);
+        check("dizzy, he walks slower (" + (gp2.kai.y - startY) + " px in 20 frames)",
+                gp2.kai.y - startY == 20 * Player.DIZZY_SPEED);
         walkOut(gp2);
         check("out through the gate: the other ending (FORGOTTEN)", gp2.ended && !gp2.endedRemembered
                 && gp2.dialogue.said("Nobody can remember who used to sit there") && gp2.dialogue.said("Whose desk was that"));
@@ -446,26 +454,25 @@ public class QuestCheck {
         GamePanel gp3 = new GamePanel();
         gp3.wakeUp.start();
         for (int i = 0; i < 100; i++) gp3.update();
-        check("the game opens in the dark, Flor asleep at her desk, before anything is said",
+        check("the game opens in the dark, Kai asleep at his desk, before anything is said",
                 gp3.wakeUp.playing() && !gp3.dialogue.said("I fell asleep"));
         for (int i = 0; i < WakeUp.LENGTH; i++) gp3.update();
-        check("...she wakes up and stands in the aisle, then the story starts", !gp3.wakeUp.playing()
-                && gp3.dialogue.said("I fell asleep") && gp3.flor.x == 12 * 32 && gp3.flor.y == 10 * 32);
+        check("...he wakes up and stands in the aisle, then the story starts", !gp3.wakeUp.playing()
+                && gp3.dialogue.said("I fell asleep") && gp3.kai.x == 12 * 32 && gp3.kai.y == 10 * 32);
         GamePanel gp4 = new GamePanel();
         gp4.wakeUp.start();
-        for (int i = 0; i < 40; i++) gp4.wakeUp.update(false);
-        gp4.wakeUp.update(true);
-        check("E skips it", !gp4.wakeUp.playing());
+        for (int i = 0; i < 60; i++) gp4.update();
+        check("it can't be skipped (a second in, it's still playing)", gp4.wakeUp.playing());
 
-        // Running is limited (stamina). Flor in Room 404's aisle, running left (into the wall, once she gets there)
-        Player f = gp4.flor;
+        // Running is limited (stamina). Kai in Room 404's aisle, running left (into the wall, once he gets there)
+        Player f = gp4.kai;
         gp4.sprintPressed = true;
         gp4.leftPressed = true;
         int fx = f.x;
         f.update();
-        check("running: 6 px a frame, and it uses stamina", fx - f.x == Player.SPRINT_SPEED && f.stamina < Player.STAMINA_MAX);
+        check("running: 5 px a frame, and it uses stamina", fx - f.x == Player.SPRINT_SPEED && f.stamina < Player.STAMINA_MAX);
         for (int i = 1; i < Player.STAMINA_MAX / Player.RUN_COST; i++) f.update();
-        check("3 seconds of running and she's out of breath", f.stamina == 0 && f.outOfBreath);
+        check("3 seconds of running and he's out of breath", f.stamina == 0 && f.outOfBreath);
         gp4.leftPressed = false;
         gp4.rightPressed = true;
         fx = f.x;
@@ -473,17 +480,17 @@ public class QuestCheck {
         check("...and can only walk, even holding Shift", f.x - fx == Player.WALK_SPEED);
         gp4.rightPressed = gp4.sprintPressed = false;
         for (int i = 0; i < Player.STAMINA_MAX / 2 / Player.REST_STILL; i++) f.update();
-        check("standing still, she gets her breath back (half full: she can run again)", !f.outOfBreath);
+        check("standing still, he gets his breath back (half full: he can run again)", !f.outOfBreath);
 
         System.out.println(fails == 0 ? "ALL PASSED" : fails + " FAILED");
         System.exit(fails == 0 ? 0 : 1);
     }
 
-    // Stands Flor just above the open south gate and walks her down through it, until the game ends
+    // Stands Kai just above the open south gate and walks him down through it, until the game ends
     static void walkOut(GamePanel g) {
-        g.flor.x = Dawn.GATE_COL * 32 + 24;                // Right in the middle of the 2-tile gap
-        g.flor.y = (Dawn.GATE_ROW - 1) * 32 - 16;
-        g.flor.update();
+        g.kai.x = Dawn.GATE_COL * 32 + 24;                // Right in the middle of the 2-tile gap
+        g.kai.y = (Dawn.GATE_ROW - 1) * 32 - 16;
+        g.kai.update();
         g.downPressed = true;
         for (int i = 0; i < 400 && !g.ended; i++) g.update();
         g.downPressed = false;

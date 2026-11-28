@@ -45,7 +45,7 @@ public class Floor1Check {
     }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.kai;
         Floor f2 = gp.world.floor2, f1 = gp.world.floor1;
 
         System.out.println("1. Floors: 4 <-> 3 <-> 2 <-> 1");

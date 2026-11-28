@@ -67,7 +67,7 @@ public class Journal {
         for (Floor f = gp.world.top; f != null; f = f.below) {
             if (f.quest == null) continue;
             for (Clue c : f.quest.clues) {
-                if (gp.flor.clues.contains(c.id)) found.add(c);
+                if (gp.kai.clues.contains(c.id)) found.add(c);
             }
         }
         return found;
@@ -107,12 +107,12 @@ public class Journal {
             g.setFont(HEADING);
             g.setColor(reached ? INK : FADED);
             String heading = "Floor " + f.number + ":  " + (reached ? q.title : "???");
-            if (reached) heading += "   " + q.found(gp.flor.clues) + "/" + q.clues.size();
+            if (reached) heading += "   " + q.found(gp.kai.clues) + "/" + q.clues.size();
             g.drawString(heading, x + 60, ly);
             ly += 22;
             g.setFont(ENTRY);
             for (Clue c : q.clues) {
-                boolean has = gp.flor.clues.contains(c.id);
+                boolean has = gp.kai.clues.contains(c.id);
                 if (has && c == chosen) {
                     g.setColor(BLOOD);
                     g.drawString(">", x + 62, ly);

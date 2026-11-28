@@ -1,4 +1,4 @@
-# The Ceiling Blob: the first monster Flor meets, dropping on her from the ceiling outside Room 404
+# The Ceiling Blob: the first monster Kai meets, dropping on him from the ceiling outside Room 404
 # (see FirstBlob.java). An inky, glossy blob with three pale eyes, dripping. Same 46 x 36 canvas as the
 # Crawler's sprite, so it's drawn the same size:
 #   ceiling_blob.png          standing: a round dome of goo

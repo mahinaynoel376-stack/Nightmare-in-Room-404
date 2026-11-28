@@ -20,7 +20,7 @@ public class WorldWalkCheck {
     static void put(int col, int row) { p.x = col * 32; p.y = row * 32; p.update(); }
     static void go(String room) { gp.currentRoom = gp.world.floor4.find(room); }
     public static void main(String[] a) {
-        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.kai;
 
         System.out.println("1. Out of Room 404 through its working door");
         check("starts in Room 404: " + at(), gp.currentRoom.name.equals("Room 404"));

@@ -16,12 +16,15 @@ import nightmare404.world.Room;
 // ASLEEP  Until every tree in the quadrangle is beaten it sleeps by the south gate, at the end of the
 //         slime trail: a heap of dead leaves and roots, breathing very slowly, easy to walk straight
 //         past. It can't be touched or struck.
-// AWAKE   When the last tree falls it wakes (see story.Director) and hunts the player, slower than the
+// RISING  When the last tree falls, the camera goes over to it and it rises out of its heap (see
+//         story.Director and GamePanel.watch): the heap shakes, swells, an eye opens, it pushes up out
+//         of the leaves and stands (the rise_1..3 frames, made by tools/art/make_zero_rising.py).
+// AWAKE   Then it wakes and hunts the player, slower than the
 //         trees. It's fought on the map like them (see battle.LastStand), with longer words, and it
 //         makes the ground erupt with roots around the player.
 // Going down to it outside puts it back by the gate, still awake.
 public class SubjectZero extends Hunter {
-    public static final double HUNT_SPEED = 2.5;     // Pixels per tick (the trees hunt at 3, the player walks at 4)...
+    public static final double HUNT_SPEED = 2.5;     // Pixels per tick (the trees hunt at 3, the player walks at 3)...
     public static final double CALM_SPEED = 1.5;     // ...or this, if the player has its brother's tentacle:
 
     // What Test Subject X leaves when it's beaten (see Encounters): one of its tentacles, with its DNA in
@@ -29,9 +32,12 @@ public class SubjectZero extends Hunter {
     // at CALM_SPEED, and its roots come less often (see LastStand.rootEvery).
     public static final String CALMING_ITEM = "Subject X's tentacle";
     private static final int SIZE = 110;             // How tall it's drawn awake
+    public static final int RISE_TICKS = 150;        // How long it takes to rise out of its heap (2.5 seconds)
 
     private final BufferedImage sleeping, attackImage, hurtImage;
+    private final BufferedImage[] riseImages = new BufferedImage[3];
     private boolean awake;
+    private int rising = -1;                         // Frames into its rising (-1: it hasn't started)
     public int attackPose, hurtPose;                 // Ticks left showing it striking, or hit
 
     // Asleep at (col, row) on the room's map, shifted half a tile right (between two tiles)
@@ -41,6 +47,9 @@ public class SubjectZero extends Hunter {
         sleeping = BattleScreen.Sprites.get(enemy.sprite() + "_sleeping", false);
         attackImage = scaled(BattleScreen.Sprites.get(enemy.sprite() + "_attack", false), SIZE);
         hurtImage = scaled(BattleScreen.Sprites.get(enemy.sprite() + "_hurt", false), SIZE);
+        for (int i = 0; i < riseImages.length; i++) {
+            riseImages[i] = scaled(BattleScreen.Sprites.get(enemy.sprite() + "_rise_" + (i + 1), false), SIZE);
+        }
     }
 
     public boolean asleep() {
@@ -56,7 +65,23 @@ public class SubjectZero extends Hunter {
         return awake && !defeated;
     }
 
-    // Every tree is down: it wakes, and from now on it hunts
+    // Every tree is down: it starts to rise out of its heap (see updateRise)
+    public void rise() {
+        rising = 0;
+    }
+
+    // True while it's rising (not awake yet)
+    public boolean rising() {
+        return rising >= 0 && !awake;
+    }
+
+    // One frame of rising; at the end it's awake
+    public void updateRise() {
+        rising++;
+        if (rising >= RISE_TICKS) wake();
+    }
+
+    // It's up: from now on it hunts
     public void wake() {
         awake = true;
         chasing = true;
@@ -104,10 +129,18 @@ public class SubjectZero extends Hunter {
     public void draw(Graphics2D g, long ticks) {
         if (defeated) return;
         int cx = x + 16, feet = y + 32;
+        if (!awake && rising >= 50) {                // Rising: up out of the leaves, frame by frame
+            BufferedImage pose = rising < 75 ? riseImages[0] : rising < 100 ? riseImages[1]
+                    : rising < 125 ? riseImages[2] : image;
+            int shake = rising % 4 < 2 ? 2 : -2;
+            if (pose != null) g.drawImage(pose, cx - pose.getWidth() / 2 + shake, feet - pose.getHeight(), null);
+            return;
+        }
         if (!awake) {                                // A heap of leaves, breathing very slowly
             if (sleeping == null) return;
             int h = sleeping.getHeight() + (int) Math.round(1.5 * Math.sin((ticks + phase) / 45.0));
-            g.drawImage(sleeping, cx - sleeping.getWidth() / 2, feet - h, sleeping.getWidth(), h, null);
+            int shake = rising < 0 ? 0 : rising % 6 < 3 ? 2 : -2;   // (Starting to rise: it shakes)
+            g.drawImage(sleeping, cx - sleeping.getWidth() / 2 + shake, feet - h, sleeping.getWidth(), h, null);
             return;
         }
         BufferedImage pose = hurtPose > 0 ? hurtImage : attackPose > 0 ? attackImage : image;

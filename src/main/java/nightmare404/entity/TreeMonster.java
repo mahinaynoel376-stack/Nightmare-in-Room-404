@@ -36,7 +36,7 @@ public class TreeMonster extends Hunter {
     public static final int WAKE_DELAY = 90;        // Ticks after the player comes outside before the nearest tree wakes...
     public static final int WAKE_PER_TILE = 3;      // ...and this many more for each tile further off a tree stands
     public static final int POP_TICKS = 60;         // How long popping out takes (shiver 0-23, rise 24-43, roar 44-59)
-    public static final int HUNT_SPEED = 3;         // Pixels per tick (the player walks at 4 and sprints at 6)
+    public static final int HUNT_SPEED = 3;         // Pixels per tick (the player walks at 3 and sprints at 5)
     private static final int SIZE = 88;             // How tall it's drawn (the sprite's own size)
     private static final int RISE = 18;             // How far it rises on its roots (the sprite has the tree 18 px up)
 

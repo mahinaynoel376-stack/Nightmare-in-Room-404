@@ -17,7 +17,7 @@ import nightmare404.world.Room;
 //   INTANGIBLE   See-through, drifting at the far end of the library, mumbling. The player walks
 //                straight through her: there's no battle. Walking up to her, the Director says what's
 //                needed: the three checkout cards, whose names fill in the blanks.
-//   SOLIDIFYING  With all three cards, Flor reads the names out to her, and she slowly turns solid
+//   SOLIDIFYING  With all three cards, Kai reads the names out to her, and she slowly turns solid
 //                (SOLID_TICKS long).
 //   SOLID        The Whisperer as she looks in battle: walking into her starts it, like any boss.
 //
@@ -48,7 +48,7 @@ public class Whisperer extends Monster {
         return solidifying > 0;
     }
 
-    // Flor has read her the names: she starts to turn solid
+    // Kai has read her the names: she starts to turn solid
     public void solidify() {
         if (intangible) {
             intangible = false;

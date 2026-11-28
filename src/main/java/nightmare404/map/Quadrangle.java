@@ -35,11 +35,11 @@ public class Quadrangle {
     public static final int WIDTH = 50, HEIGHT = 36;
 
     public static final int DOOR_COL = 23, DOOR_ROW = 3;       // The main entrance (4 wide), in the middle
-    public static final int ZERO_COL = 23, ZERO_ROW = 34;      // Where Subject Zero sleeps: by the south gate
+    public static final int ZERO_COL = 24, ZERO_ROW = 28;      // Where Subject Zero sleeps: on the path up from the south gate
     public static final int WALKWAY_ROW = 4;                    // The walkway along the building, just outside
     private static final int BUS_COL = 8, BUS_ROW = 27;         // Top-left of the bus
     private static final int CAGE_LEFT = 31, CAGE_TOP = 21, CAGE_RIGHT = 46, CAGE_BOTTOM = 33;
-    private static final int CAGE_GATE_COL = 33;                // The 2-tile gap in the court's fence
+    private static final int CAGE_GATE_COL = 38;                // The 2-tile gap in the court's fence (the middle of its top)
 
     // A place worth knowing about: its name, the tiles it covers, and why it helps
     public record KeyLocation(String name, Rectangle area, String whyItHelps) {}
@@ -76,15 +76,15 @@ public class Quadrangle {
         ".....,,................,,,,.........,,,,,,,,,,,,,.",
         ".....,,................,,,,.........,,,,,,,,,,,,,.",
         ".....,,................,,,,.........,,............",
-        ".....,,............,,,,,,,,,,,,,,,,,,,............",
-        ".....,,............,,,,,,,,,,,,,,,,,,,............",
-        ".....,,............,,,,,,,,,,,,...................",
-        ".....,,............,,,,,,,,,,,,...................",
-        ".,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,...................",
-        ".,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,...................",
-        "...................,,,,,,,,,,,,...................",
-        "...................,,,,,,,,,,,,...................",
-        "...................,,,,,,,,,,,,...................",
+        ".....,,............,,,,,,,,,,,,,,,,,,,,,..........",
+        ".....,,............,,,,,,,,,,,,,,,,,,,,,..........",
+        ".....,,............,,,,,,,,,,,,.......,,..........",
+        ".....,,............,,,,,,,,,,,,.......,,..........",
+        ".,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.......,,..........",
+        ".,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.......,,..........",
+        "...................,,,,,,,,,,,,.......,,..........",
+        "...................,,,,,,,,,,,,.......,,..........",
+        "...................,,,,,,,,,,,,.......,,..........",
         "........................,,......::::::::::::::....",
         "........................,,......::::::::::::::....",
         "...::::::::::::::::::...,,......::::::::::::::....",
@@ -133,12 +133,12 @@ public class Quadrangle {
         "|T+...................n.....++..........*........|",
         "|++...................+.f........................|",
         "|................................................|",
-        "|...............~................................|",
+        "|...............~.......s........................|",
         "|...../../*./../../......f.......................|",
         "|...t./../../../../t.T+..........................|",
         "|...../../../../../..++..........................|",
-        "|.......................s........................|",
-        "|-----------------------GG-----------------------|",
+        "|................................................|",
+        "|----------------------PGJP----------------------|",
     };
 
     // LEGEND for THINGS
@@ -147,7 +147,8 @@ public class Quadrangle {
     //   bigger things:    'T' tree (2 x 2)  'h' bush (2 x 1)  'o' rocks (2 x 1)  'n' trash can (1 x 2):
     //                     the letter is their top-left tile, '+' marks the rest (see PROPS)
     //   the barricade:    'K' 'k' piles of books  'D' broken desk  'c' fallen chair  'b' scattered books
-    //   the fence:        '|' fence (side)  '-' fence (bottom)  'g' locked gate (side)  'G' locked gate (bottom)
+    //   the fence:        '|' fence (side)  '-' fence (bottom)  'g' locked side gate (2 tall: see fences())
+    //                     the main gate (the south gate): 'P' brick pillar  'G' 'J' its left and right leaves
     //   tall things:      'A' 'a' flagpole (top, bottom)  'Q' 'q' lamppost (top, bottom)
     //   on the ground:    '/' parking line  'f' footprints  's' slime  '*' blood  '~' crack
     private static final Map<Character, Integer> LEGEND = Map.ofEntries(
@@ -157,7 +158,7 @@ public class Quadrangle {
             Map.entry('T', EMPTY), Map.entry('h', EMPTY), Map.entry('o', EMPTY), Map.entry('n', EMPTY), Map.entry('+', EMPTY),
             Map.entry('K', BOOK_BARRICADE_1), Map.entry('k', BOOK_BARRICADE_2), Map.entry('D', DESK_BROKEN_1),
             Map.entry('c', CHAIR_FALLEN), Map.entry('b', SCATTERED_BOOKS),
-            Map.entry('|', FENCE_V), Map.entry('-', FENCE_H), Map.entry('g', GATE_V), Map.entry('G', GATE_H),
+            Map.entry('|', FENCE_V), Map.entry('-', FENCE_H), Map.entry('g', GATE_V), Map.entry('G', GATE_L), Map.entry('J', GATE_R), Map.entry('P', GATE_PILLAR),
             Map.entry('A', FLAGPOLE_TOP), Map.entry('a', FLAGPOLE_BOTTOM),
             Map.entry('Q', LAMPPOST_TOP), Map.entry('q', LAMPPOST_BOTTOM),
             Map.entry('/', PAINT_LINE), Map.entry('f', FOOTPRINTS), Map.entry('s', SLIME),
@@ -192,6 +193,7 @@ public class Quadrangle {
         doorway(b);
         bus(b, BUS_COL, BUS_ROW);
         cage(b);
+        fences(b);
         return b.build(tiles, ts);
     }
 
@@ -259,8 +261,9 @@ public class Quadrangle {
         b.edgeWallH(row, col, col + BUS_ROOF_WIDTH - 1);        // Far side of the roof
     }
 
-    // Stronghold 3: the fenced basketball court. A fence all the way round with one 2-tile gap,
-    // and a hoop at each end.
+    // Stronghold 3: the fenced basketball court. A fence all the way round with corner posts and one
+    // 2-tile gap in the middle of its top; inside, the court painted on the asphalt, and a hoop at each
+    // end of its long side (east and west), half way down.
     private static void cage(MapBuilder b) {
         for (int col = CAGE_LEFT; col <= CAGE_RIGHT; col++) {
             b.set(LAYER_OBJECTS, col, CAGE_TOP, FENCE_H);
@@ -270,9 +273,30 @@ public class Quadrangle {
             b.set(LAYER_OBJECTS, CAGE_LEFT, row, FENCE_V);
             b.set(LAYER_OBJECTS, CAGE_RIGHT, row, FENCE_V);
         }
+        b.set(LAYER_OBJECTS, CAGE_LEFT, CAGE_TOP, FENCE_CORNER_TL).set(LAYER_OBJECTS, CAGE_RIGHT, CAGE_TOP, FENCE_CORNER_TR);
+        b.set(LAYER_OBJECTS, CAGE_LEFT, CAGE_BOTTOM, FENCE_CORNER_BL).set(LAYER_OBJECTS, CAGE_RIGHT, CAGE_BOTTOM, FENCE_CORNER_BR);
         b.set(LAYER_OBJECTS, CAGE_GATE_COL, CAGE_TOP, EMPTY).set(LAYER_OBJECTS, CAGE_GATE_COL + 1, CAGE_TOP, EMPTY);
-        int middle = (CAGE_LEFT + CAGE_RIGHT) / 2;
-        b.set(LAYER_OBJECTS, middle, CAGE_TOP + 1, HOOP_N);
-        b.set(LAYER_OBJECTS, middle, CAGE_BOTTOM - 1, HOOP_S);
+        // The court: COURT_WIDTH x COURT_HEIGHT tiles, filling the inside of the fence
+        for (int r = 0; r < COURT_HEIGHT; r++) {
+            for (int c = 0; c < COURT_WIDTH; c++) {
+                b.set(LAYER_FLOOR, CAGE_LEFT + 1 + c, CAGE_TOP + 1 + r, COURT_FIRST + r * COURT_WIDTH + c);
+            }
+        }
+        // The hoops: each one's pole just inside the fence, its ring out over the court, half way down
+        int ring = CAGE_TOP + 1 + COURT_HEIGHT / 2 - 1;     // The row the rings are in (up in the air)
+        int west = CAGE_LEFT + 1, east = CAGE_RIGHT - 1;
+        b.set(LAYER_OBJECTS, west, ring, HOOP_W_POLE).set(LAYER_OBJECTS, west + 1, ring, HOOP_W_RING);
+        b.set(LAYER_OBJECTS, west, ring + 1, HOOP_W_BASE);
+        b.set(LAYER_OBJECTS, east - 1, ring, HOOP_E_RING).set(LAYER_OBJECTS, east, ring, HOOP_E_POLE);
+        b.set(LAYER_OBJECTS, east, ring + 1, HOOP_E_BASE);
+    }
+
+    // The fence round the quadrangle: corner posts at the bottom, and the bottom half of each 2-tile
+    // side gate (the map marks both its tiles 'g'; the top one stays GATE_V)
+    private static void fences(MapBuilder b) {
+        b.set(LAYER_OBJECTS, 0, HEIGHT - 1, FENCE_CORNER_BL).set(LAYER_OBJECTS, WIDTH - 1, HEIGHT - 1, FENCE_CORNER_BR);
+        for (Point gate : SPAWN_GATES) {
+            if (gate.x == 0 || gate.x == WIDTH - 1) b.set(LAYER_OBJECTS, gate.x, gate.y + 1, GATE_V_2);
+        }
     }
 }

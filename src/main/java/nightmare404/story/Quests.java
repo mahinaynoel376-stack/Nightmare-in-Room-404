@@ -19,7 +19,7 @@ import nightmare404.world.World;
 //   Floor 2  Project REMEMBER        a lab report page in the Chemistry Lab, another in the Biology Lab
 //   Floor 1  Permanent Record        three books: the Staff Handbook (its memo tucked inside) in the
 //                                    Faculty Room, the register and the yearbook in the Records Room
-//                                    (all three needed: the Principal won't see Flor until she has them)
+//                                    (all three needed: the Principal won't see Kai until he has them)
 //
 // Each lies at the far end of its room from the door, on a walkable tile, near the monsters' patrols:
 // the player can sneak in and out or fight. (Run QuestCheck after changing anything here.)

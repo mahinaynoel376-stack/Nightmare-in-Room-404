@@ -53,7 +53,7 @@ public class EncounterCheck {
     }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); p = gp.flor;
+        gp = new GamePanel(); p = gp.kai;
         gp.battleStarter = m -> started = m;
         gp.world.firstFight.defeated = true;    // The first fight, outside Room 404, is QuestCheck's
         List<Room> rooms = new ArrayList<>();
@@ -189,7 +189,7 @@ public class EncounterCheck {
         check("while it's there, Floor 4's way down is shut", f4.locked(p.keys) && f4.lockedNote != null);
         for (Clue c : f4.quest.clues) p.clues.add(c.id);      // Both of the janitor's pages
         putPx(f4west, foot.x, foot.y); ticks(40); hold("U", 150);
-        check("with both pages, Flor reads the logbook to it, it wakes up, and its battle starts", started == f4.boss
+        check("with both pages, Kai reads the logbook to it, it wakes up, and its battle starts", started == f4.boss
                 && !golem.asleep() && !golem.waking() && gp.dialogue.said("Let me read you your own words"));
         gp.endBattle(f4.boss, new BattleResult(false, 0, p.kits));
         check("gave up against it: it's a boulder again, and the pages are lost again", golem.asleep()
@@ -199,7 +199,7 @@ public class EncounterCheck {
         putPx(f4west, foot.x, foot.y); ticks(40); hold("U", 150);
         check("  read to again, it wakes again", started == f4.boss);
         gp.endBattle(f4.boss, new BattleResult(true, 80, 3));
-        check("won: it drops nothing, and Flor sees the way down is clear", f4.boss.defeated && f4.boss.loot == null
+        check("won: it drops nothing, and Kai sees the way down is clear", f4.boss.defeated && f4.boss.loot == null
                 && gp.dialogue.said("The stairs down are clear") && gp.notice().contains("way down is clear"));
         check("the way down is open, with no key", !f4.locked(p.keys) && p.keys.isEmpty());
         started = null;
@@ -222,7 +222,7 @@ public class EncounterCheck {
         for (Clue c : f3.quest.clues) p.clues.add(c.id);      // All three checkout cards
         put(f3.boss.room, 4, 14); ticks(5);                    // Away from her...
         putPx(f3.boss.room, f3.boss.x, f3.boss.y); ticks(150); // ...and back with the cards
-        check("with all three cards, Flor reads her the names, she turns solid, and her battle starts", started == f3.boss
+        check("with all three cards, Kai reads her the names, she turns solid, and her battle starts", started == f3.boss
                 && !whisperer.intangible() && !whisperer.solidifying() && gp.dialogue.said("I'll read every name with you"));
         check("  while she's there, a haze covers the east stairs", haze.active());
         gp.endBattle(f3.boss, new BattleResult(true, 40, 1));
@@ -276,7 +276,7 @@ public class EncounterCheck {
         gp.endBattle(assistant, new BattleResult(true, p.health, p.kits));
         check("  beaten, it drops it", assistant.defeated && gp.notice().contains("glints"));
         putPx(chemistry, assistant.x, assistant.y); started = null; ticks(80);
-        check("  picked up: the keycard, and Flor wonders whether to open that door", p.keys.contains("Containment Keycard")
+        check("  picked up: the keycard, and Kai wonders whether to open that door", p.keys.contains("Containment Keycard")
                 && gp.dialogue.said("Do I really want to open that door"));
         putPx(contHall, cdoor.x + 8, cdoor.y + 64); hold("U", 60);
         check("with the keycard, the Containment Lab opens", gp.currentRoom == containment);
@@ -301,11 +301,11 @@ public class EncounterCheck {
         Rectangle odoor = null;
         for (int i = 0; i < hall.map.doorCount(); i++) if (odoor == null && hall.doorLeadsTo(i) == office) odoor = hall.map.door(i);
         putPx(hall, odoor.x + 8, odoor.y + 64); hold("U", 60);
-        check("Floor 1: the Principal won't see Flor without the floor's three books", gp.currentRoom == hall
+        check("Floor 1: the Principal won't see Kai without the floor's three books", gp.currentRoom == hall
                 && gp.dialogue.said("I do not see students without an appointment") && gp.notice().contains("Books found: 0 of 3"));
         for (Clue c : f1.quest.clues) p.clues.add(c.id);
         putPx(hall, odoor.x + 8, odoor.y + 64); hold("U", 60);
-        check("Floor 1: with all three, Flor recites what she's learned, and the office door opens", gp.currentRoom == office
+        check("Floor 1: with all three, Kai recites what he's learned, and the office door opens", gp.currentRoom == office
                 && gp.dialogue.said("Is that smart enough for you"));
         takeBossKey(f1, "Master Key");
         put(hall, 7, 10); hold("D", 120);

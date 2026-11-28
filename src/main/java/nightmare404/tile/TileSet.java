@@ -210,17 +210,17 @@ public class TileSet {
     public static final int Q_LAMP = 190;          // Wall lamp
     public static final int PAVING = 191;
     public static final int TREE = 192;            // (not used since 2026-11-12: see TREE_FIRST, the 2 x 2 tree)
-    public static final int GATE_H = 193;          // Fence with a padlocked gate
+    public static final int GATE_H = 193;          // (not used since 2026-11-28: see GATE_L, GATE_R, the main gate)
     public static final int PARK_BENCH = 194;      // (on paving)
     public static final int FENCE_H = 195;
-    public static final int FENCE_V = 196;         // The fence turned for the side edges
-    public static final int GATE_V = 197;
+    public static final int FENCE_V = 196;         // The fence running up and down (an upright line, seen from above)
+    public static final int GATE_V = 197;          // A padlocked side gate, 2 tiles tall: this top, then GATE_V_2
     public static final int OLD_BUS_FIRST = 198;   // The first wrecked bus, 7 x 3 tiles (198-218). Not used since
                                                    // 2026-11-12 (see BUS_FIRST); kept so the IDs after it don't move.
     public static final int BOOK_BARRICADE_1 = 219;
     public static final int BOOK_BARRICADE_2 = 220;
-    public static final int HOOP_N = 221;          // Basketball hoop at the north end of the court
-    public static final int HOOP_S = 222;          // ...and the south end
+    public static final int HOOP_N = 221;          // (not used since 2026-11-28: see HOOP_W_POLE...)
+    public static final int HOOP_S = 222;
     public static final int FLAGPOLE_TOP = 223;
     public static final int FLAGPOLE_BOTTOM = 224;
     public static final int LAMPPOST_TOP = 225;
@@ -255,7 +255,29 @@ public class TileSet {
     // --- The middle of the boarded-up exit (313), between EXIT_BLOCKED_L and EXIT_BLOCKED_R (in tiles/ground) ---
     public static final int EXIT_BLOCKED_M = 313;
 
-    public static final int COUNT = 314;
+    // --- The quadrangle's fences, main gate and basketball court (314-483), drawn by
+    //     tools/art/make_fences_court.py into tiles/quad (it also redraws FENCE_H, FENCE_V and GATE_V) ---
+    public static final int FENCE_CORNER_TL = 314; // Corner posts (TL = the top-left corner of a fenced area)
+    public static final int FENCE_CORNER_TR = 315;
+    public static final int FENCE_CORNER_BL = 316;
+    public static final int FENCE_CORNER_BR = 317;
+    public static final int GATE_V_2 = 318;        // The bottom of a side gate (GATE_V is its top)
+    public static final int GATE_PILLAR = 319;     // A brick pillar either side of the main gate
+    public static final int GATE_L = 320;          // The main gate: its two iron leaves, chained together
+    public static final int GATE_R = 321;
+    public static final int GATE_OPEN_L = 322;     // ...and the same, open (walkable)
+    public static final int GATE_OPEN_R = 323;
+    public static final int HOOP_W_POLE = 324;     // A hoop at each end of the court, 2 x 2 tiles: the top of its
+    public static final int HOOP_W_RING = 325;     // pole with the backboard, and its ring (both up in the air,
+    public static final int HOOP_W_BASE = 326;     // so you walk past under them), over its base (solid). The
+    public static final int HOOP_E_RING = 327;     // west hoop's pole is on the left, the east hoop's on the right.
+    public static final int HOOP_E_POLE = 328;
+    public static final int HOOP_E_BASE = 329;
+    public static final int COURT_FIRST = 330;     // The court's surface: 14 x 11 tiles in reading order (330-483)
+    public static final int COURT_WIDTH = 14;
+    public static final int COURT_HEIGHT = 11;
+
+    public static final int COUNT = 484;
 
     private static final String CLASSROOM_DIR = "/tiles/classroom/";
     private static final String[] CLASSROOM_FILES = {
@@ -375,7 +397,8 @@ public class TileSet {
     // Solid tiles that a bullet could still pass through: you can't walk through a fence or over a
     // bench, but you can shoot through or over them. Nothing uses this yet; it's ready for the shooting.
     private static final int[] SHOOT_THROUGH = {
-        FENCE_H, FENCE_V, GATE_H, GATE_V, PARK_BENCH, Q_TABLE, BENCH
+        FENCE_H, FENCE_V, GATE_H, GATE_V, PARK_BENCH, Q_TABLE, BENCH,
+        FENCE_CORNER_TL, FENCE_CORNER_TR, FENCE_CORNER_BL, FENCE_CORNER_BR, GATE_V_2, GATE_L, GATE_R
     };
 
     // Tiles the player can walk on. Everything else (walls, furniture, void, rubble...) blocks.
@@ -389,8 +412,9 @@ public class TileSet {
         LAB_FLOOR_1, LAB_FLOOR_2, SLIME, BROKEN_GLASS, TOXIC_PUDDLE, FOOTPRINTS, DANGLING_WIRES, HAZARD_DECAL,
         LAB_DOOR_L, LAB_DOOR_R,
         G_FLOOR_1, G_FLOOR_2, FIRE_ALARM, GRASS_1, GRASS_2, GRASS_EDGE, EXIT_L, EXIT_R,
-        Q_ASPHALT_1, Q_ASPHALT_2, PAVING, PAINT_LINE,
-        FLAGPOLE_TOP, LAMPPOST_TOP     // The tops are up in the air: you walk past underneath them
+        Q_ASPHALT_1, Q_ASPHALT_2, PAVING, PAINT_LINE, GATE_OPEN_L, GATE_OPEN_R,
+        FLAGPOLE_TOP, LAMPPOST_TOP,    // The tops are up in the air: you walk past underneath them
+        HOOP_W_POLE, HOOP_W_RING, HOOP_E_RING, HOOP_E_POLE
     };
 
     private final BufferedImage[] images = new BufferedImage[COUNT];
@@ -435,6 +459,15 @@ public class TileSet {
         loadNumbered(TRASH_CAN_FIRST, "trash_can", 2);
         loadNumbered(BUS_FIRST, "bus", BUS_WIDTH * BUS_HEIGHT);
         images[EXIT_BLOCKED_M] = load(GROUND_DIR + "exit_blocked_m.png");
+        String[] fenceFiles = {"fence_corner_tl", "fence_corner_tr", "fence_corner_bl", "fence_corner_br", "gate_v_2",
+                "gate_pillar", "gate_l", "gate_r", "gate_open_l", "gate_open_r",
+                "hoop_w_pole", "hoop_w_ring", "hoop_w_base", "hoop_e_ring", "hoop_e_pole", "hoop_e_base"};
+        for (int i = 0; i < fenceFiles.length; i++) {
+            images[FENCE_CORNER_TL + i] = load(QUAD_DIR + fenceFiles[i] + ".png");
+        }
+        for (int i = 0; i < COURT_WIDTH * COURT_HEIGHT; i++) {
+            images[COURT_FIRST + i] = load(QUAD_DIR + "court_" + i + ".png");
+        }
 
         java.util.Arrays.fill(solid, true);
         for (int id : WALKABLE) {
@@ -461,6 +494,9 @@ public class TileSet {
             solid[BUS_FIRST + BUS_WIDTH + c] = false;
         }
         solid[BUS_FIRST + 2 * BUS_WIDTH + BUS_LADDER_COL] = false;   // ...and the ladder up to it
+        for (int i = 0; i < COURT_WIDTH * COURT_HEIGHT; i++) {
+            solid[COURT_FIRST + i] = false;                  // The court is painted on the ground
+        }
         for (int row = 1; row < STAIRCASE_HEIGHT; row++) {
             for (int col : new int[] {1, 2, 4, 5}) {
                 solid[STAIRCASE_FIRST + row * STAIRCASE_WIDTH + col] = false;   // The flights and landings

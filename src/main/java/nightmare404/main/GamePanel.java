@@ -16,6 +16,7 @@ import nightmare404.entity.Clue;
 import nightmare404.entity.FirstBlob;
 import nightmare404.entity.Monster;
 import nightmare404.entity.Player;
+import nightmare404.entity.SubjectZero;
 import nightmare404.entity.TreeMonster;
 import nightmare404.story.Director;
 import nightmare404.story.Story;
@@ -26,6 +27,7 @@ import nightmare404.ui.DialogueBox;
 import nightmare404.ui.EndingScreen;
 import nightmare404.ui.Journal;
 import nightmare404.ui.Lighting;
+import nightmare404.ui.LocationSign;
 import nightmare404.ui.QuestTracker;
 import nightmare404.ui.WakeUp;
 import nightmare404.world.Room;
@@ -43,7 +45,6 @@ public class GamePanel extends JPanel implements Runnable {
     volatile boolean isRunning = false;
     final int FPS = 60;
     // Created once and reused: making a new Font every frame (60 times a second) is wasted work
-    private static final Font ROOM_NAME_FONT = new Font("Arial", Font.BOLD, 24);
     private static final Font NOTICE_FONT = new Font("Arial", Font.BOLD, 16);
 
     // Movement tracking booleans
@@ -66,10 +67,10 @@ public class GamePanel extends JPanel implements Runnable {
     private boolean wasUp, wasDown;   // W and S a frame ago, so the journal moves once per press
 
     // Entities (public: the UI and the checks in other packages read the player)
-    public Player flor;
+    public Player kai;
     BottomUI bottomUI;
 
-    // The story: the opening scene (Flor waking up at her desk), the dialogue box, the Director that
+    // The story: the opening scene (Kai waking up at his desk), the dialogue box, the Director that
     // decides when the story happens, the journal (J), the quest tracker (top right), the fight outside,
     // and once Subject Zero is beaten, the walk out through the south gate at dawn, and the ending
     public WakeUp wakeUp;
@@ -79,6 +80,7 @@ public class GamePanel extends JPanel implements Runnable {
     public LastStand lastStand;
     public Dawn dawn;
     QuestTracker tracker;
+    LocationSign locationSign;
     EndingScreen endingScreen;
     public volatile boolean ended;          // The game is over: the ending screen is showing
     public boolean endedRemembered;         // ...and it's the good ending (every clue found)
@@ -103,6 +105,14 @@ public class GamePanel extends JPanel implements Runnable {
     public volatile boolean inBattle;
     private int calm;
     private Room lastRoom;
+
+    // The camera can be sent somewhere else for a moment (Subject Zero rising, see Director.treeFelled):
+    // it slides over to look at (watchX, watchY) and stays there until stopWatching(), then slides back
+    // to the player. The world waits while it's away.
+    private int watchX, watchY;
+    private boolean watching;
+    private float look;                     // How far over it is: 0 = on the player, 1 = on the watched point
+    private static final float LOOK_STEP = 1 / 45f;   // (It takes 45 frames to get there, 3/4 of a second)
     // What starting a battle does. The checks swap this for something that doesn't open a window.
     public Consumer<Monster> battleStarter = m -> SwingUtilities.invokeLater(() -> openBattle(m));
     public long ticks;                      // Frames since the game began (the monsters bob with it)
@@ -119,7 +129,7 @@ public class GamePanel extends JPanel implements Runnable {
         tiles = new TileSet();                  // Load every tile image once
         world = new World(tiles, tileSize);     // Build and link all the rooms
         currentRoom = world.start;
-        flor = new Player(this);
+        kai = new Player(this);
         bottomUI = new BottomUI(this);
         director = new Director(this);
         journal = new Journal(this);
@@ -127,6 +137,7 @@ public class GamePanel extends JPanel implements Runnable {
         dawn = new Dawn(this);
         wakeUp = new WakeUp(this);
         tracker = new QuestTracker(this);
+        locationSign = new LocationSign(this);
         endingScreen = new EndingScreen(this);
         setupKeyBindings();
         lastRoom = currentRoom;
@@ -143,14 +154,14 @@ public class GamePanel extends JPanel implements Runnable {
             m.defeated = true;
             if (m.loot != null) {
                 m.lootTaken = true;
-                flor.keys.add(m.loot.key());
+                kai.keys.add(m.loot.key());
             }
         }
         // ...and every locked room open (the Containment Lab, the Principal's office)
         for (nightmare404.world.Floor f = world.top; f != null; f = f.below) {
             for (Room r = f.head; r != null; r = r.right) {
                 for (Room behind : r.linkedRooms()) {
-                    if (behind.lockedWith != null) flor.keys.add(behind.lockedWith);
+                    if (behind.lockedWith != null) kai.keys.add(behind.lockedWith);
                 }
             }
         }
@@ -340,8 +351,8 @@ public class GamePanel extends JPanel implements Runnable {
             if ((advance || space) && endedTicks > 150) leaveForMenu();
             return;
         }
-        if (wakeUp.playing()) {          // The opening scene: Flor waking up at her desk (E skips it)
-            wakeUp.update(advance || space);
+        if (wakeUp.playing()) {          // The opening scene: Kai waking up at his desk (it can't be skipped)
+            wakeUp.update();
             return;
         }
         if (dialogue.isOpen()) {         // The world waits while someone's talking
@@ -383,9 +394,18 @@ public class GamePanel extends JPanel implements Runnable {
         ticks++;
         if (noticeTicks > 0) noticeTicks--;
         FirstBlob blob = world.firstFight;
-        if (blob != null && blob.falling()) {   // The first fight: the blob drops on Flor (everything waits)
-            blob.update(flor);
-            if (!blob.falling()) startBattle(blob);   // Landed: it has her
+        if (blob != null && blob.falling()) {   // The first fight: the blob drops on Kai (everything waits)
+            blob.update(kai);
+            if (!blob.falling()) startBattle(blob);   // Landed: it has him
+            return;
+        }
+        if (watching || look > 0) {      // The camera is away (Subject Zero rising): the world waits
+            look = watching ? Math.min(1f, look + LOOK_STEP) : Math.max(0f, look - LOOK_STEP);
+            SubjectZero zero = world.finalBoss;
+            if (watching && look >= 1 && zero != null && zero.rising()) {   // There: it rises
+                zero.updateRise();
+                if (!zero.rising()) director.zeroRose();   // Up: its words, then the camera comes back
+            }
             return;
         }
         if (dawn.leaving()) {            // Out through the south gate: the screen fades, then the last words
@@ -393,25 +413,25 @@ public class GamePanel extends JPanel implements Runnable {
             dawn.update();
             return;
         }
-        flor.update();
+        kai.update();
         if (currentRoom != lastRoom) {   // Just walked into a room: the monsters give you a moment
             for (Monster m : lastRoom.monsters) m.chasing = false;   // The ones left behind stop chasing
             if (lastRoom.outdoors || currentRoom.outdoors) lastStand.reset();   // Going out, or back in
             lastRoom = currentRoom;
             calm = Math.max(calm, 30);
-            for (Monster m : currentRoom.monsters) m.playerArrived(flor);   // (The quadrangle's trees start to stir)
+            for (Monster m : currentRoom.monsters) m.playerArrived(kai);   // (The quadrangle's trees start to stir)
         }
         if (dawn.on() && currentRoom.outdoors) {   // After Subject Zero: the sun comes up on the way to the gate
             dawn.update();
             if (dialogue.isOpen() || dawn.leaving()) return;
         }
         for (Clue clue : currentRoom.clues) {   // Walking over a clue picks it up
-            if (!flor.clues.contains(clue.id) && clue.area().intersects(flor.solidArea)) {
+            if (!kai.clues.contains(clue.id) && clue.area().intersects(kai.solidArea)) {
                 director.clueFound(clue);
                 return;
             }
         }
-        if (currentRoom.haze != null && currentRoom.haze.walkedInto(flor.solidArea)) {   // The haze on the stairs
+        if (currentRoom.haze != null && currentRoom.haze.walkedInto(kai.solidArea)) {   // The haze on the stairs
             releaseKeys();
             director.hazeCalls(currentRoom.floor);
             return;
@@ -431,15 +451,15 @@ public class GamePanel extends JPanel implements Runnable {
             for (Monster m : side.monsters) m.update(null);
         }
         for (Monster m : currentRoom.monsters) {
-            if (m.lootUnder(flor)) {     // Walking over what a boss dropped picks it up
+            if (m.lootUnder(kai)) {     // Walking over what a boss dropped picks it up
                 m.lootTaken = true;
-                flor.collect(m.loot);
+                kai.collect(m.loot);
                 director.lootTaken(m);
                 return;
             }
             if (m.defeated) continue;
-            m.update(flor);
-            if (m.touches(flor)) {
+            m.update(kai);
+            if (m.touches(kai)) {
                 startBattle(m);
                 return;
             }
@@ -479,10 +499,10 @@ public class GamePanel extends JPanel implements Runnable {
     // Outside, the player's health ran out (see LastStand): back to the main entrance with the monsters
     // beaten so far still beaten, and at least half health. The trees still standing start over.
     public void loseOutside() {
-        flor.respawn();
-        flor.health = Math.max(flor.health, LastStand.RESPAWN_HP);
+        kai.respawn();
+        kai.health = Math.max(kai.health, LastStand.RESPAWN_HP);
         lastStand.reset();
-        for (Monster m : currentRoom.monsters) m.playerArrived(flor);
+        for (Monster m : currentRoom.monsters) m.playerArrived(kai);
         lastRoom = currentRoom;
         calm = 60;
         releaseKeys();
@@ -536,8 +556,8 @@ public class GamePanel extends JPanel implements Runnable {
             requestFocusInWindow();
             endBattle(m, result);
         };
-        if (typingFight(m)) TypingBattle.fight(frame, m.enemy, flor.health, flor.kits, flor.items, back);
-        else BattleScreen.fight(frame, m.enemy, director.foeStartHp(m), flor.health, flor.kits, flor.items, back);
+        if (typingFight(m)) TypingBattle.fight(frame, m.enemy, kai.health, kai.kits, kai.items, back);
+        else BattleScreen.fight(frame, m.enemy, director.foeStartHp(m), kai.health, kai.kits, kai.items, back);
     }
 
     // True if this monster's fight is a typing race (TypingBattle) instead of the word battle
@@ -551,11 +571,11 @@ public class GamePanel extends JPanel implements Runnable {
     public void endBattle(Monster m, BattleResult result) {
         if (result.won()) {
             m.defeated = true;
-            flor.health = Math.max(1, result.heroHp());
-            flor.kits = result.kitsLeft();
+            kai.health = Math.max(1, result.heroHp());
+            kai.kits = result.kitsLeft();
             director.afterWin(m);        // A boss leaves its loot where it stood
         } else {
-            flor.respawn();
+            kai.respawn();
             director.wokeUp(currentRoom.outdoors);
         }
         lastRoom = currentRoom;
@@ -592,14 +612,14 @@ public class GamePanel extends JPanel implements Runnable {
             rightEdge += r.map.widthPx();
         }
         for (Clue clue : currentRoom.clues) {
-            if (!flor.clues.contains(clue.id)) clue.draw(view, ticks);
+            if (!kai.clues.contains(clue.id)) clue.draw(view, ticks);
         }
         if (wakeUp.playing()) {
-            wakeUp.drawFlor(view);                   // Still at her desk (the opening scene)
+            wakeUp.drawKai(view);                   // Still at his desk (the opening scene)
         } else if (!(currentRoom.outdoors && lastStand.hidePlayer(ticks))) {   // (Blinks just after a hit)
-            dawn.drawDouble(view, flor);             // (The bad ending: seeing double)
-            flor.draw(view);
-            flor.drawStamina(view);                  // (Over her head, after running)
+            dawn.drawDouble(view, kai);             // (The bad ending: seeing double)
+            kai.draw(view);
+            kai.drawStamina(view);                  // (Over his head, after running)
         }
         drawMonsters(view, currentRoom, false);
         if (world.firstFight != null && world.firstFight.room == currentRoom) world.firstFight.draw(view, ticks);
@@ -608,19 +628,16 @@ public class GamePanel extends JPanel implements Runnable {
         view.dispose();
 
         // The light: flickering in the hallways, dimmer in the rooms (over the world, under the text and UI)
-        Lighting.draw(g2d, currentRoom, flor.x + tileSize / 2 - camX, flor.y + tileSize / 4 - camY, ticks,
+        Lighting.draw(g2d, currentRoom, kai.x + tileSize / 2 - camX, kai.y + tileSize / 4 - camY, ticks,
                 screenWidth, screenHeight - tileSize);
         dawn.drawLight(g2d, screenWidth, screenHeight - tileSize);   // After Subject Zero: the sun coming up
 
         // The room's name, the quest tracker, the notices and the bottom bar are hidden in the opening
-        // scene, and once Flor's out through the south gate
-        boolean hud = !wakeUp.playing() && !dawn.leaving();
+        // scene, while Subject Zero rises, and once Kai's out through the south gate
+        boolean hud = !wakeUp.playing() && !watching() && !dawn.leaving();
         if (hud) {
-            // The room's name stays fixed on screen (drawn after the camera shift is undone)
-            g2d.setColor(Color.WHITE);
-            g2d.setFont(ROOM_NAME_FONT);
-            String where = currentRoom.outdoors ? "Outside" : "Floor " + currentRoom.floor.number;
-            g2d.drawString(currentRoom.name + "  |  " + where, 20, 40);
+            // Where the player is: a brass plaque, top left (drawn after the camera shift is undone)
+            locationSign.draw(g2d);
             if (currentRoom.outdoors && !ended && !dawn.on()) lastStand.drawHud(g2d);
             tracker.draw(g2d);
             if (noticeTicks > 0 && !dialogue.isOpen()) drawNotice(g2d);
@@ -648,7 +665,7 @@ public class GamePanel extends JPanel implements Runnable {
     // so stopping at the edge of the end screen is enough to never show past the building.
     public int cameraX() {
         if (currentRoom.fixedScreen) return 0;   // Screen-to-screen rooms (the library) never scroll
-        int camX = flor.x + tileSize / 2 - screenWidth / 2;
+        int camX = lookingAtX() - screenWidth / 2;
         if (currentRoom.left == null) camX = Math.max(camX, 0);
         if (currentRoom.right == null) camX = Math.min(camX, currentRoom.map.widthPx() - screenWidth);
         return camX;
@@ -660,8 +677,42 @@ public class GamePanel extends JPanel implements Runnable {
     public int cameraY() {
         if (currentRoom.fixedScreen) return 0;
         int viewHeight = screenHeight - tileSize;
-        int camY = flor.y + tileSize / 2 - viewHeight / 2;
+        int camY = lookingAtY() - viewHeight / 2;
         return Math.max(0, Math.min(camY, currentRoom.map.heightPx() - viewHeight));
+    }
+
+    // The point the camera centres on: the player, or part of the way (look) to the watched point.
+    // (smooth: slow to start and slow to stop)
+    private int lookingAtX() {
+        int playerX = kai.x + tileSize / 2;
+        return playerX + Math.round((watchX - playerX) * smooth(look));
+    }
+
+    private int lookingAtY() {
+        int playerY = kai.y + tileSize / 2;
+        return playerY + Math.round((watchY - playerY) * smooth(look));
+    }
+
+    private static float smooth(float t) {
+        return t * t * (3 - 2 * t);
+    }
+
+    // Sends the camera to look at (x, y) in the current room, until stopWatching()
+    public void watch(int x, int y) {
+        watchX = x;
+        watchY = y;
+        watching = true;
+        releaseKeys();
+    }
+
+    // The camera goes back to the player
+    public void stopWatching() {
+        watching = false;
+    }
+
+    // True while the camera is away from the player (or on its way back)
+    public boolean watching() {
+        return watching || look > 0;
     }
 
     private void drawNeighbour(Graphics2D view, Room neighbour, int offsetX) {
@@ -677,7 +728,7 @@ public class GamePanel extends JPanel implements Runnable {
     // behind = the ones whose feet are higher up the screen than the player's (drawn before the player)
     private void drawMonsters(Graphics2D view, Room room, boolean behind) {
         for (Monster m : room.monsters) {
-            if ((m.y <= flor.y) == behind) m.draw(view, ticks);
+            if ((m.y <= kai.y) == behind) m.draw(view, ticks);
         }
     }
 

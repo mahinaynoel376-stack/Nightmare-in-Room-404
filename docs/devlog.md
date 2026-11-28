@@ -560,6 +560,28 @@ The script's typos were tidied in the game ("At least", "what's", a closing `*`)
 **Decisions:** the bar is over her head rather than on the ID card. The card has no room left under the health bar, and the bar is only there when it matters, right where the player is looking. Out of breath, she can't run again until half full (not the moment stamina starts coming back), so running out has a real cost.
 **Checks:** `QuestCheck` checks running speed and that it uses stamina; that she's out of breath after 3 seconds and can only walk, even holding Shift; and that she gets her breath back standing still. All 11 checks pass.
 
+## 2026-11-28 — Kai, a slower walk, Subject Zero's entrance, and the quadrangle's fences and court
+
+**Goal:** six adjustments: the opening can't be skipped; the camera centres on Subject Zero when it appears (with entrance sprites); the player walks slower; the main character is renamed Kai; the main gate and the fences look better (the side fences no longer lying flat); and a better basketball court.
+**What happened:**
+- **The opening** (`ui/WakeUp`) can't be skipped any more, and the "E skip" hint is gone.
+- **Subject Zero's entrance:** when the last tree falls, the camera slides over to Subject Zero (`GamePanel.watch`, eased over 3/4 of a second) and the world waits. The heap shakes, then three new frames (`tools/art/make_zero_rising.py`): it swells and an eye opens, its crown and eyes push up out of the leaves, and it's nearly up with the heap falling away. Then it stands, its lines play with the camera still on it, and the camera slides back to Kai. The HUD is hidden meanwhile. Its resting spot moved from the bottom row (23, 34) to the path up from the gate (24, 28): the camera can't go past the map's edge, so at the bottom it could never be centred. Now it's in the middle of the screen, with the gate in view below it.
+- **Speed:** walking 4 → 3 px a frame, running 6 → 5, dizzy (the bad ending) 3 → 2. The walk animation was slowed to match (8 frames a step walking, 5 running), so the feet don't slide.
+- **Kai:** every "Flor" in the code, the text and the game script is now "Kai" (the `flor` variable too, now `kai`). The few game lines that called the main character "her" now say "his" ("*grips his pen*", "*catching his breath*", "*under his breath*"), and so do the comments and check names. The Whisperer, the Librarian and the Lunch Lady are still "she".
+- **Fences** (`tools/art/make_fences_court.py`): chain-link with posts, rails and a see-through mesh, so the ground shows through (the old ones had grass painted in). The side fences are now an upright line of rail and posts seen from above, instead of the front of the fence turned on its side. Corner posts join them. The side gates are 2 tiles with one padlock (`GATE_V`, `GATE_V_2`), instead of the same tile twice.
+- **The main gate:** brick pillars with stone caps either side of two arched iron leaves, chained together with a big padlock (`P G J P` in the map). After Subject Zero it swings open (`GATE_OPEN_L/R`: the leaves' edges by the pillars, the chain and the open padlock on the ground) instead of just vanishing.
+- **The basketball court:** 154 painted tiles (faded green, dark red keys, worn white lines, three-point arcs, centre circle, cracks, weeds, a flat old basketball). The hoops are now at the two ends of the court's long side, half way down, instead of the middle of the top and bottom fences. Each is 2 × 2: the padded base and pole (solid), a backboard, and the ring with what's left of its net (up in the air, so you walk past underneath). The court's gate moved from the top-left corner to the middle of its top, with a path paved to it from the plaza.
+**Problems:** a check for striking Subject Zero placed the player six tiles north of wherever it had got to, which is now behind the Book Barricade. It now stands the player south of it.
+**Decisions:** `make_quad_tiles.py` no longer saves the fence or hoop tiles, so running it again can't undo the new ones. The old `GATE_H`, `HOOP_N` and `HOOP_S` IDs are kept (unused) so the IDs after them don't move. Monster speeds weren't changed: the Hollow Oaks hunt at 3, the same as walking now, so getting away from them takes running.
+**Checks:** the opening can't be skipped; the last tree sends the camera to Subject Zero, it rises and wakes, and the camera comes back; the court's gate and the hoops (base solid, ring walkable); and the main gate's leaves count as its spawn gate. All 11 checks pass.
+
+## 2026-11-28 — The location as a brass plaque
+
+**Goal:** make the location indicator (plain white "Room 404  |  Floor 4" at the top left) fit the game's look.
+**What happened:** `ui/LocationSign` draws it as an old brass door plaque. The room's name is engraved in capitals (dark letters with a light line under them, so they look cut in), with "FLOOR 4" (or "OUTSIDE") smaller underneath. It has a bevelled edge, an engraved border, a screw at each end, a little green tarnish and a shadow, and it's as wide as the name needs. Walking into another room, the new plaque slides down from above the screen and settles in about a third of a second.
+**Decisions:** brass, like a sign on a classroom door, so it sits alongside the paper quest note and the ID card as something from the school itself. It's hidden at the same times as the rest of the on-screen info (the opening, Subject Zero's entrance, walking out the gate).
+**Checks:** all 11 pass. Screenshots taken in Room 404, a stairwell, the long "Hallway (Principal's Office)" and the quadrangle.
+
 ## Open issues and ideas
 
 - ~~Redraw `down_idle`'s head to match the walk frames~~ (done: the new sprites, 2026-11-12; Down walks `walk1 → idle → walk2 → idle` again).

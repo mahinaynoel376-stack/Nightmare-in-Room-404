@@ -6,8 +6,8 @@ Every line of text in the game, in the order the player meets it: the story scen
   matches what's on screen.
 
 How each kind of line is written here:
-  NAME: ...             someone speaking (Flor, the Principal, Subject Zero)
-  FLOR (thinking): ...  Flor's thoughts, shown in italics
+  NAME: ...             someone speaking (Kai, the Principal, Subject Zero)
+  KAI (thinking): ...  Kai's thoughts, shown in italics
   [PAGE: title]         something written down, shown on lined paper
   (no label)            narration
   [HOW TO PLAY]         a tip, shown in gold
@@ -18,26 +18,26 @@ How each kind of line is written here:
 PROLOGUE - ROOM 404 (FLOOR 4)
 ============================================================================================
 
---- The opening (no words: Flor wakes up) ---
+--- The opening (no words: Kai wakes up) ---
 
   Black. Somewhere in the dark, a clock:  ...tick.   ...tick.
-  Flor's eyes open a crack, and fall shut again. Then they open properly: Room 404, dark.
-    She's asleep at her desk, face down on her arms, breathing. z z z
-  She stirs. Lifts her head. Sits up with her eyes still shut, then opens them, looks back
-    over her shoulder at the empty room, and stands up in the aisle.
-  (E, Space or Enter skips it.)
+  Kai's eyes open a crack, and fall shut again. Then they open properly: Room 404, dark.
+    He's asleep at his desk, face down on his arms, breathing. z z z
+  He stirs. Lifts his head. Sits up with his eyes still shut, then opens them, looks back
+    over his shoulder at the empty room, and stands up in the aisle.
+  (It can't be skipped.)
 
 --- The game begins ---
 
   Room 404. The lights are off. On the board, in someone else's handwriting: STAY IN YOUR
     SEAT.
-  FLOR: ...I fell asleep? Where is everyone?
-  FLOR: The clock says 11:59. It said 11:59 when I closed my eyes.
+  KAI: ...I fell asleep? Where is everyone?
+  KAI: The clock says 11:59. It said 11:59 when I closed my eyes.
   On the teacher's desk lies the janitor's logbook. Most of its pages have been torn out.
   [PAGE: Janitor's logbook, last entry]
       11:40 PM. Footsteps on the fourth floor again. Going up to check Room 404. If you're
         reading this, don't stay late. Go home.
-  FLOR (thinking): Too late for that. I need to get out of here: down the stairs and out the
+  KAI (thinking): Too late for that. I need to get out of here: down the stairs and out the
     front doors.
   [HOW TO PLAY] W A S D to walk, Shift to run (only for a few seconds: then you're out of
     breath and have to walk). E, Space or Enter to read on. J opens your journal.
@@ -46,14 +46,14 @@ PROLOGUE - ROOM 404 (FLOOR 4)
     way down.
 
 --- Going outside the hallways for the first time ---
-Flor: the whole place is a mess and reality is twisted.
-Flor: And what is that, are those monsters?!
--- something cold drips onto Flor's shoulder. She looks up --
--- a blob of black goo (the Ceiling Blob) drops from the ceiling, splats onto the floor beside her, and lunges --
+Kai: the whole place is a mess and reality is twisted.
+Kai: And what is that, are those monsters?!
+-- something cold drips onto Kai's shoulder. He looks up --
+-- a blob of black goo (the Ceiling Blob) drops from the ceiling, splats onto the floor beside him, and lunges --
 -- Tut level: the first fight, with the controls explained --
 --- After Tut Level ---
-Flor: Wow, that was insane.. *panting. Atleast I can somewhat fend them off..
-Flor: Let me find the missing pages on the Janitor's logbook, maybe that'll help me understand whats going on here
+Kai: Wow, that was insane.. *panting. Atleast I can somewhat fend them off..
+Kai: Let me find the missing pages on the Janitor's logbook, maybe that'll help me understand whats going on here
 
 ============================================================================================
 FLOOR 4: THE CLASSROOMS
@@ -68,9 +68,9 @@ FLOOR 4: THE CLASSROOMS
   >> Found with it: +1 First Aid Kit
 
 --- Reading the first missing page ---
-Flor: Oct 3.. kids staying late in 404? That's MY classroom.
-Flor: Nobody remembers their names.. not even the teachers? That can't be right.
-Flor: *looks back at the empty desks* Whose seats were these..
+Kai: Oct 3.. kids staying late in 404? That's MY classroom.
+Kai: Nobody remembers their names.. not even the teachers? That can't be right.
+Kai: *looks back at the empty desks* Whose seats were these..
 
   -- Torn logbook page, found in Room 403 --
   [PAGE: Janitor's logbook, Oct 9]
@@ -79,9 +79,9 @@ Flor: *looks back at the empty desks* Whose seats were these..
   >> Found with it: +1 Red Pen
 
 --- Reading the second missing page ---
-Flor: So the janitor stayed up here to catch whoever was doing it..
-Flor: "My keys are on my belt." Then where is he now?
-Flor: I've got a really bad feeling about those stairs.
+Kai: So the janitor stayed up here to catch whoever was doing it..
+Kai: "My keys are on my belt." Then where is he now?
+Kai: I've got a really bad feeling about those stairs.
 
 --- The boss: Brute (West Stairs) ---
 
@@ -89,36 +89,36 @@ Flor: I've got a really bad feeling about those stairs.
     way down without the key)
 
 --- Reaching the West Stairs ---
-Flor: The stairs down.. blocked. Of course they are.
-Flor: Okay, think. The janitor had the keys. If I find him, I find the way down.
+Kai: The stairs down.. blocked. Of course they are.
+Kai: Okay, think. The janitor had the keys. If I find him, I find the way down.
 -- for a moment, the boulder on the stairs seems to breathe --
-Flor: ..Please don't be what I think it is.
+Kai: ..Please don't be what I think it is.
 
 --- Walking up to the boulder (without both pages) ---
 -- a huge boulder sits in the middle of the stairs down, wedged between the rails --
 -- half buried in the rock: a ring of keys --
-Flor: It won't budge.. not even a little.
-Flor: Those keys.. they look like the janitor's. Maybe his missing pages say what happened up here.
+Kai: It won't budge.. not even a little.
+Kai: Those keys.. they look like the janitor's. Maybe his missing pages say what happened up here.
 [HOW TO PLAY] Find the janitor's two missing pages on this floor, then come back and read them to the boulder.
 >> The boulder won't budge. Logbook pages found: 1 of 2.   (every time after that)
 
 --- Reciting the logbook to the boulder (with both pages) ---
-Flor: I found your pages. All of them. Let me read you your own words.
-Flor: "Oct 3. Kids keep staying late in 404. In the morning, nobody remembers their names."
-Flor: "Oct 9. I'm staying up here tonight to see who's doing it. My keys are on my belt."
-Flor: "11:40 PM. Footsteps on the fourth floor again.. If you're reading this, don't stay late. Go home."
+Kai: I found your pages. All of them. Let me read you your own words.
+Kai: "Oct 3. Kids keep staying late in 404. In the morning, nobody remembers their names."
+Kai: "Oct 9. I'm staying up here tonight to see who's doing it. My keys are on my belt."
+Kai: "11:40 PM. Footsteps on the fourth floor again.. If you're reading this, don't stay late. Go home."
 -- the boulder shudders. Its cracks glow orange, and something inside the rock groans awake --
 -- the boulder splits open and the Brute stands up out of it --
 
   -- Before the fight (always with both pages: they're what wakes it) --
-  FLOR: Those keys... You're the janitor. You stayed up here to look for them.
+  KAI: Those keys... You're the janitor. You stayed up here to look for them.
   The Brute flinches. For a moment it looks almost human.
 
 --- After the Brute (it drops nothing: beating it clears the way down) ---
-Flor: *panting* It just.. fell apart. Like it was made out of the stairs.
-Flor: I'm sorry. I think you were only trying to help us.
+Kai: *panting* It just.. fell apart. Like it was made out of the stairs.
+Kai: I'm sorry. I think you were only trying to help us.
 -- the rubble settles and rolls aside. The stairs down are clear --
-Flor: Okay. Down we go. Don't look back, Flor.
+Kai: Okay. Down we go. Don't look back, Kai.
 >> The way down is clear.
 
 --- The monsters on this floor (their incident reports, shown in battle) ---
@@ -149,10 +149,10 @@ Flor: Okay. Down we go. Don't look back, Flor.
       * Write-Up: Scribbles over your letters.
 
 --- Meeting the Hall Monitor in the hallway ---
-Flor: A hall monitor? At midnight?! I don't have a pass!
-Flor: ..Wait, I actually do have one. *digs through backpack*
+Kai: A hall monitor? At midnight?! I don't have a pass!
+Kai: ..Wait, I actually do have one. *digs through backpack*
 -- the Hall Monitor's arm stretches way, way too far --
-Flor: Okay, NOT a normal hall monitor!
+Kai: Okay, NOT a normal hall monitor!
 
   BRUTE  (boss)  -  West Stairs
       Students who stayed late in Room 404 were never marked absent. They were never marked
@@ -172,14 +172,14 @@ FLOOR 3: THE LIBRARY
 
   Floor 3. The library's big double doors stand open, and from somewhere inside comes a
     whisper.
-  FLOR (thinking): The way down must be at the other end of the building.
+  KAI (thinking): The way down must be at the other end of the building.
   [HOW TO PLAY] This floor's clues: three old checkout cards, somewhere in the library.
 
 --- Walking into the library ---
-Flor: It's so quiet in here I can hear my own heartbeat.
-Flor: *whispering* Okay.. just don't make a sound.
+Kai: It's so quiet in here I can hear my own heartbeat.
+Kai: *whispering* Okay.. just don't make a sound.
 -- a book falls off a shelf somewhere in the dark --
-Flor: ..Nope. Nope nope nope.
+Kai: ..Nope. Nope nope nope.
 
 --- Quest: Overdue (3 clues, all needed: their names make the Whisperer solid enough to fight) ---
 
@@ -190,8 +190,8 @@ Flor: ..Nope. Nope nope nope.
   >> Found with it: +1 Old Textbook
 
 --- Reading the first checkout card ---
-Flor: A History of Room 404? Since when does my classroom have a history book?
-Flor: Somebody wrote the names back in.. like they didn't want them to disappear.
+Kai: A History of Room 404? Since when does my classroom have a history book?
+Kai: Somebody wrote the names back in.. like they didn't want them to disappear.
 
   -- Checkout card, found in Library (West) --
   [PAGE: Checkout card: Night Class]
@@ -200,9 +200,9 @@ Flor: Somebody wrote the names back in.. like they didn't want them to disappear
   >> Found with it: +1 First Aid Kit
 
 --- Reading the second checkout card ---
-Flor: Night Class.. returned: never.
-Flor: Someone kept saying these names so they wouldn't be lost. *reads them under her breath*
-Flor: There. Now I'll remember them too.
+Kai: Night Class.. returned: never.
+Kai: Someone kept saying these names so they wouldn't be lost. *reads them under his breath*
+Kai: There. Now I'll remember them too.
 
   -- Checkout card, found in Library (Entrance), by the far shelves --
   [PAGE: Checkout card: The Last Bell]
@@ -211,49 +211,49 @@ Flor: There. Now I'll remember them too.
   >> Found with it: +1 Red Pen
 
 --- Reading the third checkout card ---
-Flor: "I keep reading them so they stay.." The librarian wrote this.
-Flor: She's been reading their names out loud this whole time. So nobody forgets them.
+Kai: "I keep reading them so they stay.." The librarian wrote this.
+Kai: She's been reading their names out loud this whole time. So nobody forgets them.
 
 --- The way down: a haze over the east stairs (until the Whisperer is beaten) ---
 -- a thick grey haze hangs over the stairs down. It's freezing, and it pushes you back --
 -- from somewhere back in the library: whispering. It sounds like it's calling you --
-Flor: ..It wants me to go back to the library?
+Kai: ..It wants me to go back to the library?
 >> The haze won't let you through. Back in the library, something keeps whispering.
    Checkout cards found: 1 of 3.   (every time after that)
 
 --- The boss: Whisperer (Library (East)) ---
 
 --- Reaching the back of the library ---
-Flor: The whispering's coming from back there. It's getting louder..
-Flor: It sounds like.. names? It's saying names.
+Kai: The whispering's coming from back there. It's getting louder..
+Kai: It sounds like.. names? It's saying names.
 
 --- Walking up to the Whisperer (intangible, without all three cards) ---
 -- the Whisperer drifts between the last shelves, barely there. Your hand passes right through her --
 WHISPERER: ...______, Oct 2... ______, Oct 5... don't let them go... ______...
-Flor: She's reading out names.. but they're all blacked out. She can't remember them either.
-Flor: The head librarian.. still reading them, so they won't be lost for good.
+Kai: She's reading out names.. but they're all blacked out. She can't remember them either.
+Kai: The head librarian.. still reading them, so they won't be lost for good.
 [HOW TO PLAY] Find the three checkout cards in the library. Their names will fill in her blanks.
 >> She keeps whispering names you can't make out. Checkout cards found: 2 of 3.   (every time after that)
 
 --- Reading her the names (with all three cards) ---
-Flor: I found the cards. All three. You don't have to read them alone any more.
-Flor: Oct 2, Oct 5, Oct 8. Night Class. The Last Bell. I'll read every name with you.
--- Flor reads the names out, one by one. The whispering falters, then stops --
+Kai: I found the cards. All three. You don't have to read them alone any more.
+Kai: Oct 2, Oct 5, Oct 8. Night Class. The Last Bell. I'll read every name with you.
+-- Kai reads the names out, one by one. The whispering falters, then stops --
 -- the Whisperer turns to face you, and for the first time, she looks solid --
 
   -- Before the fight --
-  FLOR: I know their names now, too. You can let them rest.
+  KAI: I know their names now, too. You can let them rest.
   The Whisperer shrieks, and every shelf in the library rattles.
 
 --- After the Whisperer ---
-Flor: It's quiet again. But a different kind of quiet.. lighter.
+Kai: It's quiet again. But a different kind of quiet.. lighter.
 -- far off at the east end of the floor, the haze over the stairs thins and drifts away --
 >> The Whisperer falls. Something glints where it stood...
 -- the whispering stops for good. Three checkout cards drift down where she floated, and every
    blank is filled in: every name, written out in full --
-FLOR (thinking): She was holding on to their names. I'll hold on to them now.
-Flor: Every name.. finally written down where nobody can rub it out.
-Flor: The east stairs.. the OTHER end of the building. Great. *sigh*
+KAI (thinking): She was holding on to their names. I'll hold on to them now.
+Kai: Every name.. finally written down where nobody can rub it out.
+Kai: The east stairs.. the OTHER end of the building. Great. *sigh*
 >> Found: The three checkout cards / +1 First Aid Kit, +1 Old Textbook, +1 Hall Pass
 
 --- The monsters on this floor (their incident reports, shown in battle) ---
@@ -265,9 +265,9 @@ Flor: The east stairs.. the OTHER end of the building. Great. *sigh*
       * Overdue Notice: Fines you a few of your letters.
 
 --- Meeting the Librarian ---
-Flor: Excuse me, ma'am, do you know the way to-
+Kai: Excuse me, ma'am, do you know the way to-
 -- the Librarian turns, one bony finger to her lips --
-Flor: ..Sorry! Sorry. I'll be quiet. *backs away slowly*
+Kai: ..Sorry! Sorry. I'll be quiet. *backs away slowly*
 
   UNDEAD SCHOLAR  -  Library (Entrance), Hallway (Library West)
       The library was closed decades ago. Yet every morning, a book was found open on a
@@ -306,14 +306,14 @@ FLOOR 2: THE LABS
   Floor 2. A crooked LABORATORY sign. The air smells of chemicals, and of something rotten.
   A trail of slime and bloody footprints leads out of the Containment Lab and away down the
     hall.
-  FLOR (thinking): Something got out of there. Something big.
+  KAI (thinking): Something got out of there. Something big.
   [HOW TO PLAY] This floor's clues: two pages of a lab report, in the Chemistry and Biology
     labs.
 
 --- Walking into the labs ---
-Flor: Ugh, that smell.. like chemicals and something that died in here.
-Flor: Who does experiments in a high school lab in the middle of the night?
-Flor: Rule one: don't touch anything green. Rule two: don't touch anything glowing.
+Kai: Ugh, that smell.. like chemicals and something that died in here.
+Kai: Who does experiments in a high school lab in the middle of the night?
+Kai: Rule one: don't touch anything green. Rule two: don't touch anything glowing.
 
 --- Quest: Project REMEMBER (2 clues, optional: each one found before the boss fight takes 20% off its health) ---
 
@@ -324,9 +324,9 @@ Flor: Rule one: don't touch anything green. Rule two: don't touch anything glowi
   >> Found with it: +1 Hall Pass
 
 --- Reading the first lab report page ---
-Flor: Project REMEMBER.. "What the school forgets, we keep."
-Flor: Two volunteers. Students who stayed late. ..Like me.
-Flor: They turned kids into experiments?!
+Kai: Project REMEMBER.. "What the school forgets, we keep."
+Kai: Two volunteers. Students who stayed late. ..Like me.
+Kai: They turned kids into experiments?!
 
   -- Lab report page, found in Biology Lab --
   [PAGE: Project REMEMBER, day 40]
@@ -335,31 +335,31 @@ Flor: They turned kids into experiments?!
   >> Found with it: +1 First Aid Kit
 
 --- Reading the second lab report page ---
-Flor: It broke out and went outside.. to the trees?
-Flor: "X keeps asking us its name." *swallows* That's the saddest thing I've ever read.
+Kai: It broke out and went outside.. to the trees?
+Kai: "X keeps asking us its name." *swallows* That's the saddest thing I've ever read.
 
 --- The Containment Lab is locked (optional: the stairs down are open either way) ---
 -- the Containment Lab's door won't open. A keycard reader beside it blinks red: LAB STAFF ONLY --
-Flor: Lab staff.. that thing in the lab coat, back in the Chemistry Lab?
+Kai: Lab staff.. that thing in the lab coat, back in the Chemistry Lab?
 [HOW TO PLAY] You don't have to go in: the stairs down are open. But whatever's inside might help you later.
 >> The Containment Lab is locked. LAB STAFF ONLY.   (every time after that)
 
 --- After the Lab Assistant (in the Chemistry Lab) ---
 >> The Lab Assistant falls. Something glints where it stood...
 -- the Lab Assistant slumps over a bench. Clipped to its coat: a keycard marked CONTAINMENT --
-Flor: A keycard.. CONTAINMENT. That's where all that slime came from.
-Flor: Do I really want to open that door?
+Kai: A keycard.. CONTAINMENT. That's where all that slime came from.
+Kai: Do I really want to open that door?
 >> Found: Containment Keycard
 
 --- The boss: Test Subject X (Containment Lab), optional ---
 
 --- Reaching the Containment Lab ---
-Flor: Every pod is smashed but one. There's glass everywhere.
-Flor: Pod 2 is empty.. but that last pod.. something's floating in it.
+Kai: Every pod is smashed but one. There's glass everywhere.
+Kai: Pod 2 is empty.. but that last pod.. something's floating in it.
 
 --- Walking up to the last pod ---
 -- something floats in the last whole pod, curled up in green liquid. A label on the glass: SUBJECT X --
-Flor: It's.. asleep. Okay. Nobody panic. I'll just back away sl-
+Kai: It's.. asleep. Okay. Nobody panic. I'll just back away sl-
 -- its mouth opens. The glass cracks --
 -- the pod shatters and Test Subject X bursts out --
 
@@ -368,17 +368,17 @@ Flor: It's.. asleep. Okay. Nobody panic. I'll just back away sl-
   -- Before the fight, with 1 clue found --
   Test Subject X. A scrap of a student ID is still stuck to what's left of its sleeve.
   -- Before the fight, with 2 clues found --
-  FLOR: They called you X because they forgot your name. I'm sorry.
+  KAI: They called you X because they forgot your name. I'm sorry.
   Subject X hesitates. Its mouth closes, just for a moment.
 
 --- After Test Subject X ---
-Flor: *catching her breath* It didn't want to hurt me at first.. it just looked lost.
+Kai: *catching his breath* It didn't want to hurt me at first.. it just looked lost.
 >> The Test Subject X falls. Something glints where it stood...
 -- Test Subject X dissolves. Left in the slime: one of its tentacles, still twitching, with a tag
    tied round it: SUBJECT X. SIBLING: SUBJECT ZERO --
-FLOR (thinking): Pod 2 is still empty. Whatever Subject Zero is, it's outside.
-Flor: Its brother.. Subject Zero is X's brother?
-Flor: If some part of it still remembers him.. maybe this will calm it down.
+KAI (thinking): Pod 2 is still empty. Whatever Subject Zero is, it's outside.
+Kai: Its brother.. Subject Zero is X's brother?
+Kai: If some part of it still remembers him.. maybe this will calm it down.
 >> Found: Subject X's tentacle / +2 First Aid Kits, +1 Red Pen, +1 Hall Pass
 
 --- The monsters on this floor (their incident reports, shown in battle) ---
@@ -403,8 +403,8 @@ Flor: If some part of it still remembers him.. maybe this will calm it down.
       * Body Slam: It leaps on you with its full weight.
 
 --- Meeting Specimen 7 ---
-Flor: Is that.. a frog?! Why is it THAT big?!
-Flor: The toe tag says seven. Okay. I'm not counting the other six.
+Kai: Is that.. a frog?! Why is it THAT big?!
+Kai: The toe tag says seven. Okay. I'm not counting the other six.
 
   ANATOMY MODEL  -  Biology Lab
       The laboratory was supposed to be abandoned after the accident. So why does someone
@@ -430,15 +430,15 @@ THE GROUND FLOOR: THE OFFICES
 --- Arriving on Floor 1 (first time) ---
 
   The ground floor. Through the windows: the quadrangle, and beyond it, the gates.
-  FLOR (thinking): The front doors are in the middle of the hall. Almost there.
+  KAI (thinking): The front doors are in the middle of the hall. Almost there.
   [HOW TO PLAY] This floor's clues: three books. A staff handbook in the Faculty Room, a
     register and a yearbook in the Records Room.
 
 --- Reaching the ground floor ---
-Flor: I can see outside! The quad, the gates.. I'm so close!
-Flor: So why does it feel like the building doesn't want me to leave?
+Kai: I can see outside! The quad, the gates.. I'm so close!
+Kai: So why does it feel like the building doesn't want me to leave?
 
---- Quest: Permanent Record (3 books, all needed: the Principal won't see Flor until she has them) ---
+--- Quest: Permanent Record (3 books, all needed: the Principal won't see Kai until he has them) ---
 
   -- Staff Handbook, found in Faculty Room --
   [PAGE: Staff Handbook, Rule 12]
@@ -450,41 +450,41 @@ Flor: So why does it feel like the building doesn't want me to leave?
   >> Found with it: +1 Red Pen
 
 --- Reading the staff handbook's memo ---
-Flor: "Do not remember them." The Principal ORDERED it?!
-Flor: They didn't just forget those students.. they made themselves forget.
+Kai: "Do not remember them." The Principal ORDERED it?!
+Kai: They didn't just forget those students.. they made themselves forget.
 
   -- Attendance register, found in Records Room --
   [PAGE: Register, Room 404]
       Every name on the list has been struck through. At the bottom, in fresh ink: F L O R.
         As you watch, the R fades away.
-  FLOR: That's me. I'm next.
+  KAI: That's me. I'm next.
   >> Found with it: +1 First Aid Kit
 
 --- Reading the register ---
-Flor: No no no.. I'm not fading. I'm right here. My name is Flor!
-Flor: *grips the register tight* I'm getting out of here before the L goes too.
+Kai: No no no.. I'm not fading. I'm right here. My name is Kai!
+Kai: *grips the register tight* I'm getting out of here before the L goes too.
 
   -- Yearbook, found in Records Room --
   [PAGE: Yearbook: Room 404]
       Every face in the class photo has been scratched out with a pen. One page is half torn
-        out. On it: a photo of you, half rubbed away. FLOR, CLASS OF ____.
+        out. On it: a photo of you, half rubbed away. KAI, CLASS OF ____.
   >> Found with it: +1 Old Textbook
 
 --- Reading the yearbook ---
-Flor: That's.. me. Half of me.
-Flor: He's not just forgetting them.. he's grading them out of existence.
+Kai: That's.. me. Half of me.
+Kai: He's not just forgetting them.. he's grading them out of existence.
 
---- The Principal's office is locked (until Flor has all three books) ---
+--- The Principal's office is locked (until Kai has all three books) ---
 -- the Principal's door is locked. Beside it, an old intercom crackles into life --
 PRINCIPAL: I do not see students without an appointment. Come back when you have something worth my time.
-Flor: ..Did he just call me dumb?
+Kai: ..Did he just call me dumb?
 [HOW TO PLAY] Find the three books on this floor, then come back and show the Principal you've done your homework.
 >> The Principal will not see you. Books found: 1 of 3.   (every time after that)
 
 --- At the Principal's door with all three books ---
-Flor: I've done my homework. All of it.
-Flor: Rule 12: no student stays after midnight. Your memo: strike them from the register.
-Flor: Your yearbook: scratch them out. I know exactly what you did. Is that smart enough for you?
+Kai: I've done my homework. All of it.
+Kai: Rule 12: no student stays after midnight. Your memo: strike them from the register.
+Kai: Your yearbook: scratch them out. I know exactly what you did. Is that smart enough for you?
 -- the intercom goes silent. Then the office door clicks open --
 PRINCIPAL: ...Sit. Down.
 >> The office door clicks open.
@@ -495,23 +495,23 @@ PRINCIPAL: ...Sit. Down.
     without the key)
 
 --- Trying the front doors ---
-Flor: *pulls on the handles* Locked?! Come on.. come ON!
-Flor: The Principal's office is right down the hall. Of course HE has the key.
+Kai: *pulls on the handles* Locked?! Come on.. come ON!
+Kai: The Principal's office is right down the hall. Of course HE has the key.
 
   -- Before the fight --
   PRINCIPAL: Your permanent record is on my desk. Since you're so clever, let's discuss it.
-  FLOR: You struck them all out. Everyone who stayed late. You're not striking me out.
+  KAI: You struck them all out. Everyone who stayed late. You're not striking me out.
   The Principal's pen snaps in half.
   -- After winning --
   >> The Principal falls. Something glints where it stood...
   The Principal slumps over his desk. On his key ring: the school's Master Key.
-  FLOR (thinking): The Master Key. The front doors are right there.
+  KAI (thinking): The Master Key. The front doors are right there.
   >> Found: Master Key / +2 First Aid Kits, +1 Old Textbook, +1 Red Pen, +1 Hall Pass
 
 --- After the Principal ---
-Flor: *panting* Detention's over, sir.
-Flor: The Master Key.. this is it. The front doors.
--- Flor runs for the main entrance --
+Kai: *panting* Detention's over, sir.
+Kai: The Master Key.. this is it. The front doors.
+-- Kai runs for the main entrance --
 
 --- The monsters on this floor (their incident reports, shown in battle) ---
 
@@ -542,8 +542,8 @@ Flor: The Master Key.. this is it. The front doors.
       * Team Spirit: Does a little dance and feels better.
 
 --- Meeting the Mascot ---
-Flor: Our school mascot..? Why is it waving at me like that?
-Flor: Nobody's in that suit. Nobody's in that suit and it's STILL waving.
+Kai: Our school mascot..? Why is it waving at me like that?
+Kai: Nobody's in that suit. Nobody's in that suit and it's STILL waving.
 
   PRINCIPAL  (boss)  -  Principal's Office
       Your permanent record is on his desk. He has been waiting a very long time to discuss
@@ -565,17 +565,17 @@ THE QUADRANGLE: THE LAST STAND
   Cold air. The quadrangle is silent, and every gate in the fence is chained shut.
   The slime trail crosses the grass and fades out somewhere near the south gate.
   Then, behind you, something tears itself out of the earth.
-  FLOR: The trees... They're alive.
+  KAI: The trees... They're alive.
   [HOW TO PLAY] SPACE to focus: time slows, and you can type. Type the word over a tree to
     strike it. SPACE again to move. Focus runs out, so pick your moments.
   [HOW TO PLAY] Walls, the bus and trees stop your strikes; fences, benches and bushes
     don't. Keys 1-4 use a First Aid Kit, an Old Textbook, a Red Pen or a Hall Pass.
 
 --- First steps on the grass ---
-Flor: Fresh air.. I almost forgot what it felt like.
-Flor: Every gate's chained.. there has to be another way out of here.
+Kai: Fresh air.. I almost forgot what it felt like.
+Kai: Every gate's chained.. there has to be another way out of here.
 -- the trees shudder, and their roots start tearing out of the ground --
-Flor: Oh come ON! Can't ANYTHING in this school just stay normal?!
+Kai: Oh come ON! Can't ANYTHING in this school just stay normal?!
 
 --- While the trees are standing ---
 
@@ -591,45 +591,49 @@ Flor: Oh come ON! Can't ANYTHING in this school just stay normal?!
   >> Hall Pass: everything out here stands still for a moment.
 
 --- After the first tree falls ---
-Flor: *panting* One down.. they're slow, but there's so many of them.
-Flor: Keep moving, Flor. Type fast. Don't stop.
+Kai: *panting* One down.. they're slow, but there's so many of them.
+Kai: Keep moving, Kai. Type fast. Don't stop.
 
 --- Halfway through the trees ---
-Flor: Every root I cut.. they all lead the same way. Toward the south gate.
-Flor: Something down there is pulling the strings.
+Kai: Every root I cut.. they all lead the same way. Toward the south gate.
+Kai: Something down there is pulling the strings.
 
 --- The last tree falls: Subject Zero wakes (if every clue was found) ---
+
+  (The camera slides over to the heap of leaves on the path up from the south gate, and holds
+    it in the middle of the screen. The heap shakes, swells, an eye opens in it, and Subject
+    Zero pushes up out of the leaves and stands. Then:)
 
   The last tree falls. Every root in the quadrangle goes still.
   By the south gate, the heap of dead leaves sits up. Every root you cut leads back to it.
   SUBJECT ZERO: ...STAY... IN... YOUR... SEAT...
-  FLOR: Subject Zero. The one that broke out of pod 2.
-  FLOR: I remember all of them. And I'll remember you.
+  KAI: Subject Zero. The one that broke out of pod 2.
+  KAI: I remember all of them. And I'll remember you.
   [HOW TO PLAY] Subject Zero's words are longer. When the ground cracks around you, get out
     of the way: SPACE to stop focusing, then run.
 
 --- The last tree falls: Subject Zero wakes (if some clues are missing) ---
 
-  (The same, except Flor's fifth line is:)
-  FLOR: Nobody's forgetting me tonight.
+  (The same, except Kai's fifth line is:)
+  KAI: Nobody's forgetting me tonight.
 
 --- Facing Subject Zero ---
-Flor: So you're the first one.. the one everybody forgot the longest.
-Flor: *grips her pen* I'm not sitting back down. Not for you, not for anyone.
+Kai: So you're the first one.. the one everybody forgot the longest.
+Kai: *grips his pen* I'm not sitting back down. Not for you, not for anyone.
 
 --- ...only with Subject X's tentacle (it makes Subject Zero slower, and its roots come less often) ---
-Flor: Wait.. I've got something of your brother's.
--- Flor holds up Subject X's tentacle. Subject Zero freezes, and every root in the quadrangle goes slack --
+Kai: Wait.. I've got something of your brother's.
+-- Kai holds up Subject X's tentacle. Subject Zero freezes, and every root in the quadrangle goes slack --
 -- it still comes for you. But slower now, as if some part of it is trying to remember --
 
 --- Once Subject Zero is hurt ---
 
   >> Subject Zero calls up its saplings through the gates!
 
-Flor: More of them?! It's calling them in through the gates!
-Flor: Focus.. focus.. one word at a time.
--- the ground cracks open under Flor's feet --
-Flor: Move, move, MOVE!
+Kai: More of them?! It's calling them in through the gates!
+Kai: Focus.. focus.. one word at a time.
+-- the ground cracks open under Kai's feet --
+Kai: Move, move, MOVE!
 
 --- The monsters outside ---
 
@@ -662,10 +666,10 @@ THE ENDINGS
 
   Subject Zero comes apart into roots, dead leaves and old paper: pages from the register,
     and every name on them is still there.
-  FLOR: I remember them. The janitor. The names on the cards. Subject X. All of them.
+  KAI: I remember them. The janitor. The names on the cards. Subject X. All of them.
   Somewhere a padlock drops. The chain on the south gate falls away, and over the wall the
     sky is turning grey.
-  FLOR (thinking): It's over. I can go home.
+  KAI (thinking): It's over. I can go home.
   >> The south gate is open. Walk out into the morning.
 
   (The player walks to the south gate while the sun comes up: grey, then gold, and the
@@ -679,33 +683,33 @@ THE ENDINGS
   You step out through the south gate into the morning. Behind you, the clock in Room 404
     finally ticks over.
   On Monday the register for Room 404 is full. Every name is back. Yours too.
-  FLOR: The janitor. The names on the cards. Subject X.. I'll say them every day if I have to.
-  FLOR: Nobody gets forgotten. Not tonight. Not ever again.
+  KAI: The janitor. The names on the cards. Subject X.. I'll say them every day if I have to.
+  KAI: Nobody gets forgotten. Not tonight. Not ever again.
   Ending screen:  REMEMBERED  -  You found every clue, and nobody was forgotten.
 
 --- Bad ending: some clues missing ---
 
   Subject Zero comes apart into roots and dead leaves. The chain on the south gate falls
     away.
-  FLOR: I'm out. I'm actually out.
+  KAI: I'm out. I'm actually out.
   Dawn comes, but the sky over the wall is red. Your head is pounding, and the ground won't
     keep still.
-  FLOR (thinking): Just.. get to the gate.
+  KAI (thinking): Just.. get to the gate.
   >> The south gate is open. Your head is spinning.. get to the gate.
 
   (The player walks to the south gate under a red dawn, dizzy: the view tilts back and
-    forth, Flor sees double, the edges of the screen throb dark red, and she walks slowly,
+    forth, Kai sees double, the edges of the screen throb dark red, and he walks slowly,
     swaying.)
 
-  FLOR: *sways* Why does it feel like I'm leaving someone behind..   (on the way)
+  KAI: *sways* Why does it feel like I'm leaving someone behind..   (on the way)
 
   (Through the gate, the screen fades to dark red.)
 
   You stumble out through the south gate. You don't remember the walk home. You sleep
     through the whole day.
   On Monday, your seat in Room 404 is gone. Nobody can remember who used to sit there.
-  FLOR: Did I.. forget something? Someone?
-  FLOR: *stares at the empty seat in Room 404* Whose desk was that..
+  KAI: Did I.. forget something? Someone?
+  KAI: *stares at the empty seat in Room 404* Whose desk was that..
   Ending screen:  FORGOTTEN  -  Find every clue to remember everyone.
 
 
@@ -720,8 +724,8 @@ SHORT MESSAGES
   >> You wake up with a gasp by the main entrance...   (outside)
 
 --- Waking up after giving up ---
-Flor: *gasps* ..I'm back here again? That felt so real.
-Flor: Okay. Deep breath. Try again, smarter this time.
+Kai: *gasps* ..I'm back here again? That felt so real.
+Kai: Okay. Deep breath. Try again, smarter this time.
 
 --- Clues ---
 
@@ -736,10 +740,10 @@ Flor: Okay. Deep breath. Try again, smarter this time.
   The <monster> uses <attack>!
   Your letters shift and rearrange...   (Scramble)
   Too slow! The <monster> doesn't wait.   (the turn timer runs out)
-  Flor patches up with a first aid kit.
+  Kai patches up with a first aid kit.
   No first aid kits left.
   You're not hurt.
-  Flor hurls the textbook at the <monster>!   (Old Textbook: 18 damage straight away)
+  Kai hurls the textbook at the <monster>!   (Old Textbook: 18 damage straight away)
   Red Pen ready: your next attack does +<n>% damage.
   Hall Pass ready: <n>% chance to dodge the next attack.
   You don't have a <item>.

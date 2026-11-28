@@ -18,7 +18,7 @@ public class Main {
     // Developing? true = no enemies: every monster starts beaten and every floor's key is in your
     // pocket, so you can walk the whole school freely. Set back to false for the real game.
     // (Or leave it false and run with the VM argument -Dnightmare.noEnemies=true.)
-    public static final boolean NO_ENEMIES = false;
+    public static final boolean NO_ENEMIES = true;
 
     private static JFrame window;
     private static MainMenu menu;

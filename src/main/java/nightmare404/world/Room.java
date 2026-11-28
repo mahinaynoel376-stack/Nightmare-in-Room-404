@@ -51,8 +51,8 @@ public class Room {
     public String lockedWith;
     public String lockedNote;
 
-    // True if there's no key to find: the door opens once the floor's clues are all found and Flor has
-    // shown it (the Principal's office: the Director gives her lockedWith then). See Director.doorLocked.
+    // True if there's no key to find: the door opens once the floor's clues are all found and Kai has
+    // shown it (the Principal's office: the Director gives him lockedWith then). See Director.doorLocked.
     public boolean opensWhenQuestDone;
 
     // true for places outside the building (the quadrangle): the screen says "Outside", not a floor number

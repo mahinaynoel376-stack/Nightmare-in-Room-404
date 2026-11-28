@@ -78,20 +78,20 @@ public class Player {
     };
     private static final int WALK_STEPS = 4; // Length of every cycle above
     private int walkStep = 0;       // Index into WALK_CYCLES[direction]
-    // Movement speeds in pixels per tick (at 60 FPS: walk = 240 px/s, sprint = 360 px/s)
-    public static final int WALK_SPEED = 4;
-    public static final int SPRINT_SPEED = 6;
-    // Ticks per walk frame. Both cover 24 px per step, so the feet keep pace with the ground
-    // and the legs move faster when sprinting (walk = 10 steps/s, sprint = 15 steps/s).
-    public static final int WALK_ANIM_TICKS = 6;
-    public static final int SPRINT_ANIM_TICKS = 4;
-    // The bad ending: walking out of the quadrangle, Flor is dizzy (see ui.Dawn): she walks slower
+    // Movement speeds in pixels per tick (at 60 FPS: walk = 180 px/s, sprint = 300 px/s)
+    public static final int WALK_SPEED = 3;
+    public static final int SPRINT_SPEED = 5;
+    // Ticks per walk frame. Both cover about 24 px per step, so the feet keep pace with the ground
+    // and the legs move faster when sprinting (walk = 7.5 steps/s, sprint = 12 steps/s).
+    public static final int WALK_ANIM_TICKS = 8;
+    public static final int SPRINT_ANIM_TICKS = 5;
+    // The bad ending: walking out of the quadrangle, Kai is dizzy (see ui.Dawn): he walks slower
     // and sways from side to side
     public boolean dizzy;
-    public static final int DIZZY_SPEED = 3;
+    public static final int DIZZY_SPEED = 2;
 
-    // Stamina: running uses it up, and she gets it back walking or standing still (faster standing).
-    // Run it all the way out and she's out of breath: no running until it's back up to half.
+    // Stamina: running uses it up, and he gets it back walking or standing still (faster standing).
+    // Run it all the way out and he's out of breath: no running until it's back up to half.
     // At 60 FPS: 3 seconds of running from full; it fills up again in 6 seconds walking, 3 standing still.
     public static final int STAMINA_MAX = 360;
     public static final int RUN_COST = 2;            // Stamina used per frame of running
@@ -171,7 +171,7 @@ public class Player {
         y = checkpointY;
         direction = 1;
         moving = false;
-        stamina = STAMINA_MAX;           // Waking up again, she's got her breath back
+        stamina = STAMINA_MAX;           // Waking up again, he's got his breath back
         outOfBreath = false;
         syncHitbox();
     }
@@ -216,7 +216,7 @@ public class Player {
         int animTicks = running ? SPRINT_ANIM_TICKS : WALK_ANIM_TICKS;
         if (dizzy) {                     // Dizzy: slower, and too unsteady to run
             speed = DIZZY_SPEED;
-            animTicks = WALK_ANIM_TICKS + 2;
+            animTicks = WALK_ANIM_TICKS + 4;
         }
         int dx = 0, dy = 0;
         if (gp.upPressed) { dy -= speed; direction = 0; }
@@ -272,7 +272,7 @@ public class Player {
         }
     }
 
-    // A thin bar over her head showing her stamina, only while it isn't full (red while she's out of breath)
+    // A thin bar over his head showing his stamina, only while it isn't full (red while he's out of breath)
     public void drawStamina(Graphics2D g) {
         if (stamina >= STAMINA_MAX) return;
         int w = 24, bx = x + (size - w) / 2, by = y - size - 6;

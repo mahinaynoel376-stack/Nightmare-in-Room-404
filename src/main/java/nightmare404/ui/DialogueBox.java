@@ -211,10 +211,10 @@ public class DialogueBox {
         g.dispose();
     }
 
-    // The speaker's face: their battle sprite, or for Flor the head of the walking sprite
+    // The speaker's face: their battle sprite, or for Kai the head of the walking sprite
     private static BufferedImage portrait(String key) {
         BufferedImage img = BattleScreen.Sprites.get(key, false);
-        if (img != null && key.equals(Line.FLOR_FACE)) img = img.getSubimage(0, 0, img.getWidth(), img.getHeight() / 2);
+        if (img != null && key.equals(Line.KAI_FACE)) img = img.getSubimage(0, 0, img.getWidth(), img.getHeight() / 2);
         return img;
     }
 

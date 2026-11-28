@@ -16,7 +16,7 @@ public class StairsEntryCheck {
     static int row() { return (p.solidArea.y + 8) / 32; }
     static void check(String what, boolean ok, String got) { System.out.println((ok ? "  ok   " : "  FAIL ") + what + "  [" + got + "]"); if (!ok) fails++; }
     public static void main(String[] a) {
-        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.kai;
         gp.currentRoom = gp.world.floor4.head;   // West Stairs: staircase cols 5-9 (x 160-320), rows 7-13
         System.out.println("West Stairs (working)");
         put(12, 8); walk("L", 200);  check("landing from the right side: blocked", hl() >= 320, "hitbox x " + hl() + "-" + hr());

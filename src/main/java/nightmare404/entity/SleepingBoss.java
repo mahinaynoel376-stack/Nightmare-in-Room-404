@@ -14,7 +14,7 @@ import nightmare404.world.Room;
 //   Test Subject X, still sealed in the last pod in the Containment Lab ("_pod" pictures).
 //
 //   ASLEEP  It's in the way: the player can't walk through it. When the player walks up to it, the
-//           Director decides what happens. The Brute only wakes once Flor has found both of the
+//           Director decides what happens. The Brute only wakes once Kai has found both of the
 //           janitor's pages and reads them out to it (needsClues); Test Subject X wakes as soon as
 //           anyone comes near its pod.
 //   WAKING  A short animation (WAKE_TICKS long), in three pictures made for it: it shakes and cracks,

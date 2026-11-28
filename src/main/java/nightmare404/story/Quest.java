@@ -10,9 +10,9 @@ import nightmare404.world.Floor;
 // A floor's quest: find the clues in its side rooms. Every clue found BEFORE the fight takes
 // WEAKEN_PER_CLUE of the boss's health away when its battle starts, and gives some supplies. That's what
 // makes the side rooms worth the risk. On Floors 4, 3 and 1 the clues are needed: the Brute sleeps as a
-// boulder on the stairs down until Flor reads it the janitor's pages (see SleepingBoss), the Whisperer
-// can't be touched until Flor brings her the three checkout cards (see Whisperer), and the Principal
-// won't see Flor until she's found the floor's three books (see Director.doorLocked). On Floor 2 they're
+// boulder on the stairs down until Kai reads it the janitor's pages (see SleepingBoss), the Whisperer
+// can't be touched until Kai brings her the three checkout cards (see Whisperer), and the Principal
+// won't see Kai until he's found the floor's three books (see Director.doorLocked). On Floor 2 they're
 // not: it's the one floor where everything is optional.
 //
 // Story-wise, each boss is someone the school forgot, and the clues are pieces of who they were:

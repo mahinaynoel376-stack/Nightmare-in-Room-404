@@ -24,7 +24,7 @@ public class Floor3Check {
     static boolean atFoot(java.awt.Point foot) { return p.x == foot.x && p.y == foot.y; }
 
     public static void main(String[] a) {
-        gp = new GamePanel(); gp.peaceful(); p = gp.flor;
+        gp = new GamePanel(); gp.peaceful(); p = gp.kai;
         Floor f4 = gp.world.floor4, f3 = gp.world.floor3;
 
         System.out.println("1. Floors are linked");

@@ -10,7 +10,7 @@ import nightmare404.battle.BattleScreen.EnemyDef;
 public class FourthFloorEnemies {
     static final Backdrop CLASSROOM = new ClassroomBackdrop();
 
-    // ---- The first fight: it drops on Flor the first time she steps out of Room 404 (see FirstBlob) ----
+    // ---- The first fight: it drops on Kai the first time he steps out of Room 404 (see FirstBlob) ----
     // A weak blob, so the first battle (with the controls explained) is a gentle one. Its pictures are
     // made by tools/art/make_ceiling_blob.py.
 

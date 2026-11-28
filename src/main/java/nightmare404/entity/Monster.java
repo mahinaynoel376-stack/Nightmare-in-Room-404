@@ -30,7 +30,7 @@ import nightmare404.world.Room;
 // The monsters have no walking frames (only the standing sprite from their battle), so they bob a little.
 // (The quadrangle's trees are monsters too, with their own rules: see TreeMonster.)
 public class Monster {
-    public static final int PATROL_SPEED = 2;           // Pixels per tick (the player walks at 4, sprints at 6)
+    public static final int PATROL_SPEED = 2;           // Pixels per tick (the player walks at 3, sprints at 5)
     public static final int CHASE_SPEED = 3;
     public static final int NOTICE_RANGE = 3 * 32;      // Notices the player within 3 tiles...
     public static final int GIVE_UP_RANGE = 6 * 32;     // ...and gives up when they're 6 tiles away
